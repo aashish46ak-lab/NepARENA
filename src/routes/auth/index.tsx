@@ -59,8 +59,9 @@ function AuthPage() {
       ? err.message
       : "Failed to send verification code."
   );
-
-  };
+} finally {
+  setSending(false);
+    }
 
   return (
     <div className="min-h-screen grid place-items-center px-4 bg-gradient-hero">
