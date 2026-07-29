@@ -59,25 +59,7 @@ function AuthPage() {
       ? err.message
       : "Failed to send verification code."
   );
-} finally {
-  setSending(false);
-    }
 
-      sessionStorage.setItem("efn-email", parsed.data);
-      sessionStorage.setItem(
-        "efn-remember",
-        remember ? "1" : "0"
-      );
-
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : "Failed to send verification code."
-      );
-    } finally {
-      setSending(false);
-    }
   };
 
   return (
