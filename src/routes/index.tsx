@@ -14,16 +14,16 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "eFootball Nepal — Tournaments & Community" },
-      {
+{
   name: "description",
   content:
-    "Official eFootball community of Nepal. Join tournaments, track rankings, explore the Hall of Fame, and connect with players across the country.",
+    "Official eFootball Nepal platform for tournaments, rankings, community, Hall of Fame, and esports updates.",
 },
       { property: "og:title", content: "eFootball Nepal" },
-      {
+{
   property: "og:description",
   content:
-    "Join Nepal's official eFootball community. Discover tournaments, rankings, Hall of Fame, member profiles, announcements, and the latest esports updates.",
+    "Official eFootball Nepal platform for tournaments, rankings, community, Hall of Fame, and esports updates.",
 },
       { property: "og:site_name", content: "eFootball Nepal" },
       
@@ -45,10 +45,11 @@ export const Route = createFileRoute("/")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "eFootball Nepal" },
-      {
-        name: "twitter:description",
-        content: "The official home of competitive eFootball tournaments in Nepal.",
-      },
+   {
+  name: "twitter:description",
+  content:
+    "Official eFootball Nepal platform for tournaments, rankings, community, Hall of Fame, and esports updates.",
+},
       {
         name: "twitter:image",
         content: "https://efootballnepal.vercel.app/og-image.png",
