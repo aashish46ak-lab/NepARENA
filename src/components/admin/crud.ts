@@ -24,14 +24,14 @@ export function useCrud<T extends { id: string }>(table: string, opts?: { order?
   useEffect(() => { reload(); }, [reload]);
 
   const create = async (values: Partial<T>) => {
-    const { data, error } = await supabase.from(table).insert(values).select().single();
+    const { data, error } = await supabase.from(table).insert(values as never).select().single();
     if (error) { toast.error(error.message); return null; }
     toast.success("Created");
     invalidate(); await reload();
     return data as T;
   };
   const update = async (id: string, values: Partial<T>) => {
-    const { error } = await supabase.from(table).update(values).eq("id", id);
+    const { error } = await supabase.from(table).update(values as never).eq("id", id);
     if (error) { toast.error(error.message); return false; }
     toast.success("Saved");
     invalidate(); await reload();
