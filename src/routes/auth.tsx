@@ -14,12 +14,10 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      {
-        title: "Sign in — eFootball Nepal",
-      },
+      { title: "Sign in — eFootball Nepal" },
       {
         name: "description",
-        content: "Sign in or create your eFootball Nepal account with a secure 6-digit code.",
+        content: "Sign in with a 6-digit email OTP code.",
       },
     ],
   }),
@@ -36,9 +34,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.navigate({
-        to: "/",
-      });
+      router.navigate({ to: "/" });
     }
   }, [user, loading, router]);
 
@@ -62,21 +58,15 @@ function AuthPage() {
         },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      sessionStorage.setItem(
-        "efn-otp-email",
-        parsed.data
-      );
-
+      sessionStorage.setItem("efn-otp-email", parsed.data);
       sessionStorage.setItem(
         "efn-otp-remember",
         remember ? "1" : "0"
       );
 
-      toast.success("6-digit code sent to your inbox");
+      toast.success("6-digit code sent to your email");
 
       router.navigate({
         to: "/auth/verify",
@@ -86,7 +76,7 @@ function AuthPage() {
       toast.error(
         err instanceof Error
           ? err.message
-          : "Failed to send code"
+          : "Failed to send OTP"
       );
     } finally {
       setSending(false);
@@ -110,7 +100,6 @@ function AuthPage() {
           </span>
         </Link>
 
-
         <div className="glass rounded-2xl p-6 md:p-8">
 
           <h1 className="text-2xl font-bold text-center">
@@ -118,9 +107,8 @@ function AuthPage() {
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground text-center">
-            We'll email you a 6-digit code — no passwords, no verification links.
+            We'll send you a 6-digit OTP code to your email.
           </p>
-
 
           <form
             onSubmit={submit}
@@ -128,13 +116,11 @@ function AuthPage() {
           >
 
             <div className="space-y-1.5">
-
               <Label htmlFor="email">
                 Email address
               </Label>
 
               <div className="relative">
-
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
                 <Input
@@ -149,9 +135,7 @@ function AuthPage() {
                     setEmail(e.target.value)
                   }
                 />
-
               </div>
-
             </div>
 
 
@@ -192,7 +176,6 @@ function AuthPage() {
 
             </Button>
 
-
           </form>
 
 
@@ -200,9 +183,7 @@ function AuthPage() {
             By continuing you agree to the community rules of eFootball Nepal.
           </p>
 
-
         </div>
-
       </div>
     </div>
   );
