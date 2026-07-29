@@ -58,9 +58,9 @@ function AuthPage() {
 
       toast.success("Verification code sent.");
 
-      router.navigate({
-        to: "/auth/verify",
-      });
+      await router.navigate({
+  to: "/auth/verify",
+});
 
     } catch (err) {
       toast.error(
