@@ -12,6 +12,17 @@ import { z } from "zod";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
+  head: () => ({
+    meta: [
+      {
+        title: "Sign in — eFootball Nepal",
+      },
+      {
+        name: "description",
+        content: "Sign in or create your eFootball Nepal account with a secure 6-digit code.",
+      },
+    ],
+  }),
   component: AuthPage,
 });
 
@@ -25,19 +36,19 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.navigate({ to: "/" });
+      router.navigate({
+        to: "/",
+      });
     }
   }, [user, loading, router]);
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const emailValue = email.trim();
+    const parsed = z.string().email().safeParse(email.trim());
 
-    const valid = z.string().email().safeParse(emailValue);
-
-    if (!valid.success) {
-      toast.error("Enter a valid email address");
+    if (!parsed.success) {
+      toast.error("Enter a valid email address.");
       return;
     }
 
@@ -45,7 +56,7 @@ function AuthPage() {
 
     try {
       const { error } = await supabase.auth.signInWithOtp({
-        email: emailValue,
+        email: parsed.data,
         options: {
           shouldCreateUser: true,
         },
@@ -57,7 +68,7 @@ function AuthPage() {
 
       sessionStorage.setItem(
         "efn-otp-email",
-        emailValue
+        parsed.data
       );
 
       sessionStorage.setItem(
@@ -65,22 +76,22 @@ function AuthPage() {
         remember ? "1" : "0"
       );
 
-      toast.success("OTP sent to your email");
+      toast.success("6-digit code sent to your inbox");
 
       router.navigate({
         to: "/auth/verify",
       });
 
-    } catch (error) {
+    } catch (err) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to send OTP"
+        err instanceof Error
+          ? err.message
+          : "Failed to send code"
       );
     } finally {
       setSending(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen grid place-items-center px-4 bg-gradient-hero">
@@ -90,7 +101,7 @@ function AuthPage() {
           to="/"
           className="flex items-center gap-2 justify-center mb-6 font-bold"
         >
-          <div className="h-10 w-10 rounded-lg bg-gradient-brand grid place-items-center">
+          <div className="h-10 w-10 rounded-lg bg-gradient-brand grid place-items-center glow-brand">
             <Trophy className="h-5 w-5 text-primary-foreground" />
           </div>
 
@@ -106,8 +117,8 @@ function AuthPage() {
             Sign in or create account
           </h1>
 
-          <p className="mt-2 text-sm text-muted-foreground text-center">
-            We'll send you a 6-digit OTP code to your email.
+          <p className="mt-1 text-sm text-muted-foreground text-center">
+            We'll email you a 6-digit code — no passwords, no verification links.
           </p>
 
 
@@ -116,7 +127,7 @@ function AuthPage() {
             className="mt-6 space-y-4"
           >
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
 
               <Label htmlFor="email">
                 Email address
@@ -124,18 +135,19 @@ function AuthPage() {
 
               <div className="relative">
 
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
                 <Input
                   id="email"
                   type="email"
+                  required
+                  autoFocus
+                  className="pl-9"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) =>
                     setEmail(e.target.value)
                   }
-                  className="pl-9"
-                  required
                 />
 
               </div>
@@ -148,14 +160,14 @@ function AuthPage() {
               <Checkbox
                 id="remember"
                 checked={remember}
-                onCheckedChange={(value) =>
-                  setRemember(Boolean(value))
+                onCheckedChange={(v) =>
+                  setRemember(!!v)
                 }
               />
 
               <Label
                 htmlFor="remember"
-                className="text-sm cursor-pointer"
+                className="text-sm text-muted-foreground cursor-pointer"
               >
                 Remember me on this device
               </Label>
@@ -165,7 +177,7 @@ function AuthPage() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-gradient-brand text-primary-foreground hover:opacity-90"
               disabled={sending}
             >
 
@@ -174,7 +186,7 @@ function AuthPage() {
               ) : (
                 <>
                   Send 6-digit code
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  <ArrowRight className="h-4 w-4 ml-1" />
                 </>
               )}
 
@@ -185,8 +197,9 @@ function AuthPage() {
 
 
           <p className="mt-6 text-xs text-center text-muted-foreground">
-            By continuing you agree to eFootball Nepal community rules.
+            By continuing you agree to the community rules of eFootball Nepal.
           </p>
+
 
         </div>
 
