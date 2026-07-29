@@ -1,0 +1,44 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { PageShell } from "@/components/PageShell";
+import { useTournaments } from "@/hooks/useContent";
+import { Badge } from "@/components/ui/badge";
+import { Trophy, Users, Award, Calendar } from "lucide-react";
+
+export const Route = createFileRoute("/tournaments")({
+  head: () => ({ meta: [{ title: "Tournaments — eFootball Nepal" }, { name: "description", content: "Browse upcoming, ongoing, and completed eFootball tournaments in Nepal." }] }),
+  component: () => {
+    const { data: list = [], isLoading } = useTournaments();
+    return (
+      <PageShell>
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <h1 className="text-3xl md:text-4xl font-bold">Tournaments</h1>
+          <p className="text-muted-foreground mt-2">Every tournament run by eFootball Nepal.</p>
+          {isLoading && <div className="mt-8 text-muted-foreground">Loading…</div>}
+          {!isLoading && list.length === 0 && <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">No tournaments yet — check back soon.</div>}
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            {list.map((t) => (
+              <div key={t.id} className="glass rounded-2xl overflow-hidden">
+                <div className="aspect-video bg-secondary relative">
+                  {t.banner_url ? <img src={t.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center"><Trophy className="h-16 w-16 text-brand" /></div>}
+                </div>
+                <div className="p-5">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <Badge className="bg-brand/25 text-brand-glow capitalize">{t.status.replace("_", " ")}</Badge>
+                    {t.registration_open && <Badge className="bg-emerald-500/20 text-emerald-300">Registration open</Badge>}
+                  </div>
+                  <h3 className="text-xl font-bold">{t.name}</h3>
+                  {t.description && <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>}
+                  <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                    {t.prize_pool && <span className="inline-flex items-center gap-1"><Award className="h-4 w-4" /> {t.prize_pool}</span>}
+                    <span className="inline-flex items-center gap-1"><Users className="h-4 w-4" /> {t.participants_count} players</span>
+                    {t.starts_at && <span className="inline-flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(t.starts_at).toLocaleDateString()}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </PageShell>
+    );
+  },
+});
