@@ -25,6 +25,8 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "The official home of competitive eFootball tournaments in Nepal.",
       },
+      { property: "og:site_name", content: "eFootball Nepal" },
+      
       {
         property: "og:image",
         content: "https://efootballnepal.vercel.app/og-image.png",
