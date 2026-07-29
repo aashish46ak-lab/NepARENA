@@ -41,11 +41,11 @@ function AuthPage() {
     setSending(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: parsed.data,
-        options: {
-          shouldCreateUser: true,
-        },
+      toast.success("Verification code sent");
+
+await router.navigate({
+  to: "/auth/verify",
+});
       });
 
       if (error) throw error;
