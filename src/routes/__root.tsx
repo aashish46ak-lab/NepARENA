@@ -93,7 +93,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      {
+  rel: "icon",
+  href: "/android-chrome-512x512.png",
+  type: "image/png",
+      },
     ],
   }),
   shellComponent: RootShell,
