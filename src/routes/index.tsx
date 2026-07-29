@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "eFootball Nepal" },
       {
         property: "og:description",
-        content: "The official home of competitive eFootball in Nepal.",
+        content: "The official home of competitive eFootball tournaments in Nepal.",
       },
       {
         property: "og:image",
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/")({
       { name: "twitter:title", content: "eFootball Nepal" },
       {
         name: "twitter:description",
-        content: "The official home of competitive eFootball in Nepal.",
+        content: "The official home of competitive eFootball tournaments in Nepal.",
       },
       {
         name: "twitter:image",
