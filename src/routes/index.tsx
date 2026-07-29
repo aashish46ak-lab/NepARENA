@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, Calendar, Users, Megaphone, Award, ArrowRight, Sparkles, Crown } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "eFootball Nepal — Tournaments & Community" },
