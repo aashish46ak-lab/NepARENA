@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,7 +61,7 @@ function AuthPage() {
 } finally {
   setSending(false);
     }
-
+  };
   return (
     <div className="min-h-screen grid place-items-center px-4 bg-gradient-hero">
 
