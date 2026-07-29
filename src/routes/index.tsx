@@ -11,14 +11,38 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, Calendar, Users, Megaphone, Award, ArrowRight, Sparkles, Crown } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "eFootball Nepal — Tournaments & Community" },
-      { name: "description", content: "Compete in official eFootball tournaments in Nepal. Join the community, climb the Hall of Fame, and follow every season." },
-      { property: "og:title", content: "eFootball Nepal" },
-      { property: "og:description", content: "The official home of competitive eFootball in Nepal." },
-    ],
-  }),
+
+head: () => ({
+  meta: [
+    { title: "eFootball Nepal — Tournaments & Community" },
+    {
+      name: "description",
+      content:
+        "Compete in official eFootball tournaments in Nepal. Join the community, climb the Hall of Fame, and follow every season.",
+    },
+
+    { property: "og:title", content: "eFootball Nepal" },
+    {
+      property: "og:description",
+      content: "The official home of competitive eFootball in Nepal.",
+    },
+    {
+      property: "og:image",
+      content: "https://efootballnepal.vercel.app/android-chrome-512x512.png",
+    },
+    {
+      property: "og:url",
+      content: "https://efootballnepal.vercel.app",
+    },
+    { property: "og:type", content: "website" },
+
+    { name: "twitter:card", content: "summary_large_image" },
+    {
+      name: "twitter:image",
+      content: "https://efootballnepal.vercel.app/android-chrome-512x512.png",
+    },
+  ],
+}),
   component: HomePage,
 });
 
