@@ -36,6 +36,11 @@ export const Route = createFileRoute("/")({
         property: "og:url",
         content: "https://efootballnepal.vercel.app",
       },
+      {
+  property: "og:image:secure_url",
+  content: "https://efootballnepal.vercel.app/og-image.png",
+},
+      
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "eFootball Nepal" },
