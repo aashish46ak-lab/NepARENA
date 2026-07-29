@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "eFootball Nepal" },
       {
         property: "og:description",
-        content: "The official home of competitive eFootball tournaments in Nepal.",
+        content: "eFootball Nepal is the official online platform for Nepal's competitive eFootball community. It brings players together through tournaments, rankings, and community engagement while promoting fair play and esports growth across the country. The website features tournament schedules, announcements, a Hall of Fame honoring top players, tournament history, member profiles, and photo galleries. Visitors can explore the latest events, join the community, and stay updated with official news. With a modern, user-friendly design, eFootball Nepal serves as a central hub for players, fans, and organizers passionate about competitive eFootball in Nepal.",
       },
       { property: "og:site_name", content: "eFootball Nepal" },
       
