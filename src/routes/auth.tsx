@@ -61,7 +61,7 @@ function AuthPage() {
         <div className="glass rounded-2xl p-6 md:p-8">
           <h1 className="text-2xl font-bold text-center">Sign in or create account</h1>
           <p className="mt-1 text-sm text-muted-foreground text-center">
-            We'll email you a 6-digit code — no passwords, no verification links.
+            We'll email you a 6-digit code .
           </p>
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div className="space-y-1.5">
