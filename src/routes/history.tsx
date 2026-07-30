@@ -25,6 +25,7 @@ export const Route = createFileRoute("/history")({
                   <h3 className="mt-1 font-bold">{h.tournament_name}</h3>
                   <div className="mt-2 text-sm">🏆 <span className="text-foreground">{h.winner}</span></div>
                   {h.runner_up && <div className="text-xs text-muted-foreground">🥈 {h.runner_up}</div>}
+                  {h.third_place && <div className="text-xs text-muted-foreground">🥉 {h.third_place}</div>}
                   {h.prize_pool && <div className="mt-2 text-xs text-muted-foreground">Prize: {h.prize_pool}</div>}
                 </div>
               </div>
