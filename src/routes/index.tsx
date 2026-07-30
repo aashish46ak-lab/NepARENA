@@ -8,7 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy, Calendar, Users, Megaphone, Award, ArrowRight, Sparkles, Crown } from "lucide-react";
+import { SmartImage } from "@/components/SmartImage";
+import { Trophy, Calendar, Users, Megaphone, Award, ArrowRight, Crown } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -90,9 +91,6 @@ function HomePage() {
         <div className="absolute inset-0 opacity-40 pointer-events-none"
           style={{ background: "radial-gradient(600px circle at 20% 20%, oklch(0.5 0.25 245 / 0.4), transparent), radial-gradient(500px circle at 80% 60%, oklch(0.6 0.2 260 / 0.3), transparent)" }} />
         <div className="relative max-w-7xl mx-auto px-4 pt-16 pb-20 md:pt-24 md:pb-28 text-center">
-          <Badge className="mb-4 glass border-brand/40 text-brand-glow">
-            <Sparkles className="h-3 w-3 mr-1" /> Phase 1 · Official launch
-          </Badge>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
             <span className="text-gradient-brand">{settings?.hero_title ?? "eFootball Nepal"}</span>
           </h1>
