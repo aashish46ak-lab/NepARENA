@@ -108,13 +108,13 @@ export function TournamentManager({ tournament, open, onOpenChange, tab = "parti
     load();
   };
 
-  const saveResult = async (m: Match, home: string, away: string) => {
+  const saveResult = async (m: Match, home: string, away: string): Promise<void> => {
     const hs = home === "" ? null : Number(home);
     const as = away === "" ? null : Number(away);
     const { error } = await supabase.from("matches")
       .update({ home_score: hs, away_score: as, played: hs !== null && as !== null })
       .eq("id", m.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Result saved");
     load();
   };
