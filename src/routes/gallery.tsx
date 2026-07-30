@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { useGallery } from "@/hooks/useContent";
+import { SmartImage } from "@/components/SmartImage";
 
 export const Route = createFileRoute("/gallery")({
   head: () => ({ meta: [{ title: "Gallery — eFootball Nepal" }, { name: "description", content: "Moments from eFootball Nepal tournaments and community events." }] }),
@@ -15,9 +16,7 @@ export const Route = createFileRoute("/gallery")({
           {!isLoading && list.length === 0 && <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">No photos yet.</div>}
           <div className="mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {list.map((g) => (
-              <div key={g.id} className="glass rounded-xl overflow-hidden aspect-square">
-                <img src={g.image_url} alt={g.caption ?? ""} className="h-full w-full object-cover hover:scale-105 transition-transform" />
-              </div>
+              <SmartImage key={g.id} src={g.image_url} alt={g.caption ?? ""} ratio="aspect-square" className="glass rounded-xl" />
             ))}
           </div>
         </div>
