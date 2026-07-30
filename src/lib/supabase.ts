@@ -68,6 +68,7 @@ export interface TournamentHistoryEntry {
   tournament_name: string;
   winner: string;
   runner_up: string | null;
+  third_place: string | null;
   year: number;
   banner_url: string | null;
   prize_pool: string | null;
