@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, MoreVertical, ShieldPlus, ShieldMinus, Trash2, Crown } from "lucide-react";
 
 interface Row extends Profile { roles: Role[] }
 
@@ -40,35 +42,83 @@ export function UsersPanel() {
     if (error) return toast.error(error.message);
     toast.success(`Revoked ${role}`); load();
   };
+  const deleteUser = async (userId: string, name: string) => {
+    if (!confirm(`Permanently delete ${name}? This removes their account and all their data.`)) return;
+    const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId });
+    if (error) return toast.error(error.message);
+    toast.success("Account deleted"); load();
+  };
 
   const filtered = rows.filter((r) => !q || (r.username ?? "").toLowerCase().includes(q.toLowerCase()) || (r.full_name ?? "").toLowerCase().includes(q.toLowerCase()));
 
   return (
-    <AdminSection title="Users &amp; roles" description="Only the Owner can grant or revoke moderator access.">
+    <AdminSection title="Users &amp; roles" description="Only the Owner can grant or revoke moderator access and delete accounts.">
       <div className="relative mb-4 max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by username or name" className="pl-9" />
       </div>
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> :
-        <div className="grid gap-2">
-          {filtered.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 rounded-lg border border-border/60 p-3">
-              <Avatar className="h-10 w-10"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">{(u.username ?? "U").slice(0,2).toUpperCase()}</AvatarFallback></Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{u.username ?? "unnamed"}</div>
-                <div className="text-xs text-muted-foreground truncate">{u.full_name ?? ""}</div>
-                <div className="mt-1 flex gap-1 flex-wrap">
-                  {u.roles.length === 0 && <Badge variant="outline" className="text-xs">member</Badge>}
-                  {u.roles.map((r) => <Badge key={r} className="bg-brand/25 text-brand-glow capitalize">{r}</Badge>)}
-                </div>
-              </div>
-              <div className="flex gap-1">
-                {u.roles.includes("moderator")
-                  ? <Button size="sm" variant="outline" onClick={() => revoke(u.id, "moderator")}>Revoke mod</Button>
-                  : <Button size="sm" className="bg-gradient-brand text-primary-foreground" onClick={() => grant(u.id, "moderator")}>Make mod</Button>}
-              </div>
-            </div>
-          ))}
+        <div className="rounded-xl border border-border/60 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Member</TableHead>
+                <TableHead className="hidden md:table-cell">Favourite club</TableHead>
+                <TableHead className="hidden sm:table-cell">Joined</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="w-[52px] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((u) => {
+                const isOwnerRow = u.roles.includes("owner");
+                const isMod = u.roles.includes("moderator");
+                const name = u.username ?? u.full_name ?? "unnamed";
+                return (
+                  <TableRow key={u.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={u.avatar_url ?? undefined} />
+                          <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">{name.slice(0,2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{u.full_name ?? ""}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{u.favourite_club ?? "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {isOwnerRow ? <Badge className="bg-brand/25 text-brand-glow"><Crown className="h-3 w-3 mr-1" /> Owner</Badge>
+                        : isMod ? <Badge className="bg-brand/20 text-brand-glow">Moderator</Badge>
+                        : <span className="text-muted-foreground text-xs">—</span>}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-auto min-w-0">
+                          {!isOwnerRow && (isMod
+                            ? <DropdownMenuItem onClick={() => revoke(u.id, "moderator")}><ShieldMinus className="h-4 w-4 mr-2" /> Remove moderator</DropdownMenuItem>
+                            : <DropdownMenuItem onClick={() => grant(u.id, "moderator")}><ShieldPlus className="h-4 w-4 mr-2" /> Make moderator</DropdownMenuItem>)}
+                          {!isOwnerRow && <DropdownMenuSeparator />}
+                          {!isOwnerRow && (
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteUser(u.id, name)}>
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete account
+                            </DropdownMenuItem>
+                          )}
+                          {isOwnerRow && <DropdownMenuItem disabled>Owner account</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>}
     </AdminSection>
   );
