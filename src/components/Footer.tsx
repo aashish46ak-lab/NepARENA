@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useCommunityLinks } from "@/hooks/useContent";
+import { PlatformIcon } from "@/lib/platforms";
 
 export function Footer() {
   const settings = useSiteSettings();
@@ -28,7 +29,11 @@ export function Footer() {
           <div className="text-sm font-semibold mb-2">Community</div>
           <ul className="space-y-1 text-sm text-muted-foreground">
             {(links ?? []).map((l) => (
-              <li key={l.id}><a href={l.url} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">{l.label}</a></li>
+              <li key={l.id}>
+                <a href={l.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-foreground">
+                  <PlatformIcon platform={l.platform} className="h-4 w-4" /> {l.label}
+                </a>
+              </li>
             ))}
             {(!links || links.length === 0) && <li className="opacity-60">Community links coming soon</li>}
           </ul>
