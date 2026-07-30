@@ -131,3 +131,30 @@ export interface SiteSettings {
   footer_text: string;
   updated_at: string;
 }
+
+export type ParticipantStatus = "pending" | "approved" | "rejected";
+
+export interface TournamentParticipant {
+  id: string;
+  tournament_id: string;
+  user_id: string | null;
+  player_name: string;
+  club: string | null;
+  status: ParticipantStatus;
+  seed: number | null;
+  created_at: string;
+}
+
+export interface Match {
+  id: string;
+  tournament_id: string;
+  round: number;
+  position: number;
+  home_id: string | null;
+  away_id: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  played: boolean;
+  scheduled_at: string | null;
+  created_at: string;
+}
