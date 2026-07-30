@@ -68,6 +68,7 @@ export interface TournamentHistoryEntry {
   tournament_name: string;
   winner: string;
   runner_up: string | null;
+  third_place: string | null;
   year: number;
   banner_url: string | null;
   prize_pool: string | null;
@@ -130,4 +131,31 @@ export interface SiteSettings {
   about_short: string;
   footer_text: string;
   updated_at: string;
+}
+
+export type ParticipantStatus = "pending" | "approved" | "rejected";
+
+export interface TournamentParticipant {
+  id: string;
+  tournament_id: string;
+  user_id: string | null;
+  player_name: string;
+  club: string | null;
+  status: ParticipantStatus;
+  seed: number | null;
+  created_at: string;
+}
+
+export interface Match {
+  id: string;
+  tournament_id: string;
+  round: number;
+  position: number;
+  home_id: string | null;
+  away_id: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  played: boolean;
+  scheduled_at: string | null;
+  created_at: string;
 }

@@ -8,7 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy, Calendar, Users, Megaphone, Award, ArrowRight, Sparkles, Crown } from "lucide-react";
+import { SmartImage } from "@/components/SmartImage";
+import { Trophy, Calendar, Users, Megaphone, Award, ArrowRight, Crown } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -90,9 +91,6 @@ function HomePage() {
         <div className="absolute inset-0 opacity-40 pointer-events-none"
           style={{ background: "radial-gradient(600px circle at 20% 20%, oklch(0.5 0.25 245 / 0.4), transparent), radial-gradient(500px circle at 80% 60%, oklch(0.6 0.2 260 / 0.3), transparent)" }} />
         <div className="relative max-w-7xl mx-auto px-4 pt-16 pb-20 md:pt-24 md:pb-28 text-center">
-          <Badge className="mb-4 glass border-brand/40 text-brand-glow">
-            <Sparkles className="h-3 w-3 mr-1" /> Phase 1 · Official launch
-          </Badge>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
             <span className="text-gradient-brand">{settings?.hero_title ?? "eFootball Nepal"}</span>
           </h1>
@@ -148,13 +146,12 @@ function HomePage() {
         <section className="max-w-7xl mx-auto px-4 mb-16">
           <SectionHeading title="Featured Tournament" href="/tournaments" cta="All tournaments" />
           <div className="glass rounded-2xl overflow-hidden grid md:grid-cols-2 gap-0">
-            <div className="aspect-video md:aspect-auto bg-secondary relative">
-              {featured.banner_url ? (
-                <img src={featured.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-brand opacity-20 grid place-items-center"><Trophy className="h-20 w-20 text-brand" /></div>
-              )}
-            </div>
+            <SmartImage
+              src={featured.banner_url}
+              alt={featured.name}
+              ratio="aspect-video"
+              fallback={<div className="absolute inset-0 bg-gradient-brand opacity-20 grid place-items-center"><Trophy className="h-20 w-20 text-brand" /></div>}
+            />
             <div className="p-6 md:p-8 flex flex-col justify-center">
               <div className="flex items-center gap-2 mb-3">
                 <StatusBadge status={featured.status} />
@@ -225,9 +222,8 @@ function HomePage() {
           <div className="grid gap-4 md:grid-cols-3">
             {history.map((h) => (
               <div key={h.id} className="glass rounded-2xl overflow-hidden">
-                <div className="aspect-video bg-secondary relative">
-                  {h.banner_url ? <img src={h.banner_url} className="absolute inset-0 h-full w-full object-cover" alt="" /> : <div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center"><Trophy className="h-10 w-10 text-brand" /></div>}
-                </div>
+                <SmartImage src={h.banner_url} alt={h.tournament_name} ratio="aspect-video"
+                  fallback={<div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center"><Trophy className="h-10 w-10 text-brand" /></div>} />
                 <div className="p-4">
                   <div className="text-xs text-brand-glow">{h.year}</div>
                   <h4 className="font-semibold mt-1">{h.tournament_name}</h4>
@@ -251,16 +247,18 @@ function HomePage() {
             </div>
             <Button asChild variant="outline" className="border-brand/40"><Link to="/members">View more</Link></Button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="divide-y divide-border/60">
             {latestMembers.map((m) => (
-              <div key={m.id} className="rounded-xl bg-white/5 p-3 flex flex-col items-center text-center">
-                <Avatar className="h-14 w-14"><AvatarImage src={m.avatar_url ?? undefined} /><AvatarFallback className="bg-gradient-brand text-primary-foreground">{(m.username ?? "U").slice(0,2).toUpperCase()}</AvatarFallback></Avatar>
-                <div className="mt-2 font-medium text-sm truncate max-w-full">{m.username ?? "Player"}</div>
-                <div className="text-[11px] text-muted-foreground">{m.favourite_club ?? "—"}</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">joined {new Date(m.created_at).toLocaleDateString()}</div>
+              <div key={m.id} className="flex flex-col items-center text-center gap-2 py-6 first:pt-0 last:pb-0">
+                <Avatar className="h-20 w-20 ring-2 ring-brand/30">
+                  <AvatarImage src={m.avatar_url ?? undefined} className="object-cover" />
+                  <AvatarFallback className="bg-gradient-brand text-primary-foreground">{(m.username ?? "U").slice(0,2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="font-semibold">{m.username ?? "Player"}</div>
+                <div className="text-sm text-brand-glow">{m.favourite_club ?? "Club not set"}</div>
               </div>
             ))}
-            {latestMembers.length === 0 && <div className="col-span-full text-center text-sm text-muted-foreground py-4">Be the first to join!</div>}
+            {latestMembers.length === 0 && <div className="text-center text-sm text-muted-foreground py-4">Be the first to join!</div>}
           </div>
         </div>
       </section>
@@ -271,9 +269,7 @@ function HomePage() {
           <SectionHeading title="Gallery" href="/gallery" cta="View gallery" />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {gallery.map((g) => (
-              <div key={g.id} className="glass rounded-xl overflow-hidden aspect-square">
-                <img src={g.image_url} alt={g.caption ?? ""} className="h-full w-full object-cover hover:scale-105 transition-transform" />
-              </div>
+              <SmartImage key={g.id} src={g.image_url} alt={g.caption ?? ""} ratio="aspect-square" className="glass rounded-xl" />
             ))}
           </div>
         </section>

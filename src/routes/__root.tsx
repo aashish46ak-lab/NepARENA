@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
+import { RoleRedirect } from "@/components/RoleRedirect";
 
 function NotFoundComponent() {
   return (
@@ -86,7 +87,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "eFootball Nepal" },
       { property: "og:description", content: "The official home of competitive eFootball in Nepal." },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "eFootball Nepal" },
+      { property: "og:image", content: "https://efootballnepal.vercel.app/og-image.png" },
+      { property: "og:image:secure_url", content: "https://efootballnepal.vercel.app/og-image.png" },
+      { property: "og:image:type", content: "image/png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "eFootball Nepal" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://efootballnepal.vercel.app/og-image.png" },
     ],
     links: [
       {
@@ -126,6 +135,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <RoleRedirect />
         <Outlet />
         <Toaster richColors position="top-right" />
       </AuthProvider>

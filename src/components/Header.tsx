@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { LogOut, Menu, Shield, User as UserIcon, Trophy } from "lucide-react";
+import { LogOut, Menu, Shield, User as UserIcon, Trophy, Users } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const NAV = [
@@ -62,8 +62,11 @@ export function Header() {
                   <div className="text-xs text-muted-foreground truncate">{user.email}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.navigate({ to: "/profile" })}>
+                  <UserIcon className="h-4 w-4 mr-2" /> My profile
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.navigate({ to: "/members" })}>
-                  <UserIcon className="h-4 w-4 mr-2" /> Community
+                  <Users className="h-4 w-4 mr-2" /> Community
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => router.navigate({ to: "/dashboard" })}>
@@ -90,6 +93,8 @@ export function Header() {
                 {NAV.map((n) => (
                   <Link key={n.to} to={n.to} className="px-3 py-2 rounded-md hover:bg-white/5">{n.label}</Link>
                 ))}
+                {user && <Link to="/profile" className="px-3 py-2 rounded-md hover:bg-white/5">My profile</Link>}
+                {isAdmin && <Link to="/dashboard" className="px-3 py-2 rounded-md hover:bg-white/5">Admin dashboard</Link>}
               </div>
             </SheetContent>
           </Sheet>

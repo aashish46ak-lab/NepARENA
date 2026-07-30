@@ -43,7 +43,10 @@ export function ImageUpload({ value, onChange, folder = "misc", label, className
       {label && <div className="text-sm font-medium">{label}</div>}
       <div className={cn("glass relative overflow-hidden rounded-xl flex items-center justify-center", aspectClass)}>
         {value ? (
-          <img src={value} alt="" className="h-full w-full object-cover" />
+          <>
+            <img src={value} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-25" />
+            <img src={value} alt="" className="relative h-full w-full object-contain" />
+          </>
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <ImageIcon className="h-8 w-8" />

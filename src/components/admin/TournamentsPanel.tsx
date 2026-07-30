@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { AdminSection, EmptyState } from "./AdminUI";
 import { useCrud } from "./crud";
 import { RowEditor, Field } from "./RowEditor";
+import { TournamentManager } from "./TournamentManager";
 import type { Tournament } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { ImageUpload } from "@/components/ImageUpload";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  MoreVertical, Pencil, ImagePlus, Trash2, ClipboardList, Radio, Trophy,
+  Archive, Settings2, ListOrdered,
+} from "lucide-react";
+import { toast } from "sonner";
 
 const empty: Partial<Tournament> = {
   slug: "", name: "", description: "", banner_url: null, status: "upcoming",
@@ -15,7 +25,16 @@ const empty: Partial<Tournament> = {
 };
 
 export function TournamentsPanel() {
-  const { rows, loading, create, update, remove } = useCrud<Tournament>("tournaments");
+  const { rows, loading, create, update, remove } = useCrud<Tournament>("tournaments", { invalidate: ["tournaments", "tournament_history", "hall_of_fame"] });
+  const [editing, setEditing] = useState<Tournament | null>(null);
+  const [banner, setBanner] = useState<Tournament | null>(null);
+  const [manage, setManage] = useState<{ t: Tournament; tab: string } | null>(null);
+
+  const setStatus = async (t: Tournament, status: Tournament["status"], registration_open?: boolean) => {
+    const ok = await update(t.id, { status, ...(registration_open === undefined ? {} : { registration_open }) } as Partial<Tournament>);
+    if (ok && status === "completed") toast.success("Archived to Tournament History and Hall of Fame");
+  };
+
   return (
     <AdminSection title="Tournaments" description="Create and manage tournaments shown across the site."
       action={<RowEditor triggerVariant="create" triggerLabel="New tournament" title="New tournament" initial={empty as Tournament}
@@ -27,25 +46,79 @@ export function TournamentsPanel() {
         : <div className="grid gap-3">
             {rows.map((t) => (
               <div key={t.id} className="flex items-center gap-4 rounded-lg border border-border/60 p-3">
-                <div className="h-14 w-24 rounded overflow-hidden bg-secondary shrink-0">
-                  {t.banner_url && <img src={t.banner_url} alt="" className="h-full w-full object-cover" />}
+                <div className="h-14 w-24 rounded overflow-hidden bg-secondary shrink-0 grid place-items-center">
+                  {t.banner_url && <img src={t.banner_url} alt="" className="h-full w-full object-contain" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{t.name}</div>
                   <div className="text-xs text-muted-foreground flex gap-2 flex-wrap mt-1">
                     <Badge variant="outline" className="capitalize">{t.status.replace("_", " ")}</Badge>
                     {t.registration_open && <Badge className="bg-emerald-500/20 text-emerald-300">Registration open</Badge>}
+                    <span>{t.participants_count} players</span>
                     {t.prize_pool && <span>{t.prize_pool}</span>}
                   </div>
                 </div>
-                <RowEditor title="Edit tournament" initial={t}
-                  onSave={(v) => update(t.id, v)} onDelete={() => remove(t.id)}>
-                  {({ values, set }) => <TournamentFields values={values} set={set} />}
-                </RowEditor>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-auto min-w-0">
+                    <DropdownMenuItem onClick={() => setEditing(t)}><Pencil className="h-4 w-4 mr-2" /> Edit</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setBanner(t)}><ImagePlus className="h-4 w-4 mr-2" /> Upload banner</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setManage({ t, tab: "participants" })}><Settings2 className="h-4 w-4 mr-2" /> Manage</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setManage({ t, tab: "results" })}><ListOrdered className="h-4 w-4 mr-2" /> Results</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setStatus(t, "registration_open", true)}><ClipboardList className="h-4 w-4 mr-2" /> Registration</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStatus(t, "ongoing", false)}><Radio className="h-4 w-4 mr-2" /> Live</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStatus(t, "completed", false)}><Trophy className="h-4 w-4 mr-2" /> Complete</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStatus(t, "upcoming", false)}><Archive className="h-4 w-4 mr-2" /> Archive</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive focus:text-destructive"
+                      onClick={() => { if (confirm(`Delete ${t.name}?`)) remove(t.id); }}>
+                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
           </div>}
+
+      {editing && (
+        <EditDialog tournament={editing} onClose={() => setEditing(null)} onSave={(v) => update(editing.id, v)} />
+      )}
+      {banner && (
+        <Dialog open onOpenChange={() => setBanner(null)}>
+          <DialogContent className="glass max-w-xl">
+            <DialogHeader><DialogTitle>Banner · {banner.name}</DialogTitle></DialogHeader>
+            <ImageUpload value={banner.banner_url} folder="tournaments" aspect="wide"
+              onChange={async (u) => { await update(banner.id, { banner_url: u } as Partial<Tournament>); setBanner({ ...banner, banner_url: u }); }} />
+          </DialogContent>
+        </Dialog>
+      )}
+      {manage && (
+        <TournamentManager tournament={manage.t} tab={manage.tab} open onOpenChange={() => setManage(null)} />
+      )}
     </AdminSection>
+  );
+}
+
+function EditDialog({ tournament, onClose, onSave }: {
+  tournament: Tournament; onClose: () => void; onSave: (v: Partial<Tournament>) => Promise<unknown>;
+}) {
+  const [values, setValues] = useState<Tournament>(tournament);
+  const set = (p: Partial<Tournament>) => setValues((v) => ({ ...v, ...p }));
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="glass max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit tournament</DialogTitle></DialogHeader>
+        <div className="space-y-4"><TournamentFields values={values} set={set} /></div>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button className="bg-gradient-brand text-primary-foreground" onClick={async () => { await onSave(values); onClose(); }}>Save</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
