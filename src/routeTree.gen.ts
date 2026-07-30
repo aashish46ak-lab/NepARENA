@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TournamentsRouteImport } from './routes/tournaments'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as MembersRouteImport } from './routes/members'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
@@ -29,6 +30,11 @@ const TournamentsRoute = TournamentsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MembersRoute = MembersRouteImport.update({
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
   '/members': typeof MembersRoute
+  '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRoute
   '/auth/verify': typeof AuthVerifyRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
   '/members': typeof MembersRoute
+  '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRoute
   '/auth/verify': typeof AuthVerifyRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
   '/members': typeof MembersRoute
+  '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRoute
   '/auth/verify': typeof AuthVerifyRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/hall-of-fame'
     | '/history'
     | '/members'
+    | '/profile'
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/hall-of-fame'
     | '/history'
     | '/members'
+    | '/profile'
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/hall-of-fame'
     | '/history'
     | '/members'
+    | '/profile'
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
@@ -167,6 +179,7 @@ export interface RootRouteChildren {
   HallOfFameRoute: typeof HallOfFameRoute
   HistoryRoute: typeof HistoryRoute
   MembersRoute: typeof MembersRoute
+  ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TournamentsRoute: typeof TournamentsRoute
   AuthVerifyRoute: typeof AuthVerifyRoute
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/members': {
@@ -263,6 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   HallOfFameRoute: HallOfFameRoute,
   HistoryRoute: HistoryRoute,
   MembersRoute: MembersRoute,
+  ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TournamentsRoute: TournamentsRoute,
   AuthVerifyRoute: AuthVerifyRoute,
