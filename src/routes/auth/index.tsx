@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,17 +41,23 @@ function AuthPage() {
     setSending(true);
 
     try {
-  toast.success("Verification code sent");
+  const { error } = await supabase.auth.signInWithOtp({
+  email: parsed.data,
+  options: {
+    shouldCreateUser: true,
+  },
+});
 
-  sessionStorage.setItem("efn-email", parsed.data);
-  sessionStorage.setItem(
-    "efn-remember",
-    remember ? "1" : "0"
-  );
+if (error) throw error;
 
-  await router.navigate({
-    to: "/auth/verify",
-  });
+toast.success("Verification code sent");
+
+sessionStorage.setItem("efn-email", parsed.data);
+sessionStorage.setItem("efn-remember", remember ? "1" : "0");
+
+await router.navigate({
+  to: "/auth/verify",
+});
 
 } catch (err) {
   toast.error(
