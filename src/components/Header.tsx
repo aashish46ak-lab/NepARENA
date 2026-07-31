@@ -56,25 +56,7 @@ export function Header() {
   const initials = (profile?.username ?? user?.email ?? "U").slice(0, 2).toUpperCase();
 const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
   return (
-   {isAdmin && activeMenu?.sub && (
-  <div className="border-t border-border/60 glass">
-    <nav className="max-w-7xl mx-auto flex items-center gap-2 px-4 py-2">
-      {activeMenu.sub.map((item: any) => (
-        <Link
-          key={item.to}
-          to={item.to}
-          className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5"
-          activeProps={{
-            className:
-              "px-3 py-1.5 rounded-md text-sm text-foreground bg-white/10",
-          }}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
-  </div>
-)}
+
 <header className="sticky top-0 z-40 glass border-b border-border/60">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
         <Link
@@ -194,6 +176,25 @@ const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
           </Sheet>
         </div>
       </div>
-    </header>
+       {isAdmin && activeMenu?.sub && (
+  <div className="border-t border-border/60 glass">
+    <nav className="max-w-7xl mx-auto flex items-center gap-2 px-4 py-2">
+      {activeMenu.sub.map((item: any) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5"
+          activeProps={{
+            className:
+              "px-3 py-1.5 rounded-md text-sm text-foreground bg-white/10",
+          }}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  </div>
+)}
+</header>
   );
 }
