@@ -5,7 +5,8 @@ export function useTournaments(limit?: number) {
   return useQuery({
     queryKey: ["tournaments", limit ?? "all"],
     queryFn: async () => {
-      let q = supabase.from("tournaments").select("*").order("created_at", { ascending: false });
+      let q = supabase.from("tournaments").select("*").eq("is_published", true)
+        .order("is_featured", { ascending: false }).order("created_at", { ascending: false });
       if (limit) q = q.limit(limit);
       const { data } = await q;
       return (data ?? []) as Tournament[];
@@ -114,7 +115,7 @@ export function useMemberCount() {
   return useQuery({
     queryKey: ["member_count"],
     queryFn: async () => {
-      const { count } = await supabase.from("profiles").select("id", { count: "exact", head: true });
+      const { count } = await supabase.from("public_members").select("id", { count: "exact", head: true });
       return count ?? 0;
     },
   });
@@ -124,8 +125,19 @@ export function useLatestMembers(limit = 5) {
   return useQuery({
     queryKey: ["latest_members", limit],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(limit);
+      const { data } = await supabase.from("public_members").select("*").order("created_at", { ascending: false }).limit(limit);
       return (data ?? []) as Profile[];
+    },
+  });
+}
+
+/** user_ids that hold the moderator role — used for public badges. */
+export function useModeratorIds() {
+  return useQuery({
+    queryKey: ["moderator_ids"],
+    queryFn: async () => {
+      const { data } = await supabase.from("public_member_roles").select("user_id");
+      return new Set(((data ?? []) as { user_id: string }[]).map((r) => r.user_id));
     },
   });
 }
