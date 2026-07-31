@@ -19,13 +19,12 @@ const PUBLIC_NAV = [
 
 const ADMIN_NAV = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/dashboard?t=tournaments", label: "Tournament Manager" },
+  { to: "/dashboard?t=tournaments", label: "Tournaments" },
   { to: "/dashboard?t=members", label: "Members" },
+  { to: "/dashboard?t=content", label: "Content" },
   { to: "/dashboard?t=media", label: "Media" },
-  { to: "/dashboard?t=website", label: "Website" },
-  { to: "/dashboard?t=system", label: "System" },
+  { to: "/dashboard?t=settings", label: "Settings" },
 ];
-
 export function Header() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const settings = useSiteSettings();
