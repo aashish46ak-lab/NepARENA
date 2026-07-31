@@ -1,26 +1,33 @@
 import { useEffect, useState } from "react";
 import { AdminSection } from "./AdminUI";
 import { supabase, type Profile, type Role } from "@/lib/supabase";
+import { logActivity } from "@/lib/activity";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Loader2, Search, MoreVertical, ShieldPlus, ShieldMinus, Trash2, Crown } from "lucide-react";
+import {
+  Loader2, Search, MoreVertical, ShieldPlus, ShieldMinus, Trash2, Crown,
+  Ban, CircleCheck, User as UserIcon,
+} from "lucide-react";
 
 interface Row extends Profile { roles: Role[] }
+type Filter = "all" | "owners" | "moderators" | "members" | "suspended";
 
 export function UsersPanel() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
   const load = async () => {
     setLoading(true);
     const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200),
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     const map = new Map<string, Role[]>();
@@ -32,30 +39,77 @@ export function UsersPanel() {
   };
   useEffect(() => { load(); }, []);
 
-  const grant = async (userId: string, role: Role) => {
-    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
+  const grant = async (u: Row, role: Role) => {
+    const { error } = await supabase.from("user_roles").insert({ user_id: u.id, role });
     if (error && !error.message.includes("duplicate")) return toast.error(error.message);
-    toast.success(`Granted ${role}`); load();
+    toast.success(`${nameOf(u)} is now ${role === "owner" ? "an Owner" : role === "moderator" ? "a Moderator" : "a Member"} — applies at their next login`);
+    void logActivity("role.grant", { user: nameOf(u), role });
+    load();
   };
-  const revoke = async (userId: string, role: Role) => {
-    const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
+  const revoke = async (u: Row, role: Role) => {
+    const { error } = await supabase.from("user_roles").delete().eq("user_id", u.id).eq("role", role);
     if (error) return toast.error(error.message);
-    toast.success(`Revoked ${role}`); load();
+    toast.success(`Revoked ${role}`);
+    void logActivity("role.revoke", { user: nameOf(u), role });
+    load();
   };
-  const deleteUser = async (userId: string, name: string) => {
-    if (!confirm(`Permanently delete ${name}? This removes their account and all their data.`)) return;
-    const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId });
+  const setMember = async (u: Row) => {
+    const { error } = await supabase.from("user_roles").delete().eq("user_id", u.id).eq("role", "moderator");
     if (error) return toast.error(error.message);
-    toast.success("Account deleted"); load();
+    toast.success(`${nameOf(u)} is now a regular member`);
+    void logActivity("role.set_member", { user: nameOf(u) });
+    load();
+  };
+  const setSuspended = async (u: Row, suspended: boolean) => {
+    const { error } = await supabase.from("profiles").update({ is_suspended: suspended }).eq("id", u.id);
+    if (error) return toast.error(error.message);
+    toast.success(suspended ? "Member suspended — they are signed out and hidden" : "Member reactivated");
+    void logActivity(suspended ? "user.suspend" : "user.reactivate", { user: nameOf(u) });
+    load();
+  };
+  const deleteUser = async (u: Row) => {
+    if (!confirm(`Permanently delete ${nameOf(u)}? This removes their account and all their data.`)) return;
+    const { error } = await supabase.rpc("admin_delete_user", { _user_id: u.id });
+    if (error) return toast.error(error.message);
+    toast.success("Account deleted");
+    void logActivity("user.delete", { user: nameOf(u) });
+    load();
   };
 
-  const filtered = rows.filter((r) => !q || (r.username ?? "").toLowerCase().includes(q.toLowerCase()) || (r.full_name ?? "").toLowerCase().includes(q.toLowerCase()));
+  const filtered = rows.filter((r) => {
+    if (q) {
+      const needle = q.toLowerCase();
+      const hay = [r.username, r.full_name, r.favourite_club].filter(Boolean).join(" ").toLowerCase();
+      if (!hay.includes(needle)) return false;
+    }
+    switch (filter) {
+      case "owners": return r.roles.includes("owner");
+      case "moderators": return r.roles.includes("moderator") && !r.roles.includes("owner");
+      case "members": return r.roles.length === 0;
+      case "suspended": return !!r.is_suspended;
+      default: return true;
+    }
+  });
 
   return (
-    <AdminSection title="Users &amp; roles" description="Only the Owner can grant or revoke moderator access and delete accounts.">
-      <div className="relative mb-4 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by username or name" className="pl-9" />
+    <AdminSection title="Users &amp; roles"
+      description="Search, filter, promote, suspend, or remove accounts. Role changes apply at the member's next login.">
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, username or club" className="pl-9" />
+        </div>
+        <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Everyone</SelectItem>
+            <SelectItem value="owners">Owners</SelectItem>
+            <SelectItem value="moderators">Moderators</SelectItem>
+            <SelectItem value="members">Members</SelectItem>
+            <SelectItem value="suspended">Suspended</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="ml-auto text-xs text-muted-foreground self-center">{filtered.length} of {rows.length}</div>
       </div>
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> :
         <div className="rounded-xl border border-border/60 overflow-x-auto">
@@ -66,6 +120,7 @@ export function UsersPanel() {
                 <TableHead className="hidden md:table-cell">Favourite club</TableHead>
                 <TableHead className="hidden sm:table-cell">Joined</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="w-[52px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -73,18 +128,18 @@ export function UsersPanel() {
               {filtered.map((u) => {
                 const isOwnerRow = u.roles.includes("owner");
                 const isMod = u.roles.includes("moderator");
-                const name = u.username ?? u.full_name ?? "unnamed";
+                const name = nameOf(u);
                 return (
-                  <TableRow key={u.id}>
+                  <TableRow key={u.id} className={u.is_suspended ? "opacity-55" : undefined}>
                     <TableCell>
                       <div className="flex items-center gap-3 min-w-0">
                         <Avatar className="h-9 w-9">
                           <AvatarImage src={u.avatar_url ?? undefined} />
-                          <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">{name.slice(0,2).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <div className="font-medium truncate">{name}</div>
-                          <div className="text-xs text-muted-foreground truncate">{u.full_name ?? ""}</div>
+                          <div className="font-medium truncate">{u.full_name ?? name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{u.username ? `@${u.username}` : "no username"}</div>
                         </div>
                       </div>
                     </TableCell>
@@ -95,31 +150,52 @@ export function UsersPanel() {
                         : isMod ? <Badge className="bg-brand/20 text-brand-glow">Moderator</Badge>
                         : <span className="text-muted-foreground text-xs">—</span>}
                     </TableCell>
+                    <TableCell>
+                      {u.is_suspended
+                        ? <Badge className="bg-destructive/20 text-destructive">Suspended</Badge>
+                        : <Badge variant="outline" className="border-emerald-500/40 text-emerald-300">Active</Badge>}
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-auto min-w-0">
-                          {!isOwnerRow && (isMod
-                            ? <DropdownMenuItem onClick={() => revoke(u.id, "moderator")}><ShieldMinus className="h-4 w-4 mr-2" /> Remove moderator</DropdownMenuItem>
-                            : <DropdownMenuItem onClick={() => grant(u.id, "moderator")}><ShieldPlus className="h-4 w-4 mr-2" /> Make moderator</DropdownMenuItem>)}
-                          {!isOwnerRow && <DropdownMenuSeparator />}
-                          {!isOwnerRow && (
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteUser(u.id, name)}>
+                        <DropdownMenuContent align="end" className="w-auto min-w-0 whitespace-nowrap">
+                          {!isOwnerRow && (<>
+                            {isMod
+                              ? <DropdownMenuItem onClick={() => revoke(u, "moderator")}><ShieldMinus className="h-4 w-4 mr-2" /> Remove moderator</DropdownMenuItem>
+                              : <DropdownMenuItem onClick={() => grant(u, "moderator")}><ShieldPlus className="h-4 w-4 mr-2" /> Make moderator</DropdownMenuItem>}
+                            <DropdownMenuItem onClick={() => grant(u, "owner")}><Crown className="h-4 w-4 mr-2" /> Make owner</DropdownMenuItem>
+                            {isMod && (
+                              <DropdownMenuItem onClick={() => setMember(u)}>
+                                <UserIcon className="h-4 w-4 mr-2" /> Set as member
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {u.is_suspended
+                              ? <DropdownMenuItem onClick={() => setSuspended(u, false)}><CircleCheck className="h-4 w-4 mr-2 text-emerald-400" /> Reactivate</DropdownMenuItem>
+                              : <DropdownMenuItem onClick={() => setSuspended(u, true)}><Ban className="h-4 w-4 mr-2 text-amber-400" /> Suspend</DropdownMenuItem>}
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteUser(u)}>
                               <Trash2 className="h-4 w-4 mr-2" /> Delete account
                             </DropdownMenuItem>
-                          )}
-                          {isOwnerRow && <DropdownMenuItem disabled>Owner account</DropdownMenuItem>}
+                          </>)}
+                          {isOwnerRow && <DropdownMenuItem disabled>Owner account — protected</DropdownMenuItem>}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
               })}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">No members match this filter.</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </div>}
     </AdminSection>
   );
+}
+
+function nameOf(u: Profile): string {
+  return u.username ?? u.full_name ?? "unnamed";
 }

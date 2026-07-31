@@ -34,7 +34,8 @@ function ProfilePage() {
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
       .then(({ data }) => setRow((data as Profile) ?? {
         id: user.id, username: null, full_name: null, avatar_url: null,
-        favourite_club: null, bio: null, created_at: new Date().toISOString(),
+        favourite_club: null, bio: null, country: null, social_links: {},
+        is_suspended: false, has_password: false, created_at: new Date().toISOString(),
       }));
   }, [user]);
 
