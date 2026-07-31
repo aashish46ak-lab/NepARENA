@@ -19,7 +19,6 @@ const PUBLIC_NAV = [
 ];
 
 const ADMIN_NAV = [
-const ADMIN_NAV = [
   {
     label: "Dashboard",
     to: "/dashboard",
