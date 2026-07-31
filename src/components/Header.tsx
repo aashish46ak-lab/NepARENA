@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { LogOut, Menu, Shield, User as UserIcon, Trophy, Users } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
-const NAV = [
+const PUBLIC_NAV = [
   { to: "/", label: "Home" },
   { to: "/tournaments", label: "Tournaments" },
   { to: "/hall-of-fame", label: "Hall of Fame" },
@@ -17,12 +17,21 @@ const NAV = [
   { to: "/about", label: "About" },
 ];
 
+const ADMIN_NAV = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/dashboard?t=tournaments", label: "Tournament Manager" },
+  { to: "/dashboard?t=members", label: "Members" },
+  { to: "/dashboard?t=media", label: "Media" },
+  { to: "/dashboard?t=website", label: "Website" },
+  { to: "/dashboard?t=system", label: "System" },
+];
+
 export function Header() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const settings = useSiteSettings();
   const router = useRouter();
   const initials = (profile?.username ?? user?.email ?? "U").slice(0, 2).toUpperCase();
-
+const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/60">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
@@ -62,9 +71,25 @@ export function Header() {
                   <div className="text-xs text-muted-foreground truncate">{user.email}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.navigate({ to: "/profile" })}>
-                  <UserIcon className="h-4 w-4 mr-2" /> My profile
-                </DropdownMenuItem>
+             {!isAdmin && (
+  <DropdownMenuItem onClick={() => router.navigate({ to: "/profile" })}>
+    <UserIcon className="h-4 w-4 mr-2" />
+    My Profile
+  </DropdownMenuItem>
+)}
+
+{isAdmin && (
+  <>
+    <DropdownMenuItem onClick={() => router.navigate({ to: "/dashboard" })}>
+      <Shield className="h-4 w-4 mr-2" />
+      Dashboard
+    </DropdownMenuItem>
+
+    <DropdownMenuItem onClick={() => router.navigate({ to: "/" })}>
+      🌐 View Website
+    </DropdownMenuItem>
+  </>
+)}
                 <DropdownMenuItem onClick={() => router.navigate({ to: "/members" })}>
                   <Users className="h-4 w-4 mr-2" /> Community
                 </DropdownMenuItem>
