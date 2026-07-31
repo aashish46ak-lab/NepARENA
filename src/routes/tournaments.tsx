@@ -19,7 +19,13 @@ export const Route = createFileRoute("/tournaments")({
           {!isLoading && list.length === 0 && <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">No active tournaments right now — see the <a href="/history" className="text-brand-glow hover:underline">tournament history</a>.</div>}
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             {list.map((t) => (
-              <div key={t.id} className="glass rounded-2xl overflow-hidden">
+              <div  key={t.id}
+  className="glass rounded-2xl overflow-hidden cursor-pointer hover:scale-[1.02] transition"
+  onClick={()=>{
+    window.location.href=`/tournaments/${t.id}`;
+  }}
+>
+
                 <SmartImage src={t.banner_url} alt={t.name} ratio="aspect-video"
                   fallback={<div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center"><Trophy className="h-16 w-16 text-brand" /></div>} />
                 <div className="p-5">
