@@ -94,11 +94,21 @@ function singleElim(idsIn: string[], matchdayOf: (round: number, total: number) 
   return out;
 }
 
-function groupsKnockout(idsIn: string[]): FixtureSpec[] {
-  const ids = shuffle(idsIn);
-  const groupCount = Math.max(2, Math.ceil(ids.length / 4));
-  const groups: string[][] = Array.from({ length: groupCount }, () => []);
-  ids.forEach((id, i) => groups[i % groupCount].push(id));
+/** Randomly splits ids into `groupCount` groups (Fisher-Yates, not sort-by-random). */
+export function makeGroups<T>(ids: T[], groupCount: number): T[][] {
+  const shuffled = shuffle(ids);
+  const groups: T[][] = Array.from({ length: groupCount }, () => []);
+  shuffled.forEach((id, i) => groups[i % groupCount].push(id));
+  return groups;
+}
+
+/**
+ * Builds the group-stage + knockout-stage fixtures for an already-decided
+ * grouping (e.g. one the admin reviewed and confirmed in the UI). Does not
+ * reshuffle — the groups you pass in are the groups that get scheduled.
+ */
+export function generateGroupFixtures(groups: string[][]): FixtureSpec[] {
+  const groupCount = groups.length;
   const groupNames = "ABCDEFGH".slice(0, groupCount).split("");
   const out: FixtureSpec[] = [];
   groups.forEach((g, gi) => {
@@ -106,7 +116,7 @@ function groupsKnockout(idsIn: string[]): FixtureSpec[] {
     specs.forEach((s) => out.push({ ...s, round: gi * 10 + s.round }));
   });
   // Knockout stage with TBD slots (admin assigns or edits fixtures manually)
-  const koSize = 2 ** Math.ceil(Math.log2(groupCount * 2));
+  const koSize = 2 ** Math.ceil(Math.log2(Math.max(groupCount * 2, 2)));
   const koRounds = Math.log2(koSize);
   for (let r = 1; r <= koRounds; r++) {
     const matches = koSize / 2 ** r;
@@ -122,6 +132,11 @@ function groupsKnockout(idsIn: string[]): FixtureSpec[] {
   }
   out.push({ matchday: "Third Place", round: 100 + koRounds + 1, position: 1, home_id: null, away_id: null });
   return out;
+}
+
+function groupsKnockout(idsIn: string[]): FixtureSpec[] {
+  const groupCount = Math.max(2, Math.ceil(idsIn.length / 4));
+  return generateGroupFixtures(makeGroups(idsIn, groupCount));
 }
 
 function swissRound(ids: string[], roundNumber: number): FixtureSpec[] {
