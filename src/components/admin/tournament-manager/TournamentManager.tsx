@@ -29,7 +29,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Shuffle, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { ResultEditor } from "./ResultEditor";
 import { BracketRound } from "./BracketRound";
@@ -47,9 +46,6 @@ export function TournamentManager({
   open:boolean;
   onOpenChange:(v:boolean)=>void;
 }){
-
-
-const qc = useQueryClient();
 
 
 const [loading,setLoading]=useState(true);
