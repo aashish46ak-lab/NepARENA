@@ -72,15 +72,16 @@ const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
           )}
           <span className="text-gradient-brand text-lg tracking-tight">{settings?.site_name ?? "eFootball Nepal"}</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-1">
+       <nav className="hidden md:flex items-center gap-1">
   {NAV.map((n) => (
-    <button
+    <Link
       key={n.label}
+      to={n.to}
       onClick={() => setActiveMenu(n)}
       className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
     >
       {n.label}
-    </button>
+    </Link>
   ))}
 </nav>
         <div className="flex items-center gap-2">
