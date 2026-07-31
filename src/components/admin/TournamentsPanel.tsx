@@ -643,7 +643,7 @@ banner_url:url
 
 
 
-{
+
 {
 manage && (
 
