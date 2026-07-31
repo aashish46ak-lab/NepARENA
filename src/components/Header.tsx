@@ -35,7 +35,10 @@ const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/60">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 font-bold">
+        <Link
+  to={isAdmin ? "/dashboard" : "/"}
+  className="flex items-center gap-2 font-bold"
+>
           {settings?.logo_url ? (
             <img src={settings.logo_url} alt="" className="h-8 w-8 rounded" />
           ) : (
@@ -90,14 +93,12 @@ const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
     </DropdownMenuItem>
   </>
 )}
-                <DropdownMenuItem onClick={() => router.navigate({ to: "/members" })}>
-                  <Users className="h-4 w-4 mr-2" /> Community
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => router.navigate({ to: "/dashboard" })}>
-                    <Shield className="h-4 w-4 mr-2" /> Admin dashboard
-                  </DropdownMenuItem>
-                )}
+                {!isAdmin && (
+  <DropdownMenuItem onClick={() => router.navigate({ to: "/members" })}>
+    <Users className="h-4 w-4 mr-2" />
+    Community
+  </DropdownMenuItem>
+)}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut().then(() => router.navigate({ to: "/" }))}>
                   <LogOut className="h-4 w-4 mr-2" /> Sign out
