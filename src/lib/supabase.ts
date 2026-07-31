@@ -26,8 +26,16 @@ export interface Profile {
   avatar_url: string | null;
   favourite_club: string | null;
   bio: string | null;
+  country: string | null;
+  social_links: Record<string, string> | null;
+  is_suspended: boolean;
+  has_password: boolean;
   created_at: string;
 }
+
+export type TournamentStatus =
+  | "draft" | "upcoming" | "registration_open" | "registration_closed"
+  | "check_in" | "live" | "ongoing" | "completed" | "archived";
 
 export interface Tournament {
   id: string;
@@ -35,8 +43,14 @@ export interface Tournament {
   name: string;
   description: string | null;
   banner_url: string | null;
-  status: "upcoming" | "registration_open" | "ongoing" | "completed";
+  status: TournamentStatus;
   registration_open: boolean;
+  is_published: boolean;
+  is_featured: boolean;
+  logo_url: string | null;
+  rules_url: string | null;
+  prize_image_url: string | null;
+  bracket_type: string;
   prize_pool: string | null;
   participants_count: number;
   starts_at: string | null;
@@ -98,6 +112,7 @@ export interface CommunityLink {
   label: string;
   url: string;
   icon: string | null;
+  clicks: number;
   sort_order: number;
 }
 
@@ -141,14 +156,26 @@ export interface TournamentParticipant {
   user_id: string | null;
   player_name: string;
   club: string | null;
+  photo_url: string | null;
+  club_logo_url: string | null;
   status: ParticipantStatus;
   seed: number | null;
+  created_at: string;
+}
+
+export interface Matchday {
+  id: string;
+  tournament_id: string;
+  name: string;
+  sort_order: number;
+  is_published: boolean;
   created_at: string;
 }
 
 export interface Match {
   id: string;
   tournament_id: string;
+  matchday_id: string | null;
   round: number;
   position: number;
   home_id: string | null;
@@ -156,6 +183,20 @@ export interface Match {
   home_score: number | null;
   away_score: number | null;
   played: boolean;
+  status: "scheduled" | "live" | "paused" | "finished" | string;
+  venue: string | null;
+  platform: string | null;
+  stream_url: string | null;
+  referee: string | null;
+  proof_url: string | null;
   scheduled_at: string | null;
+  created_at: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  details: Record<string, unknown>;
   created_at: string;
 }

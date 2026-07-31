@@ -1,6 +1,6 @@
 import {
   Facebook, Instagram, Youtube, Twitch, Send, MessageCircle, Music2,
-  Linkedin, Globe, Twitter, Gamepad2, type LucideIcon,
+  Linkedin, Globe, Twitter, Gamepad2, Github, type LucideIcon,
 } from "lucide-react";
 
 export interface PlatformDef {
@@ -23,6 +23,7 @@ export const PLATFORMS: PlatformDef[] = [
   { value: "telegram", label: "Telegram", icon: Send, color: "text-[#229ED9]" },
   { value: "twitch", label: "Twitch", icon: Twitch, color: "text-[#9146FF]" },
   { value: "linkedin", label: "LinkedIn", icon: Linkedin, color: "text-[#0A66C2]" },
+  { value: "github", label: "GitHub", icon: Github, color: "text-foreground" },
   { value: "website", label: "Website", icon: Globe, color: "text-brand-glow" },
 ];
 
