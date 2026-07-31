@@ -119,8 +119,32 @@ const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
                 {NAV.map((n) => (
                   <Link key={n.to} to={n.to} className="px-3 py-2 rounded-md hover:bg-white/5">{n.label}</Link>
                 ))}
-                {user && <Link to="/profile" className="px-3 py-2 rounded-md hover:bg-white/5">My profile</Link>}
-                {isAdmin && <Link to="/dashboard" className="px-3 py-2 rounded-md hover:bg-white/5">Admin dashboard</Link>}
+              {!isAdmin && user && (
+  <Link
+    to="/profile"
+    className="px-3 py-2 rounded-md hover:bg-white/5"
+  >
+    My Profile
+  </Link>
+)}
+
+{isAdmin && (
+  <>
+    <Link
+      to="/dashboard"
+      className="px-3 py-2 rounded-md hover:bg-white/5"
+    >
+      Dashboard
+    </Link>
+
+    <Link
+      to="/"
+      className="px-3 py-2 rounded-md hover:bg-white/5"
+    >
+      View Website
+    </Link>
+  </>
+)}
               </div>
             </SheetContent>
           </Sheet>
