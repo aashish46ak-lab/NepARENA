@@ -1,12 +1,16 @@
 import { useState } from "react";
+
 import { AdminSection, EmptyState } from "./AdminUI";
 import { useCrud } from "./crud";
 import { RowEditor, Field } from "./RowEditor";
-import { TournamentManager } from "./TournamentManager";
+
+import { TournamentManager } from "@/components/tournament-manager/TournamentManager";
+
 import type { Tournament } from "@/lib/supabase";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
 import {
   Select,
   SelectContent,
@@ -16,9 +20,13 @@ import {
 } from "@/components/ui/select";
 
 import { Switch } from "@/components/ui/switch";
+
 import { ImageUpload } from "@/components/ImageUpload";
+
 import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
+
 
 import {
   Dialog,
@@ -26,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 
 import {
   DropdownMenu,
@@ -35,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+
 import {
   MoreVertical,
   Pencil,
@@ -43,81 +53,136 @@ import {
   Settings2,
   Trophy,
   Radio,
-  CalendarDays,
 } from "lucide-react";
+
 
 import { toast } from "sonner";
 
 
+
 const empty: Partial<Tournament> = {
-  slug: "",
-  name: "",
-  description: "",
-  banner_url: null,
-  status: "upcoming",
-  registration_open: false,
-  prize_pool: "",
-  participants_count: 0,
-  starts_at: null,
-  ends_at: null,
+
+slug:"",
+
+name:"",
+
+description:"",
+
+banner_url:null,
+
+status:"upcoming",
+
+registration_open:false,
+
+prize_pool:"",
+
+participants_count:0,
+
+starts_at:null,
+
+ends_at:null,
+
 };
 
 
-export function TournamentsPanel() {
-
-  const {
-    rows,
-    loading,
-    create,
-    update,
-    remove
-  } = useCrud<Tournament>(
-    "tournaments",
-    {
-      invalidate:[
-        "tournaments",
-        "tournament_history",
-        "hall_of_fame"
-      ]
-    }
-  );
 
 
-  const [editing,setEditing] =
-    useState<Tournament | null>(null);
-
-  const [banner,setBanner] =
-    useState<Tournament | null>(null);
-
-  const [manage,setManage] =
-    useState<{
-      t:Tournament;
-      tab:string
-    } | null>(null);
+export function TournamentsPanel(){
 
 
 
-  const changeStatus = async(
-    tournament:Tournament,
-    status:Tournament["status"]
-  )=>{
+const {
 
-    const ok = await update(
-      tournament.id,
-      {
-        status,
-        registration_open:
-          status === "registration_open"
-      }
-    );
+rows,
 
-    if(ok && status==="completed"){
-      toast.success(
-        "Tournament moved to history"
-      );
-    }
+loading,
 
-  };
+create,
+
+update,
+
+remove
+
+}=useCrud<Tournament>(
+
+"tournaments",
+
+{
+
+invalidate:[
+
+"tournaments",
+
+"tournament_history",
+
+"hall_of_fame"
+
+]
+
+}
+
+);
+
+
+
+
+const [editing,setEditing]=useState<Tournament|null>(null);
+
+
+const [banner,setBanner]=useState<Tournament|null>(null);
+
+
+const [manage,setManage]=useState<{
+
+t:Tournament;
+
+tab:string;
+
+}|null>(null);
+
+
+
+
+const changeStatus = async(
+
+tournament:Tournament,
+
+status:Tournament["status"]
+
+)=>{
+
+
+const ok = await update(
+
+tournament.id,
+
+{
+
+status,
+
+registration_open:
+
+status==="registration_open"
+
+}
+
+);
+
+
+
+if(ok && status==="completed"){
+
+toast.success(
+
+"Tournament moved to history"
+
+);
+
+}
+
+
+};
+
 
 
 
@@ -131,6 +196,7 @@ description="Create, edit and manage all tournaments."
 
 action={
 
+
 <RowEditor
 
 triggerVariant="create"
@@ -141,17 +207,24 @@ title="Create Tournament"
 
 initial={empty as Tournament}
 
+
 onSave={(v)=>
 
 create({
- ...v,
- slug:
- v.slug || slugify(v.name)
+
+...v,
+
+slug:
+
+v.slug || slugify(v.name)
+
 })
 
 }
 
+
 >
+
 
 {({values,set})=>(
 
@@ -167,12 +240,12 @@ set={set}
 
 </RowEditor>
 
+
 }
 
+
 >
-
-
-{loading ? (
+  {loading ? (
 
 <div className="text-muted-foreground">
 Loading tournaments...
@@ -188,12 +261,9 @@ rows.length===0 ?
 
 :
 
-
 <div className="space-y-3">
 
-
 {rows.map((t)=>(
-
 
 <div
 
@@ -217,8 +287,10 @@ bg-secondary
 shrink-0
 ">
 
+
 {
 t.banner_url &&
+
 <img
 
 src={t.banner_url}
@@ -228,9 +300,12 @@ h-full w-full object-cover
 "
 
 />
+
 }
 
+
 </div>
+
 
 
 
@@ -238,6 +313,7 @@ h-full w-full object-cover
 
 
 <div className="flex items-center gap-2">
+
 
 <h3 className="font-semibold">
 
@@ -247,22 +323,33 @@ h-full w-full object-cover
 
 
 <Badge
+
 variant="outline"
+
 className="capitalize"
+
 >
 
+
 {
-t.status === "completed"
+t.status==="completed"
+
 ?
+
 "Ended"
+
 :
+
 t.status.replace("_"," ")
+
 }
+
 
 </Badge>
 
 
 </div>
+
 
 
 <div className="
@@ -274,16 +361,23 @@ flex gap-3
 
 
 <span>
+
 Players:
+
 {t.participants_count}
+
 </span>
 
 
 {
 t.prize_pool &&
+
 <span>
+
 {t.prize_pool}
+
 </span>
+
 }
 
 
@@ -291,30 +385,44 @@ t.prize_pool &&
 
 
 </div>
-  <div className="flex items-center gap-2">
+
+
+
+
+<div className="flex items-center gap-2">
+
 
 <DropdownMenu>
 
+
 <DropdownMenuTrigger asChild>
 
+
 <Button
+
 variant="ghost"
+
 size="icon"
-className="h-8 w-8"
+
 >
 
 <MoreVertical className="h-4 w-4"/>
 
 </Button>
 
+
 </DropdownMenuTrigger>
+
 
 
 <DropdownMenuContent align="end">
 
 
+
 <DropdownMenuItem
-onClick={() => setEditing(t)}
+
+onClick={()=>setEditing(t)}
+
 >
 
 <Pencil className="h-4 w-4 mr-2"/>
@@ -325,8 +433,11 @@ Edit Tournament
 
 
 
+
 <DropdownMenuItem
-onClick={() => setBanner(t)}
+
+onClick={()=>setBanner(t)}
+
 >
 
 <ImagePlus className="h-4 w-4 mr-2"/>
@@ -343,12 +454,13 @@ Change Banner
 
 <DropdownMenuItem
 
-onClick={() =>
-setManage({
+onClick={()=>setManage({
+
 t,
+
 tab:"overview"
-})
-}
+
+})}
 
 >
 
@@ -366,9 +478,7 @@ Manage Tournament
 
 <DropdownMenuItem
 
-onClick={() =>
-changeStatus(t,"ongoing")
-}
+onClick={()=>changeStatus(t,"ongoing")}
 
 >
 
@@ -380,11 +490,10 @@ Set Ongoing
 
 
 
+
 <DropdownMenuItem
 
-onClick={() =>
-changeStatus(t,"completed")
-}
+onClick={()=>changeStatus(t,"completed")}
 
 >
 
@@ -393,6 +502,7 @@ changeStatus(t,"completed")
 End Tournament
 
 </DropdownMenuItem>
+
 
 
 
@@ -405,10 +515,11 @@ End Tournament
 className="text-destructive"
 
 onClick={()=>{
-if(confirm(
-`Delete ${t.name}?`
-))
+
+if(confirm(`Delete ${t.name}?`))
+
 remove(t.id)
+
 }}
 
 >
@@ -420,12 +531,16 @@ Delete
 </DropdownMenuItem>
 
 
+
 </DropdownMenuContent>
+
 
 </DropdownMenu>
 
 
+
 </div>
+
 
 
 </div>
@@ -436,8 +551,8 @@ Delete
 
 </div>
 
-
 }
+
 
 
 
@@ -448,13 +563,9 @@ editing && (
 
 tournament={editing}
 
-onClose={()=>
-setEditing(null)
-}
+onClose={()=>setEditing(null)}
 
-onSave={(v)=>
-update(editing.id,v)
-}
+onSave={(v)=>update(editing.id,v)}
 
 />
 
@@ -471,13 +582,13 @@ banner && (
 
 open
 
-onOpenChange={()=>
-setBanner(null)
-}
+onOpenChange={()=>setBanner(null)}
 
 >
 
+
 <DialogContent>
+
 
 <DialogHeader>
 
@@ -490,6 +601,7 @@ Tournament Banner
 </DialogHeader>
 
 
+
 <ImageUpload
 
 value={banner.banner_url}
@@ -498,28 +610,44 @@ folder="tournaments"
 
 aspect="wide"
 
+
 onChange={async(url)=>{
 
+
 await update(
+
 banner.id,
+
 {
+
 banner_url:url
+
 } as Partial<Tournament>
+
 )
 
+
 setBanner({
+
 ...banner,
+
 banner_url:url
+
 })
 
+
 }}
+
 
 />
 
 
+
 </DialogContent>
 
+
 </Dialog>
+
 
 )
 
@@ -534,13 +662,9 @@ manage && (
 
 tournament={manage.t}
 
-tab={manage.tab}
-
 open
 
-onOpenChange={()=>
-setManage(null)
-}
+onOpenChange={()=>setManage(null)}
 
 />
 
@@ -549,22 +673,18 @@ setManage(null)
 }
 
 
-
 </AdminSection>
 
 );
 
-}
-
-
-
+  }
 function EditDialog({
 
 tournament,
 
 onClose,
 
-onSave
+onSave,
 
 }:{
 
@@ -577,17 +697,19 @@ onSave:(v:Partial<Tournament>)=>Promise<unknown>;
 }){
 
 
-const [values,setValues]=useState<Tournament>(
-tournament
-);
+const [values,setValues]=useState<Tournament>(tournament);
+
 
 
 const updateValue=(v:Partial<Tournament>)=>{
 
 setValues(old=>({
+
 ...old,
+
 ...v
-}))
+
+}));
 
 };
 
@@ -656,15 +778,15 @@ Cancel
 
 <Button
 
+className="bg-gradient-brand"
+
 onClick={async()=>{
 
-await onSave(values)
+await onSave(values);
 
-onClose()
+onClose();
 
 }}
-
-className="bg-gradient-brand"
 
 >
 
@@ -676,63 +798,89 @@ Save Changes
 </div>
 
 
-
 </DialogContent>
 
 
 </Dialog>
 
-)
+);
+
 
 }
+
+
+
+
+
+
+
 function TournamentFields({
-  values,
-  set
+
+values,
+
+set,
+
 }:{
-  values:Tournament;
-  set:(v:Partial<Tournament>)=>void;
+
+values:Tournament;
+
+set:(v:Partial<Tournament>)=>void;
+
 }){
+
 
 return (
 
 <>
+
 
 <div className="grid gap-4 sm:grid-cols-2">
 
 
 <Field label="Tournament Name">
 
+
 <Input
 
 value={values.name ?? ""}
 
 onChange={(e)=>
+
 set({
+
 name:e.target.value
+
 })
+
 }
 
 />
+
 
 </Field>
 
 
 
+
 <Field label="Slug">
+
 
 <Input
 
 value={values.slug ?? ""}
 
-placeholder="auto-generated"
-
 onChange={(e)=>
+
 set({
+
 slug:e.target.value
+
 })
+
 }
 
 />
+
 
 </Field>
 
@@ -744,6 +892,7 @@ slug:e.target.value
 
 <Field label="Description">
 
+
 <Textarea
 
 rows={4}
@@ -751,19 +900,26 @@ rows={4}
 value={values.description ?? ""}
 
 onChange={(e)=>
+
 set({
+
 description:e.target.value
+
 })
+
 }
 
 />
+
 
 </Field>
 
 
 
 
+
 <Field label="Tournament Banner">
+
 
 <ImageUpload
 
@@ -773,15 +929,23 @@ folder="tournaments"
 
 aspect="wide"
 
+
 onChange={(url)=>
+
 set({
+
 banner_url:url
+
 })
+
 }
+
 
 />
 
+
 </Field>
+
 
 
 
@@ -791,14 +955,19 @@ banner_url:url
 
 <Field label="Status">
 
+
 <Select
 
 value={values.status}
 
 onValueChange={(v)=>
+
 set({
+
 status:v as Tournament["status"]
+
 })
+
 }
 
 >
@@ -809,6 +978,7 @@ status:v as Tournament["status"]
 <SelectValue />
 
 </SelectTrigger>
+
 
 
 <SelectContent>
@@ -828,13 +998,11 @@ Registration Open
 </SelectItem>
 
 
-
 <SelectItem value="ongoing">
 
 Ongoing
 
 </SelectItem>
-
 
 
 <SelectItem value="completed">
@@ -855,21 +1023,26 @@ Ended
 
 
 
+
 <Field label="Prize Pool">
+
 
 <Input
 
 value={values.prize_pool ?? ""}
 
-placeholder="Rs. 5000"
-
 onChange={(e)=>
+
 set({
+
 prize_pool:e.target.value
+
 })
+
 }
 
 />
+
 
 </Field>
 
@@ -878,6 +1051,7 @@ prize_pool:e.target.value
 
 <Field label="Players">
 
+
 <Input
 
 type="number"
@@ -885,18 +1059,23 @@ type="number"
 value={values.participants_count ?? 0}
 
 onChange={(e)=>
+
 set({
-participants_count:
-Number(e.target.value)
+
+participants_count:Number(e.target.value)
+
 })
+
 }
 
 />
+
 
 </Field>
 
 
 </div>
+
 
 
 
@@ -913,11 +1092,17 @@ Number(e.target.value)
 type="datetime-local"
 
 value={
+
 values.starts_at
+
 ?
+
 values.starts_at.slice(0,16)
+
 :
+
 ""
+
 }
 
 
@@ -925,23 +1110,26 @@ onChange={(e)=>
 
 set({
 
-starts_at:
-e.target.value
+starts_at:e.target.value
+
 ?
-new Date(
-e.target.value
-).toISOString()
+
+new Date(e.target.value).toISOString()
+
 :
+
 null
 
 })
 
 }
 
+
 />
 
 
 </Field>
+
 
 
 
@@ -954,11 +1142,17 @@ null
 type="datetime-local"
 
 value={
+
 values.ends_at
+
 ?
+
 values.ends_at.slice(0,16)
+
 :
+
 ""
+
 }
 
 
@@ -966,18 +1160,20 @@ onChange={(e)=>
 
 set({
 
-ends_at:
-e.target.value
+ends_at:e.target.value
+
 ?
-new Date(
-e.target.value
-).toISOString()
+
+new Date(e.target.value).toISOString()
+
 :
+
 null
 
 })
 
 }
+
 
 />
 
@@ -990,14 +1186,14 @@ null
 
 
 
-<label className="flex items-center gap-3 text-sm mt-3">
+
+
+<label className="flex items-center gap-3 mt-4">
 
 
 <Switch
 
-checked={
-values.registration_open
-}
+checked={values.registration_open}
 
 onCheckedChange={(v)=>
 
@@ -1018,11 +1214,15 @@ Registration Open
 </label>
 
 
+
 </>
 
-)
+);
+
 
 }
+
+
 
 
 
@@ -1037,12 +1237,19 @@ return text
 .trim()
 
 .replace(
+
 /[^a-z0-9]+/g,
+
 "-"
+
 )
 
 .replace(
+
 /^-|-$/g,
-"");
+
+""
+
+);
 
 }
