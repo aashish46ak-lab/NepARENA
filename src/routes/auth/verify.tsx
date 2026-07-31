@@ -39,9 +39,23 @@ function VerifyPage() {
 
       toast.success("Login successful!");
 
-      router.navigate({
-        to: "/",
-      });
+const { data: roleData } = await supabase
+  .from("user_roles")
+  .select("role")
+  .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+  .maybeSingle();
+
+if (
+  (await supabase.auth.getUser()).data.user?.email?.toLowerCase() ===
+    "aashish46ak@gmail.com" ||
+  roleData?.role === "owner"
+) {
+  router.navigate({ to: "/dashboard" });
+} else if (roleData?.role === "moderator") {
+  router.navigate({ to: "/dashboard" });
+} else {
+  router.navigate({ to: "/" });
+}
 
         } catch (err) {
       toast.error(
