@@ -1,4 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -18,21 +19,64 @@ const PUBLIC_NAV = [
 ];
 
 const ADMIN_NAV = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/dashboard?t=tournaments", label: "Tournaments" },
-  { to: "/dashboard?t=members", label: "Members" },
-  { to: "/dashboard?t=content", label: "Content" },
-  { to: "/dashboard?t=media", label: "Media" },
-  { to: "/dashboard?t=settings", label: "Settings" },
+const ADMIN_NAV = [
+  {
+    label: "Dashboard",
+    to: "/dashboard",
+  },
+  {
+    label: "Tournament Manager",
+    to: "/dashboard?t=tournaments",
+    sub: [
+      { label: "Overview", to: "/dashboard?t=tournament-overview" },
+      { label: "Create Tournament", to: "/dashboard?t=create-tournament" },
+      { label: "Fixtures", to: "/dashboard?t=fixtures" },
+      { label: "Groups", to: "/dashboard?t=groups" },
+      { label: "Standings", to: "/dashboard?t=standings" },
+      { label: "Results", to: "/dashboard?t=results" },
+    ],
+  },
+  {
+    label: "Players",
+    to: "/dashboard?t=players",
+  },
+  {
+    label: "Members",
+    to: "/dashboard?t=members",
+  },
+  {
+    label: "Settings",
+    to: "/dashboard?t=settings",
+  },
 ];
 export function Header() {
   const { user, profile, isAdmin, signOut } = useAuth();
+  const [activeMenu, setActiveMenu] = useState<any>(null);
   const settings = useSiteSettings();
   const router = useRouter();
   const initials = (profile?.username ?? user?.email ?? "U").slice(0, 2).toUpperCase();
 const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
   return (
-    <header className="sticky top-0 z-40 glass border-b border-border/60">
+   {isAdmin && activeMenu?.sub && (
+  <div className="border-t border-border/60 glass">
+    <nav className="max-w-7xl mx-auto flex items-center gap-2 px-4 py-2">
+      {activeMenu.sub.map((item: any) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5"
+          activeProps={{
+            className:
+              "px-3 py-1.5 rounded-md text-sm text-foreground bg-white/10",
+          }}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
+  </div>
+)}
+<header className="sticky top-0 z-40 glass border-b border-border/60">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
         <Link
   to={isAdmin ? "/dashboard" : "/"}
@@ -48,14 +92,16 @@ const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
           <span className="text-gradient-brand text-lg tracking-tight">{settings?.site_name ?? "eFootball Nepal"}</span>
         </Link>
         <nav className="hidden md:flex items-center gap-1">
-          {NAV.map((n) => (
-            <Link key={n.to} to={n.to}
-              className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-              activeProps={{ className: "px-3 py-1.5 rounded-md text-sm text-foreground bg-white/10" }}>
-              {n.label}
-            </Link>
-          ))}
-        </nav>
+  {NAV.map((n) => (
+    <button
+      key={n.label}
+      onClick={() => setActiveMenu(n)}
+      className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+    >
+      {n.label}
+    </button>
+  ))}
+</nav>
         <div className="flex items-center gap-2">
           {user ? (
             <DropdownMenu>
