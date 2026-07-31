@@ -132,13 +132,7 @@ const [editing,setEditing]=useState<Tournament|null>(null);
 const [banner,setBanner]=useState<Tournament|null>(null);
 
 
-const [manage,setManage]=useState<{
-
-t:Tournament;
-
-tab:string;
-
-}|null>(null);
+const [manage,setManage]=useState<Tournament|null>(null);
 
 
 
@@ -454,13 +448,7 @@ Change Banner
 
 <DropdownMenuItem
 
-onClick={()=>setManage({
-
-t,
-
-tab:"overview"
-
-})}
+onClick={()=>setManage(t)}
 
 >
 
@@ -656,13 +644,14 @@ banner_url:url
 
 
 {
+{
 manage && (
 
 <TournamentManager
 
-tournament={manage.t}
+tournament={manage}
 
-open
+open={true}
 
 onOpenChange={()=>setManage(null)}
 
