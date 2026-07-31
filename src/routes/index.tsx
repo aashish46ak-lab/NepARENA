@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { PageShell } from "@/components/PageShell";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import {
@@ -72,6 +74,18 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function HomePage() {
+  const { isAdmin, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && isAdmin) {
+      router.navigate({
+        to: "/dashboard",
+        replace: true,
+      });
+    }
+  }, [loading, isAdmin, router]);
+
   const settings = useSiteSettings();
   const { data: tournaments = [] } = useTournaments(3);
   const { data: announcement } = useLatestAnnouncement();
@@ -83,6 +97,11 @@ function HomePage() {
   const { data: memberCount = 0 } = useMemberCount();
   const { data: latestMembers = [] } = useLatestMembers(5);
   const featured = tournaments[0];
+  if (loading) return null;
+
+if (isAdmin) {
+  return null;
+}
 
   return (
     <PageShell>
