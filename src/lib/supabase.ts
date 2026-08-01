@@ -49,10 +49,15 @@ export interface Tournament {
   is_featured: boolean;
   logo_url: string | null;
   rules_url: string | null;
+  rules_text: string | null;
   prize_image_url: string | null;
   bracket_type: string;
   prize_pool: string | null;
   participants_count: number;
+  max_players: number | null;
+  registration_deadline: string | null;
+  theme_color: string | null;
+  image_url: string | null;
   starts_at: string | null;
   ends_at: string | null;
   created_at: string;
@@ -183,6 +188,10 @@ export interface Match {
   home_score: number | null;
   away_score: number | null;
   played: boolean;
+  penalty_home: number | null;
+  penalty_away: number | null;
+  extra_time: string | null;
+  notes: string | null;
   status: "scheduled" | "live" | "paused" | "finished" | string;
   venue: string | null;
   platform: string | null;
@@ -199,4 +208,35 @@ export interface ActivityLog {
   action: string;
   details: Record<string, unknown>;
   created_at: string;
+}
+
+export type InvitationStatus = "pending" | "accepted" | "rejected" | "expired";
+
+export interface TournamentInvitation {
+  id: string;
+  tournament_id: string;
+  user_id: string;
+  invited_by: string | null;
+  status: InvitationStatus;
+  created_at: string;
+  responded_at: string | null;
+}
+
+export type ReportStatus = "pending" | "in_review" | "resolved" | "dismissed";
+export type ReportType = "tournament" | "match" | "player" | "other";
+
+export interface Report {
+  id: string;
+  reporter_id: string | null;
+  type: ReportType | string;
+  tournament_id: string | null;
+  match_id: string | null;
+  player_name: string | null;
+  reason: string;
+  description: string | null;
+  screenshot_url: string | null;
+  status: ReportStatus;
+  assigned_to: string | null;
+  created_at: string;
+  resolved_at: string | null;
 }

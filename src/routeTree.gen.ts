@@ -20,7 +20,9 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
+import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
 import { Route as AuthVerifyRouteImport } from './routes/auth/verify'
+import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
 
 const TournamentsRoute = TournamentsRouteImport.update({
   id: '/tournaments',
@@ -77,9 +79,19 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   path: '/auth/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TournamentsIdRoute = TournamentsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TournamentsRoute,
+} as any)
 const AuthVerifyRoute = AuthVerifyRouteImport.update({
   id: '/auth/verify',
   path: '/auth/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTournamentsIdRoute = AdminTournamentsIdRouteImport.update({
+  id: '/admin/tournaments/$id',
+  path: '/admin/tournaments/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -93,9 +105,11 @@ export interface FileRoutesByFullPath {
   '/members': typeof MembersRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/tournaments': typeof TournamentsRoute
+  '/tournaments': typeof TournamentsRouteWithChildren
   '/auth/verify': typeof AuthVerifyRoute
+  '/tournaments/$id': typeof TournamentsIdRoute
   '/auth/': typeof AuthIndexRoute
+  '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -107,9 +121,11 @@ export interface FileRoutesByTo {
   '/members': typeof MembersRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/tournaments': typeof TournamentsRoute
+  '/tournaments': typeof TournamentsRouteWithChildren
   '/auth/verify': typeof AuthVerifyRoute
+  '/tournaments/$id': typeof TournamentsIdRoute
   '/auth': typeof AuthIndexRoute
+  '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -122,9 +138,11 @@ export interface FileRoutesById {
   '/members': typeof MembersRoute
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/tournaments': typeof TournamentsRoute
+  '/tournaments': typeof TournamentsRouteWithChildren
   '/auth/verify': typeof AuthVerifyRoute
+  '/tournaments/$id': typeof TournamentsIdRoute
   '/auth/': typeof AuthIndexRoute
+  '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,7 +158,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
+    | '/tournaments/$id'
     | '/auth/'
+    | '/admin/tournaments/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -154,7 +174,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
+    | '/tournaments/$id'
     | '/auth'
+    | '/admin/tournaments/$id'
   id:
     | '__root__'
     | '/'
@@ -168,7 +190,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
+    | '/tournaments/$id'
     | '/auth/'
+    | '/admin/tournaments/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -181,9 +205,10 @@ export interface RootRouteChildren {
   MembersRoute: typeof MembersRoute
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  TournamentsRoute: typeof TournamentsRoute
+  TournamentsRoute: typeof TournamentsRouteWithChildren
   AuthVerifyRoute: typeof AuthVerifyRoute
   AuthIndexRoute: typeof AuthIndexRoute
+  AdminTournamentsIdRoute: typeof AdminTournamentsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -265,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tournaments/$id': {
+      id: '/tournaments/$id'
+      path: '/$id'
+      fullPath: '/tournaments/$id'
+      preLoaderRoute: typeof TournamentsIdRouteImport
+      parentRoute: typeof TournamentsRoute
+    }
     '/auth/verify': {
       id: '/auth/verify'
       path: '/auth/verify'
@@ -272,8 +304,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/tournaments/$id': {
+      id: '/admin/tournaments/$id'
+      path: '/admin/tournaments/$id'
+      fullPath: '/admin/tournaments/$id'
+      preLoaderRoute: typeof AdminTournamentsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface TournamentsRouteChildren {
+  TournamentsIdRoute: typeof TournamentsIdRoute
+}
+
+const TournamentsRouteChildren: TournamentsRouteChildren = {
+  TournamentsIdRoute: TournamentsIdRoute,
+}
+
+const TournamentsRouteWithChildren = TournamentsRoute._addFileChildren(
+  TournamentsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -285,9 +336,10 @@ const rootRouteChildren: RootRouteChildren = {
   MembersRoute: MembersRoute,
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  TournamentsRoute: TournamentsRoute,
+  TournamentsRoute: TournamentsRouteWithChildren,
   AuthVerifyRoute: AuthVerifyRoute,
   AuthIndexRoute: AuthIndexRoute,
+  AdminTournamentsIdRoute: AdminTournamentsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
