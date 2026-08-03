@@ -546,5 +546,5 @@ function drawCircleAvatar(
   ctx.strokeStyle = "rgba(148,163,184,0.35)";
   ctx.lineWidth = 1;
   ctx.stroke();
-    }
-      
+      }
+                            
