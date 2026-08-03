@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { supabase, type Match, type Tournament } from "@/lib/supabase";
+import { supabase, type Match, type Tournament, type TournamentParticipant } from "@/lib/supabase";
 import { generateFixtures, bracketLabel } from "@/lib/brackets";
 import { logActivity } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, playerName, type TournamentData } from "./shared";
@@ -15,6 +16,15 @@ import { cn } from "@/lib/utils";
 interface Props {
   tournament: Tournament;
   data: TournamentData;
+}
+
+function playerPhoto(data: TournamentData, id: string | null): string | null {
+  if (!id) return null;
+  const p = data.players.find((x) => x.id === id);
+  if (!p) return null;
+  if (p.photo_url) return p.photo_url;
+  if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
+  return null;
 }
 
 export function FixturesTab({ tournament, data }: Props) {
@@ -37,9 +47,8 @@ export function FixturesTab({ tournament, data }: Props) {
   }, [data.matches, data.matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
-  const activeName = selected && groups.some(([n]) => n === selected)
-    ? selected
-    : groups[0]?.[0] ?? null;
+  const activeName =
+    selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
   const generate = async () => {
@@ -152,7 +161,6 @@ export function FixturesTab({ tournament, data }: Props) {
 
     ctx.fillStyle = "#0b1220";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = "#1d4ed8";
     ctx.fillRect(0, 0, canvas.width, 6);
 
@@ -202,42 +210,35 @@ export function FixturesTab({ tournament, data }: Props) {
     ctx.fillText("AWAY", width / 2 + 60, y);
 
     y += 24;
-    if (matches.length === 0) {
+    matches.forEach((m, i) => {
+      const home = playerName(data.players, m.home_id);
+      const away = playerName(data.players, m.away_id);
+      const score = m.played ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs";
+
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.03)" : "transparent";
+      roundRect(ctx, padding - 8, y - 8, width - padding * 2 + 16, rowH - 8, 12);
+      ctx.fill();
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#64748b";
+      ctx.font = "16px system-ui, sans-serif";
+      ctx.fillText(String(i + 1), padding, y + 28);
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 22px system-ui, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(home, width / 2 - 60, y + 28);
+
       ctx.textAlign = "center";
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "18px system-ui, sans-serif";
-      ctx.fillText("No matches", width / 2, y + 28);
-    } else {
-      matches.forEach((m, i) => {
-        const home = playerName(data.players, m.home_id);
-        const away = playerName(data.players, m.away_id);
-        const score = m.played ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs";
+      ctx.fillStyle = m.played ? "#60a5fa" : "#94a3b8";
+      ctx.fillText(score, width / 2, y + 28);
 
-        ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.03)" : "transparent";
-        roundRect(ctx, padding - 8, y - 8, width - padding * 2 + 16, rowH - 8, 12);
-        ctx.fill();
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#f8fafc";
+      ctx.fillText(away, width / 2 + 60, y + 28);
 
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#64748b";
-        ctx.font = "16px system-ui, sans-serif";
-        ctx.fillText(String(i + 1), padding, y + 28);
-
-        ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 22px system-ui, sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText(home, width / 2 - 60, y + 28);
-
-        ctx.textAlign = "center";
-        ctx.fillStyle = m.played ? "#60a5fa" : "#94a3b8";
-        ctx.fillText(score, width / 2, y + 28);
-
-        ctx.textAlign = "left";
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillText(away, width / 2 + 60, y + 28);
-
-        y += rowH;
-      });
-    }
+      y += rowH;
+    });
 
     ctx.textAlign = "center";
     ctx.fillStyle = "#64748b";
@@ -267,11 +268,7 @@ export function FixturesTab({ tournament, data }: Props) {
           disabled={busy}
           className="bg-gradient-brand text-primary-foreground"
         >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Shuffle className="h-4 w-4 mr-1.5" />
-          )}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4 mr-1.5" />}
           {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
         </Button>
         <Button variant="secondary" onClick={addMatch}>
@@ -288,9 +285,9 @@ export function FixturesTab({ tournament, data }: Props) {
         </div>
       ) : (
         <>
-          {/* Horizontal matchday selector */}
-          <div className="overflow-x-auto pb-1 -mx-1 px-1">
-            <div className="flex gap-2 min-w-max">
+          {/* \~3 visible matchday chips, scroll for rest */}
+          <div className="overflow-x-auto pb-1">
+            <div className="flex gap-2">
               {groups.map(([name, matches]) => {
                 const played = matches.filter((m) => m.played).length;
                 const isActive = name === activeName;
@@ -300,16 +297,16 @@ export function FixturesTab({ tournament, data }: Props) {
                     type="button"
                     onClick={() => setSelected(name)}
                     className={cn(
-                      "rounded-xl border px-4 py-3 text-left min-w-[140px] transition",
+                      "shrink-0 w-[calc((100%-1rem)/3)] min-w-[110px] max-w-[160px] rounded-xl border px-3 py-2.5 text-left transition",
                       isActive
-                        ? "border-brand bg-brand/15 shadow-[0_0_0_1px_rgba(59,130,246,0.35)]"
+                        ? "border-brand bg-brand/15"
                         : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                     )}
                   >
-                    <div className={cn("text-sm font-semibold", isActive && "text-brand-glow")}>
+                    <div className={cn("text-sm font-semibold truncate", isActive && "text-brand-glow")}>
                       {name}
                     </div>
-                    <div className="text-[11px] text-muted-foreground mt-1">
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
                       {played}/{matches.length} played
                     </div>
                   </button>
@@ -318,7 +315,6 @@ export function FixturesTab({ tournament, data }: Props) {
             </div>
           </div>
 
-          {/* Selected matchday matches */}
           {activeName && (
             <div className="glass rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between gap-2">
@@ -333,37 +329,76 @@ export function FixturesTab({ tournament, data }: Props) {
                   Download PNG
                 </Button>
               </div>
-              {activeMatches.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center gap-2 rounded-xl border border-border/60 p-2"
-                >
-                  <span className="text-[10px] text-muted-foreground w-6 shrink-0">
-                    #{m.position}
-                  </span>
-                  <SideSelect
-                    value={m.home_id}
-                    players={approved}
-                    onChange={(v) => setSide(m, "home_id", v)}
-                  />
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {m.played ? `${m.home_score} - ${m.away_score}` : "vs"}
-                  </span>
-                  <SideSelect
-                    value={m.away_id}
-                    players={approved}
-                    onChange={(v) => setSide(m, "away_id", v)}
-                  />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 shrink-0 text-muted-foreground"
-                    onClick={() => removeMatch(m)}
+
+              {activeMatches.map((m) => {
+                const home = playerName(data.players, m.home_id);
+                const away = playerName(data.players, m.away_id);
+                const homePhoto = playerPhoto(data, m.home_id);
+                const awayPhoto = playerPhoto(data, m.away_id);
+
+                return (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-1.5 rounded-xl border border-border/60 p-2"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
+                    <span className="text-[10px] text-muted-foreground w-5 shrink-0 text-center">
+                      #{m.position}
+                    </span>
+
+                    {/* Home */}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
+                      <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px] text-right">
+                        {home}
+                      </span>
+                      <Avatar className="h-7 w-7 shrink-0">
+                        <AvatarImage src={homePhoto ?? undefined} />
+                        <AvatarFallback className="bg-secondary text-[10px]">
+                          {home.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+
+                    <span className="text-xs font-semibold text-muted-foreground shrink-0 w-10 text-center">
+                      {m.played ? `\( {m.home_score}- \){m.away_score}` : "vs"}
+                    </span>
+
+                    {/* Away */}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <Avatar className="h-7 w-7 shrink-0">
+                        <AvatarImage src={awayPhoto ?? undefined} />
+                        <AvatarFallback className="bg-secondary text-[10px]">
+                          {away.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px]">
+                        {away}
+                      </span>
+                    </div>
+
+                    <SideSelect
+                      value={m.home_id}
+                      players={approved}
+                      onChange={(v) => setSide(m, "home_id", v)}
+                      className="hidden sm:flex w-[110px] shrink-0"
+                    />
+                    <SideSelect
+                      value={m.away_id}
+                      players={approved}
+                      onChange={(v) => setSide(m, "away_id", v)}
+                      className="hidden sm:flex w-[110px] shrink-0"
+                    />
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0 text-muted-foreground"
+                      onClick={() => removeMatch(m)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </>
@@ -376,14 +411,16 @@ function SideSelect({
   value,
   players,
   onChange,
+  className,
 }: {
   value: string | null;
-  players: { id: string; player_name: string }[];
+  players: TournamentParticipant[];
   onChange: (v: string) => void;
+  className?: string;
 }) {
   return (
     <Select value={value ?? "tbd"} onValueChange={onChange}>
-      <SelectTrigger className="h-8 flex-1 min-w-0 text-xs">
+      <SelectTrigger className={cn("h-8 text-xs", className)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -424,4 +461,4 @@ function roundRect(
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
-      }
+    }
