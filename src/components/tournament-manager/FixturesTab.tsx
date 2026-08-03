@@ -35,9 +35,10 @@ function sidePhoto(data: TournamentData, p: TournamentParticipant | undefined): 
   return null;
 }
 
+/** Real score like "2-1". Empty string if not played. */
 function scoreText(m: Match): string {
   if (m.played && m.home_score != null && m.away_score != null) {
-    return `\( {m.home_score}- \){m.away_score}`;
+    return String(m.home_score) + "-" + String(m.away_score);
   }
   return "";
 }
@@ -68,7 +69,6 @@ export function FixturesTab({ tournament, data }: Props) {
     selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
-  // Keep selected matchday inside the 3-slot window
   useEffect(() => {
     if (!activeName || groups.length === 0) return;
     const idx = groups.findIndex(([n]) => n === activeName);
@@ -131,7 +131,9 @@ export function FixturesTab({ tournament, data }: Props) {
     const { error } = await supabase.from("matches").insert(payload);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success(`\( {payload.length} fixtures generated ( \){bracketLabel(tournament.bracket_type)})`);
+    toast.success(
+      payload.length + " fixtures generated (" + bracketLabel(tournament.bracket_type) + ")",
+    );
     void logActivity("fixtures.generate", {
       tournament: tournament.name,
       matches: payload.length,
@@ -175,9 +177,8 @@ export function FixturesTab({ tournament, data }: Props) {
     const width = 1080;
     const rowH = 72;
     const headerH = 150;
-    const footerH = 50;
     const padding = 40;
-    const height = headerH + Math.max(matches.length, 1) * rowH + footerH + 20;
+    const height = headerH + Math.max(matches.length, 1) * rowH + 70;
 
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -188,13 +189,11 @@ export function FixturesTab({ tournament, data }: Props) {
       return;
     }
 
-    // Background
     ctx.fillStyle = "#0b1220";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#1d4ed8";
     ctx.fillRect(0, 0, canvas.width, 6);
 
-    // Brand logo
     const brandLogoSize = 64;
     try {
       const img = await loadImage(logoUrl);
@@ -212,15 +211,18 @@ export function FixturesTab({ tournament, data }: Props) {
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 28px system-ui, sans-serif";
-    ctx.fillText(`${tournament.name} — ${matchdayLabel}`, padding + brandLogoSize + 16, 88);
+    ctx.fillText(tournament.name + " — " + matchdayLabel, padding + brandLogoSize + 16, 88);
 
     const matchWord = matches.length === 1 ? "match" : "matches";
     const dateStr = new Date().toLocaleDateString();
     ctx.fillStyle = "#94a3b8";
     ctx.font = "15px system-ui, sans-serif";
-    ctx.fillText(`${matches.length} ${matchWord} · ${dateStr}`, padding + brandLogoSize + 16, 114);
+    ctx.fillText(
+      matches.length + " " + matchWord + " · " + dateStr,
+      padding + brandLogoSize + 16,
+      114,
+    );
 
-    // Preload player logos
     const logoCache = new Map<string, HTMLImageElement>();
     await Promise.all(
       matches.map(async (m) => {
@@ -231,7 +233,7 @@ export function FixturesTab({ tournament, data }: Props) {
             try {
               logoCache.set(url, await loadImage(url));
             } catch {
-              // skip broken image
+              // skip
             }
           }
         }
@@ -252,34 +254,28 @@ export function FixturesTab({ tournament, data }: Props) {
       const awayUrl = sidePhoto(data, awayP);
       const score = scoreText(m);
 
-      // row bg
       ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.03)" : "transparent";
       roundRect(ctx, padding - 4, y, width - padding * 2 + 8, rowH - 8, 12);
       ctx.fill();
 
       const cy = y + (rowH - 8) / 2;
 
-      // Home logo (right side of home block)
       const homeLogoX = midX - 70;
       drawCircleAvatar(ctx, logoCache.get(homeUrl ?? ""), homeLogoX, cy, avatarR, home);
 
-      // Home label
       ctx.fillStyle = "#f8fafc";
       ctx.font = "bold 18px system-ui, sans-serif";
       ctx.textAlign = "right";
       ctx.fillText(home, homeLogoX - avatarR - 10, cy + 6);
 
-      // Score
       ctx.textAlign = "center";
       ctx.fillStyle = score ? "#60a5fa" : "#64748b";
       ctx.font = "bold 20px system-ui, sans-serif";
       ctx.fillText(score || "–", midX, cy + 6);
 
-      // Away logo
       const awayLogoX = midX + 70;
       drawCircleAvatar(ctx, logoCache.get(awayUrl ?? ""), awayLogoX, cy, avatarR, away);
 
-      // Away label
       ctx.fillStyle = "#f8fafc";
       ctx.font = "bold 18px system-ui, sans-serif";
       ctx.textAlign = "left";
@@ -291,14 +287,14 @@ export function FixturesTab({ tournament, data }: Props) {
     ctx.textAlign = "center";
     ctx.fillStyle = "#64748b";
     ctx.font = "13px system-ui, sans-serif";
-    ctx.fillText(`${brandName} · Official fixtures`, width / 2, canvas.height - 20);
+    ctx.fillText(brandName + " · Official fixtures", width / 2, canvas.height - 20);
 
-    const fileSafe = `\( {tournament.name}- \){matchdayLabel}`
+    const fileSafe = (tournament.name + "-" + matchdayLabel)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
     const link = document.createElement("a");
-    link.download = `${fileSafe}-fixtures.png`;
+    link.download = fileSafe + "-fixtures.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
     toast.success("Fixture image downloaded");
@@ -325,7 +321,6 @@ export function FixturesTab({ tournament, data }: Props) {
         </div>
       ) : (
         <>
-          {/* Only 3 matchdays visible */}
           <div className="flex items-center gap-1">
             <Button
               size="icon"
@@ -549,4 +544,4 @@ function drawCircleAvatar(
   ctx.strokeStyle = "rgba(148,163,184,0.35)";
   ctx.lineWidth = 1;
   ctx.stroke();
-    }
+  }
