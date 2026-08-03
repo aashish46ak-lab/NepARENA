@@ -5,9 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, type TournamentData } from "./shared";
@@ -58,7 +55,7 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 
   return (
     <div className="space-y-4 pt-4">
-      {/* Only 3 matchdays visible */}
+      {/* Compact matchday chips */}
       <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1">
         <div className="flex gap-2">
           {groups.map(([name, matches]) => {
@@ -70,13 +67,13 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
                 type="button"
                 onClick={() => setSelected(name)}
                 className={cn(
-                  "snap-start shrink-0 w-[calc((100%-1rem)/3)] min-w-[calc((100%-1rem)/3)] rounded-xl border px-3 py-2.5 text-left transition",
+                  "snap-start shrink-0 w-auto rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
                   isActive
                     ? "border-brand bg-brand/15"
                     : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                 )}
               >
-                <div className={cn("text-sm font-semibold truncate", isActive && "text-brand-glow")}>
+                <div className={cn("text-sm font-semibold", isActive && "text-brand-glow")}>
                   {name}
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -129,7 +126,6 @@ function ResultRow({
 }) {
   const [hs, setHs] = useState(match.home_score?.toString() ?? "");
   const [as, setAs] = useState(match.away_score?.toString() ?? "");
-  const [status, setStatus] = useState(match.status ?? "scheduled");
 
   const save = async () => {
     const played = hs !== "" && as !== "";
@@ -138,7 +134,7 @@ function ResultRow({
       .update({
         home_score: hs === "" ? null : Number(hs),
         away_score: as === "" ? null : Number(as),
-        status: played ? "finished" : status,
+        status: played ? "finished" : "scheduled",
         played,
       })
       .eq("id", match.id);
@@ -160,7 +156,6 @@ function ResultRow({
     if (error) return toast.error(error.message);
     setHs("");
     setAs("");
-    setStatus("scheduled");
     toast.success("Result cleared");
     onSaved();
   };
