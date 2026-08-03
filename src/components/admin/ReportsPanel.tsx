@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminSection, EmptyState } from "./AdminUI";
 import { useCrud } from "./crud";
+import { supabase } from "@/lib/supabase";
 import type { Report, ReportStatus } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Flag, Eye, Trash2, User, Calendar, Link2 } from "lucide-react";
+import { Flag, Eye, Trash2, User, Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FILTERS: { value: ReportStatus | "all"; label: string }[] = [
@@ -34,27 +35,102 @@ function statusBadge(s: ReportStatus) {
 export function ReportsPanel() {
   const { rows, loading, update, remove } = useCrud<Report>("reports");
   const [filter, setFilter] = useState<ReportStatus | "all">("all");
+  const [tournamentFilter, setTournamentFilter] = useState<string>("all");
   const [viewing, setViewing] = useState<Report | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const list = filter === "all" ? rows : rows.filter((r) => r.status === filter);
+  const [tournaments, setTournaments] = useState<{ id: string; name: string }[]>([]);
+  const [reporterNames, setReporterNames] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase.from("tournaments").select("id, name").order("name");
+      setTournaments(data ?? []);
+    })();
+  }, []);
+
+  useEffect(() => {
+    const ids = [...new Set(rows.map((r) => r.reporter_id).filter(Boolean))];
+    if (ids.length === 0) return;
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, username")
+        .in("id", ids);
+      const map = new Map<string, string>();
+      for (const p of data ?? []) {
+        map.set(p.id, p.full_name || p.username || "Unknown user");
+      }
+      setReporterNames(map);
+    })();
+  }, [rows]);
+
+  const tournamentName = (id: string | null | undefined) =>
+    tournaments.find((t) => t.id === id)?.name ?? "Unknown tournament";
+
+  const list = useMemo(() => {
+    return rows.filter((r) => {
+      if (filter !== "all" && r.status !== filter) return false;
+      if (tournamentFilter !== "all" && r.tournament_id !== tournamentFilter) return false;
+      return true;
+    });
+  }, [rows, filter, tournamentFilter]);
+
   const pendingCount = rows.filter((r) => r.status === "pending").length;
+
+  const viewingScreenshots = viewing?.screenshot_urls ?? [];
+
+  const openLightbox = (index: number) => setLightboxIndex(index);
+  const closeLightbox = () => setLightboxIndex(null);
+  const nextPhoto = () =>
+    setLightboxIndex((i) => (i === null ? null : (i + 1) % viewingScreenshots.length));
+  const prevPhoto = () =>
+    setLightboxIndex((i) =>
+      i === null ? null : (i - 1 + viewingScreenshots.length) % viewingScreenshots.length,
+    );
+
+  let touchStartX = 0;
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(delta) < 40) return;
+    if (delta < 0) nextPhoto();
+    else prevPhoto();
+  };
 
   return (
     <AdminSection
       title="Reports"
       description={`${pendingCount} report${pendingCount === 1 ? "" : "s"} waiting for review.`}
       action={
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
-            <Button
-              key={f.value}
-              size="sm"
-              variant={filter === f.value ? "default" : "outline"}
-              onClick={() => setFilter(f.value)}
-            >
-              {f.label}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={tournamentFilter} onValueChange={setTournamentFilter}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All tournaments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All tournaments</SelectItem>
+              {tournaments.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex flex-wrap gap-1.5">
+            {FILTERS.map((f) => (
+              <Button
+                key={f.value}
+                size="sm"
+                variant={filter === f.value ? "default" : "outline"}
+                onClick={() => setFilter(f.value)}
+              >
+                {f.label}
+              </Button>
+            ))}
+          </div>
         </div>
       }
     >
@@ -77,10 +153,13 @@ export function ReportsPanel() {
                   <span className="font-medium">{r.reason}</span>
                   {statusBadge(r.status)}
                   <Badge variant="outline" className="capitalize">{r.type}</Badge>
+                  {r.screenshot_urls && r.screenshot_urls.length > 0 && (
+                    <Badge variant="outline">{r.screenshot_urls.length} photo{r.screenshot_urls.length > 1 ? "s" : ""}</Badge>
+                  )}
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {r.player_name ? `Player: ${r.player_name} · ` : ""}
-                  {new Date(r.created_at).toLocaleString()}
+                  {tournamentName(r.tournament_id)} · Reported by {reporterNames.get(r.reporter_id) ?? "…"}
+                  {r.player_name ? ` · Player: ${r.player_name}` : ""} · {new Date(r.created_at).toLocaleString()}
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
@@ -117,7 +196,7 @@ export function ReportsPanel() {
         </div>
       )}
 
-      <Dialog open={!!viewing} onOpenChange={() => setViewing(null)}>
+      <Dialog open={!!viewing} onOpenChange={(open) => { if (!open) { setViewing(null); closeLightbox(); } }}>
         <DialogContent className="glass max-w-lg">
           <DialogHeader>
             <DialogTitle>Report details</DialogTitle>
@@ -133,6 +212,12 @@ export function ReportsPanel() {
                 <p className="whitespace-pre-line text-muted-foreground">{viewing.description}</p>
               )}
               <div className="space-y-1.5 rounded-xl border border-border/60 p-3 text-xs text-muted-foreground">
+                <p className="flex items-center gap-2">
+                  <Flag className="h-3.5 w-3.5" /> Tournament: {tournamentName(viewing.tournament_id)}
+                </p>
+                <p className="flex items-center gap-2">
+                  <User className="h-3.5 w-3.5" /> Reported by: {reporterNames.get(viewing.reporter_id) ?? "Unknown user"}
+                </p>
                 {viewing.player_name && (
                   <p className="flex items-center gap-2">
                     <User className="h-3.5 w-3.5" /> Reported player: {viewing.player_name}
@@ -141,17 +226,26 @@ export function ReportsPanel() {
                 <p className="flex items-center gap-2">
                   <Calendar className="h-3.5 w-3.5" /> {new Date(viewing.created_at).toLocaleString()}
                 </p>
-                {viewing.screenshot_url && (
-                  <a
-                    href={viewing.screenshot_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 text-brand-glow hover:underline"
-                  >
-                    <Link2 className="h-3.5 w-3.5" /> View screenshot evidence
-                  </a>
-                )}
               </div>
+
+              {viewingScreenshots.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Screenshots</p>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingScreenshots.map((url, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => openLightbox(i)}
+                        className="overflow-hidden rounded-lg border border-border/60"
+                      >
+                        <img src={url} alt={`Screenshot ${i + 1}`} className="h-20 w-20 object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => { update(viewing.id, { status: "dismissed" }); setViewing(null); }}>
                   Dismiss
@@ -164,6 +258,55 @@ export function ReportsPanel() {
           )}
         </DialogContent>
       </Dialog>
+
+      {lightboxIndex !== null && viewingScreenshots.length > 0 && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          <button
+            type="button"
+            onClick={closeLightbox}
+            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {viewingScreenshots.length > 1 && (
+            <button
+              type="button"
+              onClick={prevPhoto}
+              className="absolute left-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-4"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+
+          <img
+            src={viewingScreenshots[lightboxIndex]}
+            alt={`Screenshot ${lightboxIndex + 1}`}
+            className="max-h-[85vh] max-w-full rounded-lg object-contain select-none"
+          />
+
+          {viewingScreenshots.length > 1 && (
+            <button
+              type="button"
+              onClick={nextPhoto}
+              className="absolute right-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+
+          {viewingScreenshots.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white">
+              {lightboxIndex + 1} / {viewingScreenshots.length}
+            </div>
+          )}
+        </div>
+      )}
     </AdminSection>
   );
-}
+                                               }
+                        
