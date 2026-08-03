@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
+import { Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { matchdayName, type TournamentData } from "./shared";
+import { matchdayName, playerName, type TournamentData } from "./shared";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 interface Props {
   tournament: Tournament;
@@ -17,29 +18,50 @@ interface Props {
 
 export function FixturesTab({ tournament, data }: Props) {
   const [busy, setBusy] = useState(false);
+  const settings = useSiteSettings();
   const approved = data.players.filter((p) => p.status === "approved");
+
+  const logoUrl =
+    settings?.logo_url ||
+    "https://efootballnepal.vercel.app/android-chrome-512x512.png";
+  const brandName = settings?.site_name || "eFootball Nepal";
 
   const generate = async () => {
     if (approved.length < 2) return toast.error("Need at least 2 approved players");
-    if (data.matches.length > 0 && !confirm("Regenerating clears all existing fixtures and results. Continue?")) return;
+    if (
+      data.matches.length > 0 &&
+      !confirm("Regenerating clears all existing fixtures and results. Continue?")
+    )
+      return;
     setBusy(true);
 
     await supabase.from("matches").delete().eq("tournament_id", tournament.id);
     await supabase.from("matchdays").delete().eq("tournament_id", tournament.id);
 
-    const specs = generateFixtures(tournament.bracket_type ?? "round_robin", approved.map((p) => p.id));
+    const specs = generateFixtures(
+      tournament.bracket_type ?? "round_robin",
+      approved.map((p) => p.id),
+    );
 
-    // Persist matchdays first so matches can reference them
     const names = [...new Set(specs.map((s) => s.matchday))];
     const { data: mdRows, error: mdErr } = await supabase
       .from("matchdays")
-      .insert(names.map((name, i) => ({ tournament_id: tournament.id, name, sort_order: i, is_published: true })))
+      .insert(
+        names.map((name, i) => ({
+          tournament_id: tournament.id,
+          name,
+          sort_order: i,
+          is_published: true,
+        })),
+      )
       .select();
     if (mdErr) {
       setBusy(false);
       return toast.error(mdErr.message);
     }
-    const mdId = new Map((mdRows ?? []).map((r: { id: string; name: string }) => [r.name, r.id]));
+    const mdId = new Map(
+      (mdRows ?? []).map((r: { id: string; name: string }) => [r.name, r.id]),
+    );
 
     const payload = specs.map((s, i) => ({
       tournament_id: tournament.id,
@@ -54,8 +76,13 @@ export function FixturesTab({ tournament, data }: Props) {
     const { error } = await supabase.from("matches").insert(payload);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success(`${payload.length} fixtures generated (${bracketLabel(tournament.bracket_type)})`);
-    void logActivity("fixtures.generate", { tournament: tournament.name, matches: payload.length });
+    toast.success(
+      `\( {payload.length} fixtures generated ( \){bracketLabel(tournament.bracket_type)})`,
+    );
+    void logActivity("fixtures.generate", {
+      tournament: tournament.name,
+      matches: payload.length,
+    });
     data.reload();
   };
 
@@ -89,6 +116,142 @@ export function FixturesTab({ tournament, data }: Props) {
     data.reload();
   };
 
+  const downloadMatchday = async (matchdayLabel: string, matches: Match[]) => {
+    const width = 1080;
+    const rowH = 64;
+    const headerH = 160;
+    const footerH = 56;
+    const padding = 40;
+    const height = headerH + Math.max(matches.length, 1) * rowH + footerH + padding;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = Math.max(height, 400);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      toast.error("Could not create image");
+      return;
+    }
+
+    // Background
+    ctx.fillStyle = "#0b1220";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Accent bar
+    ctx.fillStyle = "#1d4ed8";
+    ctx.fillRect(0, 0, canvas.width, 6);
+
+    // Logo
+    const logoSize = 72;
+    try {
+      const img = await loadImage(logoUrl);
+      ctx.fillStyle = "#111827";
+      roundRect(ctx, padding, 36, logoSize, logoSize, 14);
+      ctx.fill();
+      ctx.drawImage(img, padding, 36, logoSize, logoSize);
+    } catch {
+      // ignore logo load failure
+    }
+
+    // Brand + title
+    ctx.fillStyle = "#60a5fa";
+    ctx.font = "bold 18px system-ui, sans-serif";
+    ctx.fillText((brandName || "eFootball Nepal").toUpperCase(), padding + logoSize + 20, 58);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 34px system-ui, sans-serif";
+    const title = `${tournament.name} — ${matchdayLabel}`;
+    ctx.fillText(title, padding + logoSize + 20, 100);
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "16px system-ui, sans-serif";
+    ctx.fillText(
+      `\( {matches.length} match \){matches.length === 1 ? "" : "es"}  ·  ${new Date().toLocaleDateString()}`,
+      padding + logoSize + 20,
+      128,
+    );
+
+    // Divider
+    ctx.strokeStyle = "rgba(148,163,184,0.25)";
+    ctx.beginPath();
+    ctx.moveTo(padding, headerH - 10);
+    ctx.lineTo(width - padding, headerH - 10);
+    ctx.stroke();
+
+    // Column headers
+    let y = headerH + 10;
+    ctx.fillStyle = "#64748b";
+    ctx.font = "bold 14px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("#", padding, y);
+    ctx.textAlign = "right";
+    ctx.fillText("HOME", width / 2 - 60, y);
+    ctx.textAlign = "center";
+    ctx.fillText("SCORE", width / 2, y);
+    ctx.textAlign = "left";
+    ctx.fillText("AWAY", width / 2 + 60, y);
+
+    // Matches
+    y += 24;
+    if (matches.length === 0) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "18px system-ui, sans-serif";
+      ctx.fillText("No matches", width / 2, y + 28);
+    } else {
+      matches.forEach((m, i) => {
+        const home = playerName(data.players, m.home_id);
+        const away = playerName(data.players, m.away_id);
+        const score = m.played ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs";
+
+        ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.03)" : "transparent";
+        roundRect(ctx, padding - 8, y - 8, width - padding * 2 + 16, rowH - 8, 12);
+        ctx.fill();
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#64748b";
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.fillText(String(i + 1), padding, y + 28);
+
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "bold 22px system-ui, sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(home, width / 2 - 60, y + 28);
+
+        ctx.textAlign = "center";
+        ctx.fillStyle = m.played ? "#60a5fa" : "#94a3b8";
+        ctx.fillText(score, width / 2, y + 28);
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillText(away, width / 2 + 60, y + 28);
+
+        y += rowH;
+      });
+    }
+
+    // Footer
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#64748b";
+    ctx.font = "14px system-ui, sans-serif";
+    ctx.fillText(
+      `${brandName || "eFootball Nepal"} · Official fixtures`,
+      width / 2,
+      canvas.height - 24,
+    );
+
+    // Download PNG
+    const fileSafe = `\( {tournament.name}- \){matchdayLabel}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const link = document.createElement("a");
+    link.download = `${fileSafe}-fixtures.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    toast.success("Fixture image downloaded");
+  };
+
   // Group matches by matchday (or round when no matchday)
   const groups = new Map<string, Match[]>();
   for (const m of data.matches) {
@@ -99,8 +262,16 @@ export function FixturesTab({ tournament, data }: Props) {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={generate} disabled={busy} className="bg-gradient-brand text-primary-foreground">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4 mr-1.5" />}
+        <Button
+          onClick={generate}
+          disabled={busy}
+          className="bg-gradient-brand text-primary-foreground"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Shuffle className="h-4 w-4 mr-1.5" />
+          )}
           {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
         </Button>
         <Button variant="secondary" onClick={addMatch}>
@@ -118,16 +289,47 @@ export function FixturesTab({ tournament, data }: Props) {
       ) : (
         [...groups.entries()].map(([name, matches]) => (
           <div key={name} className="glass rounded-2xl p-4 space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{name}</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {name}
+              </h3>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8"
+                onClick={() => downloadMatchday(name, matches)}
+              >
+                <Download className="h-3.5 w-3.5 mr-1.5" />
+                Download PNG
+              </Button>
+            </div>
             {matches.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 rounded-xl border border-border/60 p-2">
-                <span className="text-[10px] text-muted-foreground w-6 shrink-0">#{m.position}</span>
-                <SideSelect value={m.home_id} players={approved} onChange={(v) => setSide(m, "home_id", v)} />
+              <div
+                key={m.id}
+                className="flex items-center gap-2 rounded-xl border border-border/60 p-2"
+              >
+                <span className="text-[10px] text-muted-foreground w-6 shrink-0">
+                  #{m.position}
+                </span>
+                <SideSelect
+                  value={m.home_id}
+                  players={approved}
+                  onChange={(v) => setSide(m, "home_id", v)}
+                />
                 <span className="text-xs text-muted-foreground shrink-0">
                   {m.played ? `${m.home_score} - ${m.away_score}` : "vs"}
                 </span>
-                <SideSelect value={m.away_id} players={approved} onChange={(v) => setSide(m, "away_id", v)} />
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={() => removeMatch(m)}>
+                <SideSelect
+                  value={m.away_id}
+                  players={approved}
+                  onChange={(v) => setSide(m, "away_id", v)}
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0 text-muted-foreground"
+                  onClick={() => removeMatch(m)}
+                >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -140,7 +342,9 @@ export function FixturesTab({ tournament, data }: Props) {
 }
 
 function SideSelect({
-  value, players, onChange,
+  value,
+  players,
+  onChange,
 }: {
   value: string | null;
   players: { id: string; player_name: string }[];
@@ -154,9 +358,39 @@ function SideSelect({
       <SelectContent>
         <SelectItem value="tbd">TBD</SelectItem>
         {players.map((p) => (
-          <SelectItem key={p.id} value={p.id}>{p.player_name}</SelectItem>
+          <SelectItem key={p.id} value={p.id}>
+            {p.player_name}
+          </SelectItem>
         ))}
       </SelectContent>
     </Select>
   );
 }
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+          }
