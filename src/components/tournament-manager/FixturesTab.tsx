@@ -9,7 +9,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { matchdayName, playerName, type TournamentData } from "./shared";
+import { matchdayName, type TournamentData } from "./shared";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { cn } from "@/lib/utils";
 
@@ -18,9 +18,19 @@ interface Props {
   data: TournamentData;
 }
 
-function playerPhoto(data: TournamentData, id: string | null): string | null {
-  if (!id) return null;
-  const p = data.players.find((x) => x.id === id);
+function getPlayer(data: TournamentData, id: string | null): TournamentParticipant | undefined {
+  if (!id) return undefined;
+  return data.players.find((p) => p.id === id);
+}
+
+/** Club name if set, otherwise player name */
+function sideLabel(p: TournamentParticipant | undefined): string {
+  if (!p) return "TBD";
+  const club = p.club?.trim();
+  return club || p.player_name;
+}
+
+function sidePhoto(data: TournamentData, p: TournamentParticipant | undefined): string | null {
   if (!p) return null;
   if (p.photo_url) return p.photo_url;
   if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
@@ -191,51 +201,33 @@ export function FixturesTab({ tournament, data }: Props) {
       128,
     );
 
-    ctx.strokeStyle = "rgba(148,163,184,0.25)";
-    ctx.beginPath();
-    ctx.moveTo(padding, headerH - 10);
-    ctx.lineTo(width - padding, headerH - 10);
-    ctx.stroke();
-
-    let y = headerH + 10;
-    ctx.fillStyle = "#64748b";
-    ctx.font = "bold 14px system-ui, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("#", padding, y);
-    ctx.textAlign = "right";
-    ctx.fillText("HOME", width / 2 - 60, y);
-    ctx.textAlign = "center";
-    ctx.fillText("SCORE", width / 2, y);
-    ctx.textAlign = "left";
-    ctx.fillText("AWAY", width / 2 + 60, y);
-
-    y += 24;
+    let y = headerH + 20;
     matches.forEach((m, i) => {
-      const home = playerName(data.players, m.home_id);
-      const away = playerName(data.players, m.away_id);
-      const score = m.played ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs";
+      const homeP = getPlayer(data, m.home_id);
+      const awayP = getPlayer(data, m.away_id);
+      const home = sideLabel(homeP);
+      const away = sideLabel(awayP);
+      const score =
+        m.played && m.home_score != null && m.away_score != null
+          ? `\( {m.home_score}- \){m.away_score}`
+          : "";
 
       ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.03)" : "transparent";
       roundRect(ctx, padding - 8, y - 8, width - padding * 2 + 16, rowH - 8, 12);
       ctx.fill();
 
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#64748b";
-      ctx.font = "16px system-ui, sans-serif";
-      ctx.fillText(String(i + 1), padding, y + 28);
-
       ctx.fillStyle = "#f8fafc";
       ctx.font = "bold 22px system-ui, sans-serif";
       ctx.textAlign = "right";
-      ctx.fillText(home, width / 2 - 60, y + 28);
+      ctx.fillText(home, width / 2 - 50, y + 28);
 
       ctx.textAlign = "center";
-      ctx.fillStyle = m.played ? "#60a5fa" : "#94a3b8";
+      ctx.fillStyle = m.played ? "#60a5fa" : "#64748b";
       ctx.fillText(score, width / 2, y + 28);
 
       ctx.textAlign = "left";
       ctx.fillStyle = "#f8fafc";
-      ctx.fillText(away, width / 2 + 60, y + 28);
+      ctx.fillText(away, width / 2 + 50, y + 28);
 
       y += rowH;
     });
@@ -263,11 +255,7 @@ export function FixturesTab({ tournament, data }: Props) {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          onClick={generate}
-          disabled={busy}
-          className="bg-gradient-brand text-primary-foreground"
-        >
+        <Button onClick={generate} disabled={busy} className="bg-gradient-brand text-primary-foreground">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4 mr-1.5" />}
           {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
         </Button>
@@ -285,8 +273,8 @@ export function FixturesTab({ tournament, data }: Props) {
         </div>
       ) : (
         <>
-          {/* \~3 visible matchday chips, scroll for rest */}
-          <div className="overflow-x-auto pb-1">
+          {/* Only 3 matchdays visible; scroll for more */}
+          <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1">
             <div className="flex gap-2">
               {groups.map(([name, matches]) => {
                 const played = matches.filter((m) => m.played).length;
@@ -297,7 +285,7 @@ export function FixturesTab({ tournament, data }: Props) {
                     type="button"
                     onClick={() => setSelected(name)}
                     className={cn(
-                      "shrink-0 w-[calc((100%-1rem)/3)] min-w-[110px] max-w-[160px] rounded-xl border px-3 py-2.5 text-left transition",
+                      "snap-start shrink-0 w-[calc((100%-1rem)/3)] min-w-[calc((100%-1rem)/3)] rounded-xl border px-3 py-2.5 text-left transition",
                       isActive
                         ? "border-brand bg-brand/15"
                         : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
@@ -331,47 +319,50 @@ export function FixturesTab({ tournament, data }: Props) {
               </div>
 
               {activeMatches.map((m) => {
-                const home = playerName(data.players, m.home_id);
-                const away = playerName(data.players, m.away_id);
-                const homePhoto = playerPhoto(data, m.home_id);
-                const awayPhoto = playerPhoto(data, m.away_id);
+                const homeP = getPlayer(data, m.home_id);
+                const awayP = getPlayer(data, m.away_id);
+                const homeLabel = sideLabel(homeP);
+                const awayLabel = sideLabel(awayP);
+                const homePhoto = sidePhoto(data, homeP);
+                const awayPhoto = sidePhoto(data, awayP);
+                const scoreText =
+                  m.played && m.home_score != null && m.away_score != null
+                    ? `\( {m.home_score}- \){m.away_score}`
+                    : "";
 
                 return (
                   <div
                     key={m.id}
-                    className="flex items-center gap-1.5 rounded-xl border border-border/60 p-2"
+                    className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
                   >
-                    <span className="text-[10px] text-muted-foreground w-5 shrink-0 text-center">
-                      #{m.position}
-                    </span>
-
-                    {/* Home */}
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
-                      <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px] text-right">
-                        {home}
+                    {/* Home: Logo + Club (or player if no club) */}
+                    <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                      <span className="text-sm font-semibold truncate max-w-[140px] text-right">
+                        {homeLabel}
                       </span>
-                      <Avatar className="h-7 w-7 shrink-0">
+                      <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={homePhoto ?? undefined} />
                         <AvatarFallback className="bg-secondary text-[10px]">
-                          {home.slice(0, 2).toUpperCase()}
+                          {homeLabel.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                     </div>
 
-                    <span className="text-xs font-semibold text-muted-foreground shrink-0 w-10 text-center">
-                      {m.played ? `\( {m.home_score}- \){m.away_score}` : "vs"}
-                    </span>
+                    {/* Score: empty until result saved */}
+                    <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
+                      {scoreText || "\u00A0"}
+                    </div>
 
-                    {/* Away */}
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <Avatar className="h-7 w-7 shrink-0">
+                    {/* Away: Logo + Club (or player if no club) */}
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={awayPhoto ?? undefined} />
                         <AvatarFallback className="bg-secondary text-[10px]">
-                          {away.slice(0, 2).toUpperCase()}
+                          {awayLabel.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px]">
-                        {away}
+                      <span className="text-sm font-semibold truncate max-w-[140px]">
+                        {awayLabel}
                       </span>
                     </div>
 
@@ -379,19 +370,18 @@ export function FixturesTab({ tournament, data }: Props) {
                       value={m.home_id}
                       players={approved}
                       onChange={(v) => setSide(m, "home_id", v)}
-                      className="hidden sm:flex w-[110px] shrink-0"
+                      className="hidden lg:flex w-[100px] shrink-0"
                     />
                     <SideSelect
                       value={m.away_id}
                       players={approved}
                       onChange={(v) => setSide(m, "away_id", v)}
-                      className="hidden sm:flex w-[110px] shrink-0"
+                      className="hidden lg:flex w-[100px] shrink-0"
                     />
-
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 shrink-0 text-muted-foreground"
+                      className="h-8 w-8 shrink-0 text-muted-foreground"
                       onClick={() => removeMatch(m)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -427,7 +417,7 @@ function SideSelect({
         <SelectItem value="tbd">TBD</SelectItem>
         {players.map((p) => (
           <SelectItem key={p.id} value={p.id}>
-            {p.player_name}
+            {p.club?.trim() || p.player_name}
           </SelectItem>
         ))}
       </SelectContent>
@@ -461,4 +451,4 @@ function roundRect(
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
-    }
+                                  }
