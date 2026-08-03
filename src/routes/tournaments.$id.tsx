@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -95,16 +96,13 @@ function TournamentDetailPage() {
     );
   }
 
-  const nameOf = (pid: string | null) =>
-    pid ? (players.find((p) => p.id === pid)?.player_name ?? "TBD") : "TBD";
-
   return (
     <PageShell>
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-10">
         {/* Hero */}
         <div className="glass overflow-hidden rounded-3xl">
           {tournament.banner_url && (
-            <SmartImage src={tournament.banner_url} alt={tournament.name} ratio="aspect-[21/9]" />
+            <SmartImage src={tournament.banner_url} alt={tournament.name} ratio="aspect-[21/9]" zoom={false} />
           )}
           <div className="flex flex-wrap items-center gap-4 p-6">
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-brand">
@@ -211,52 +209,7 @@ function TournamentDetailPage() {
           )}
 
           {tab === "fixtures" && (
-            <div className="space-y-6">
-              {matches.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Fixtures haven't been generated yet.
-                </p>
-              ) : (
-                (matchdays.length > 0
-                  ? matchdays.map((d) => ({ label: d.name, id: d.id }))
-                  : [...new Set(matches.map((m) => m.round))].map((r) => ({ label: `Round ${r}`, id: `r-${r}` }))
-                ).map((group) => {
-                  const groupMatches = matches.filter((m) =>
-                    matchdays.length > 0
-                      ? m.matchday_id === group.id
-                      : `r-${m.round}` === group.id,
-                  );
-                  if (groupMatches.length === 0) return null;
-                  return (
-                    <div key={group.id}>
-                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        {group.label}
-                      </h3>
-                      <div className="space-y-2">
-                        {groupMatches.map((m) => (
-                          <div
-                            key={m.id}
-                            className="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-4 py-3"
-                          >
-                            <span className={cn("flex-1 text-right", m.played && (m.home_score ?? 0) > (m.away_score ?? 0) && "font-bold text-brand-glow")}>
-                              {nameOf(m.home_id)}
-                            </span>
-                            <span className="shrink-0 rounded-lg bg-secondary px-3 py-1 text-sm font-bold">
-                              {m.played
-                                ? `${m.home_score} - ${m.away_score}${m.penalty_home != null && m.penalty_away != null ? ` (${m.penalty_home}-${m.penalty_away} p)` : ""}`
-                                : "vs"}
-                            </span>
-                            <span className={cn("flex-1", m.played && (m.away_score ?? 0) > (m.home_score ?? 0) && "font-bold text-brand-glow")}>
-                              {nameOf(m.away_id)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            <PublicFixtures matches={matches} matchdays={matchdays} players={players} />
           )}
 
           {tab === "rules" && (
@@ -291,6 +244,136 @@ function TournamentDetailPage() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+/** Public fixtures: 3 matchdays visible, logo + club (else player), score only after result */
+function PublicFixtures({
+  matches,
+  matchdays,
+  players,
+}: {
+  matches: Match[];
+  matchdays: Matchday[];
+  players: TournamentParticipant[];
+}) {
+  const groups = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    for (const m of matches) {
+      const label =
+        matchdays.find((d) => d.id === m.matchday_id)?.name ?? `Round ${m.round}`;
+      map.set(label, [...(map.get(label) ?? []), m]);
+    }
+    return [...map.entries()];
+  }, [matches, matchdays]);
+
+  const [selected, setSelected] = useState<string | null>(null);
+  const activeName =
+    selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
+  const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
+
+  const labelOf = (id: string | null) => {
+    if (!id) return "TBD";
+    const p = players.find((x) => x.id === id);
+    if (!p) return "TBD";
+    return p.club?.trim() || p.player_name;
+  };
+
+  const photoOf = (id: string | null) => {
+    if (!id) return null;
+    const p = players.find((x) => x.id === id);
+    return p?.photo_url ?? null;
+  };
+
+  if (matches.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        Fixtures haven't been generated yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Only 3 matchdays visible at once; scroll for more */}
+      <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1">
+        <div className="flex gap-2">
+          {groups.map(([name, list]) => {
+            const played = list.filter((m) => m.played).length;
+            const isActive = name === activeName;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setSelected(name)}
+                className={cn(
+                  "snap-start shrink-0 w-[calc((100%-1rem)/3)] min-w-[calc((100%-1rem)/3)] rounded-xl border px-3 py-2.5 text-left transition",
+                  isActive
+                    ? "border-brand bg-brand/15"
+                    : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
+                )}
+              >
+                <div className={cn("text-sm font-semibold truncate", isActive && "text-brand-glow")}>
+                  {name}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {played}/{list.length} played
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {activeName && (
+        <div className="space-y-2">
+          {activeMatches.map((m) => {
+            const home = labelOf(m.home_id);
+            const away = labelOf(m.away_id);
+            const homePhoto = photoOf(m.home_id);
+            const awayPhoto = photoOf(m.away_id);
+            const score =
+              m.played && m.home_score != null && m.away_score != null
+                ? `\( {m.home_score}- \){m.away_score}`
+                : "";
+
+            return (
+              <div
+                key={m.id}
+                className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
+              >
+                {/* Home: Logo + Club (or player name if no club) */}
+                <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                  <span className="text-sm font-semibold truncate max-w-[140px] text-right">{home}</span>
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage src={homePhoto ?? undefined} />
+                    <AvatarFallback className="bg-secondary text-[10px]">
+                      {home.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+
+                {/* Score empty until result is saved */}
+                <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
+                  {score || "\u00A0"}
+                </div>
+
+                {/* Away: Logo + Club (or player name if no club) */}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage src={awayPhoto ?? undefined} />
+                    <AvatarFallback className="bg-secondary text-[10px]">
+                      {away.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-semibold truncate max-w-[140px]">{away}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -331,8 +414,9 @@ function RegisterButton({ tournament, players }: { tournament: Tournament; playe
     const { error } = await supabase.from("tournament_participants").insert({
       tournament_id: tournament.id,
       user_id: user.id,
-      player_name: profile?.username ?? user.email?.split("@")[0] ?? "Player",
+      player_name: profile?.full_name || profile?.username || user.email?.split("@")[0] || "Player",
       club: profile?.favourite_club ?? null,
+      photo_url: profile?.avatar_url ?? null,
       status: "pending",
     });
     setBusy(false);
@@ -424,4 +508,4 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
       </Button>
     </div>
   );
-}
+    }
