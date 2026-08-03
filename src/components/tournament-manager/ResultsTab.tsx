@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase, type Match, type Tournament } from "@/lib/supabase";
 import { logActivity } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,23 @@ import {
 import { Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, playerName, type TournamentData } from "./shared";
+import { cn } from "@/lib/utils";
 
 export function ResultsTab({ tournament, data }: { tournament: Tournament; data: TournamentData }) {
-  const groups = new Map<string, Match[]>();
-  for (const m of data.matches) {
-    const key = matchdayName(data.matchdays, m);
-    groups.set(key, [...(groups.get(key) ?? []), m]);
-  }
+  const groups = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    for (const m of data.matches) {
+      const key = matchdayName(data.matchdays, m);
+      map.set(key, [...(map.get(key) ?? []), m]);
+    }
+    return [...map.entries()];
+  }, [data.matches, data.matchdays]);
+
+  const [selected, setSelected] = useState<string | null>(null);
+  const activeName = selected && groups.some(([n]) => n === selected)
+    ? selected
+    : groups[0]?.[0] ?? null;
+  const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
   const ready = data.matches.filter((m) => m.home_id && m.away_id);
 
@@ -35,10 +45,42 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
       <p className="text-xs text-muted-foreground">
         {ready.length} of {data.matches.length} matches have both participants assigned. Standings update automatically when a result is saved.
       </p>
-      {[...groups.entries()].map(([name, matches]) => (
-        <div key={name} className="glass rounded-2xl p-4 space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{name}</h3>
-          {matches.map((m) => (
+
+      {/* Horizontal matchday selector */}
+      <div className="overflow-x-auto pb-1 -mx-1 px-1">
+        <div className="flex gap-2 min-w-max">
+          {groups.map(([name, matches]) => {
+            const played = matches.filter((m) => m.played).length;
+            const isActive = name === activeName;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setSelected(name)}
+                className={cn(
+                  "rounded-xl border px-4 py-3 text-left min-w-[140px] transition",
+                  isActive
+                    ? "border-brand bg-brand/15 shadow-[0_0_0_1px_rgba(59,130,246,0.35)]"
+                    : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
+                )}
+              >
+                <div className={cn("text-sm font-semibold", isActive && "text-brand-glow")}>
+                  {name}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-1">
+                  {played}/{matches.length} played
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected matchday results */}
+      {activeName && (
+        <div className="glass rounded-2xl p-4 space-y-2">
+          <h3 className="text-sm font-semibold mb-1">{activeName}</h3>
+          {activeMatches.map((m) => (
             <ResultRow
               key={m.id}
               match={m}
@@ -52,7 +94,7 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
             />
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -162,4 +204,4 @@ function ResultRow({
       )}
     </div>
   );
-}
+      }
