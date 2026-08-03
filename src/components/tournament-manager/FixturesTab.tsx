@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase, type Match, type Tournament, type TournamentParticipant } from "@/lib/supabase";
 import { generateFixtures, bracketLabel } from "@/lib/brackets";
 import { logActivity } from "@/lib/activity";
@@ -63,23 +63,21 @@ export function FixturesTab({ tournament, data }: Props) {
   }, [data.matches, data.matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
-  const [windowStart, setWindowStart] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const activeName =
     selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
-  useEffect(() => {
-    if (!activeName || groups.length === 0) return;
-    const idx = groups.findIndex(([n]) => n === activeName);
-    if (idx < 0) return;
-    if (idx < windowStart) setWindowStart(idx);
-    else if (idx >= windowStart + 3) setWindowStart(Math.max(0, idx - 2));
-  }, [activeName, groups, windowStart]);
+  const selectMatchday = (name: string) => {
+    setSelected(name);
+    tabRefs.current.get(name)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
 
-  const maxStart = Math.max(0, groups.length - 3);
-  const safeStart = Math.min(windowStart, maxStart);
-  const visibleGroups = groups.slice(safeStart, safeStart + 3);
+  const scrollByAmount = (dir: -1 | 1) => {
+    scrollRef.current?.scrollBy({ left: dir * 220, behavior: "smooth" });
+  };
 
   const generate = async () => {
     if (approved.length < 2) return toast.error("Need at least 2 approved players");
@@ -139,7 +137,6 @@ export function FixturesTab({ tournament, data }: Props) {
       matches: payload.length,
     });
     setSelected(null);
-    setWindowStart(0);
     data.reload();
   };
 
@@ -326,29 +323,35 @@ export function FixturesTab({ tournament, data }: Props) {
               size="icon"
               variant="ghost"
               className="h-9 w-9 shrink-0"
-              disabled={safeStart <= 0}
-              onClick={() => setWindowStart((s) => Math.max(0, s - 1))}
+              onClick={() => scrollByAmount(-1)}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            <div className="flex flex-1 gap-2 justify-center min-w-0">
-              {visibleGroups.map(([name, matches]) => {
+            <div
+              ref={scrollRef}
+              className="flex flex-1 gap-2 min-w-0 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {groups.map(([name, matches]) => {
                 const played = matches.filter((m) => m.played).length;
                 const isActive = name === activeName;
                 return (
                   <button
                     key={name}
+                    ref={(el) => {
+                      if (el) tabRefs.current.set(name, el);
+                      else tabRefs.current.delete(name);
+                    }}
                     type="button"
-                    onClick={() => setSelected(name)}
+                    onClick={() => selectMatchday(name)}
                     className={cn(
-                      "shrink-0 w-auto rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
+                      "shrink-0 snap-start basis-[calc(25%-6px)] min-w-[110px] rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
                       isActive
                         ? "border-brand bg-brand/15"
                         : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                     )}
                   >
-                    <div className={cn("text-sm font-semibold", isActive && "text-brand-glow")}>
+                    <div className={cn("text-sm font-semibold truncate", isActive && "text-brand-glow")}>
                       {name}
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -363,8 +366,7 @@ export function FixturesTab({ tournament, data }: Props) {
               size="icon"
               variant="ghost"
               className="h-9 w-9 shrink-0"
-              disabled={safeStart >= maxStart}
-              onClick={() => setWindowStart((s) => Math.min(maxStart, s + 1))}
+              onClick={() => scrollByAmount(1)}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -544,4 +546,5 @@ function drawCircleAvatar(
   ctx.strokeStyle = "rgba(148,163,184,0.35)";
   ctx.lineWidth = 1;
   ctx.stroke();
-      }
+    }
+      
