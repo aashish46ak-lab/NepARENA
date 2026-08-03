@@ -345,7 +345,7 @@ export function FixturesTab({ tournament, data }: Props) {
                     type="button"
                     onClick={() => selectMatchday(name)}
                     className={cn(
-                      "shrink-0 snap-start basis-[calc(25%-6px)] min-w-[110px] rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
+                      "inline-flex flex-col shrink-0 snap-start w-fit rounded-xl border px-3.5 py-2.5 text-left transition whitespace-nowrap",
                       isActive
                         ? "border-brand bg-brand/15"
                         : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
@@ -548,5 +548,5 @@ function drawCircleAvatar(
   ctx.strokeStyle = "rgba(148,163,184,0.35)";
   ctx.lineWidth = 1;
   ctx.stroke();
-      }
-                   
+                                }
+                          
