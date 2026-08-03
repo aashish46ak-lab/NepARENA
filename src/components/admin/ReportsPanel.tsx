@@ -78,8 +78,9 @@ export function ReportsPanel() {
 
   const pendingCount = rows.filter((r) => r.status === "pending").length;
 
-  const viewingScreenshots = viewing?.screenshot_urls ?? [];
-
+  const viewingScreenshots = viewing?.screenshot_url
+  ? [viewing.screenshot_url]
+  : [];
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
   const nextPhoto = () =>
