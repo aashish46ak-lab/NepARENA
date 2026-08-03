@@ -22,7 +22,7 @@ function MembersPage() {
 
   const load = async (from: number) => {
     setLoading(true);
-    const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false }).range(from, from + PAGE - 1);
+    const { data } = await supabase.from("public_members").select("*").order("created_at", { ascending: false }).range(from, from + PAGE - 1);
     const rows = (data ?? []) as Profile[];
     setMembers((prev) => (from === 0 ? rows : [...prev, ...rows]));
     if (rows.length < PAGE) setDone(true);
