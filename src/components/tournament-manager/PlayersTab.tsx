@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Check, Loader2, Search, Trash2, UserPlus, Users, X } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload";
+import { Check, Loader2, Search, Trash2, UserPlus, Users, X, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import type { TournamentData } from "./shared";
 
@@ -20,6 +21,7 @@ interface Props {
 export function PlayersTab({ tournament, data }: Props) {
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [logoEdit, setLogoEdit] = useState<TournamentParticipant | null>(null);
 
   const statsOf = (id: string) => data.standings.find((s) => s.participant_id === id);
 
@@ -36,6 +38,22 @@ export function PlayersTab({ tournament, data }: Props) {
     const { error } = await supabase.from("tournament_participants").delete().eq("id", p.id);
     if (error) return toast.error(error.message);
     toast.success("Player removed");
+    data.reload();
+  };
+
+  const updateLogo = async (p: TournamentParticipant, url: string | null) => {
+    // Only manual players (no linked registered account)
+    if (p.user_id) {
+      toast.error("Registered members use their profile photo");
+      return;
+    }
+    const { error } = await supabase
+      .from("tournament_participants")
+      .update({ photo_url: url })
+      .eq("id", p.id);
+    if (error) return toast.error(error.message);
+    toast.success("Logo updated");
+    setLogoEdit(null);
     data.reload();
   };
 
@@ -58,7 +76,7 @@ export function PlayersTab({ tournament, data }: Props) {
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center text-sm text-muted-foreground">
-          No players yet. Add players manually or invite registered members.
+          No players yet. Add players manually or add registered members directly.
         </div>
       ) : (
         <div className="space-y-2">
@@ -68,24 +86,32 @@ export function PlayersTab({ tournament, data }: Props) {
             const club = p.club ?? prof?.favourite_club ?? null;
             const playerName = p.player_name;
             const st = statsOf(p.id);
+            const isManual = !p.user_id;
 
             return (
               <div key={p.id} className="glass rounded-xl p-3 flex flex-wrap items-center gap-3">
-                {/* (Logo) Club name + Player name */}
-                <Avatar className="h-11 w-11 shrink-0">
-                  <AvatarImage src={avatar ?? undefined} />
-                  <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">
-                    {(club || playerName).slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <button
+                  type="button"
+                  className="relative shrink-0"
+                  onClick={() => isManual && setLogoEdit(p)}
+                  title={isManual ? "Update logo" : "Profile photo (registered member)"}
+                >
+                  <Avatar className="h-11 w-11">
+                    <AvatarImage src={avatar ?? undefined} />
+                    <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">
+                      {(club || playerName).slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isManual && (
+                    <span className="absolute -bottom-1 -right-1 rounded-full bg-secondary p-0.5 border border-border">
+                      <ImagePlus className="h-3 w-3" />
+                    </span>
+                  )}
+                </button>
 
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-brand-glow truncate">
-                    {club || "No club"}
-                  </div>
-                  <div className="text-sm text-muted-foreground truncate">
-                    {playerName}
-                  </div>
+                  <div className="font-semibold text-brand-glow truncate">{club || "No club"}</div>
+                  <div className="text-sm text-muted-foreground truncate">{playerName}</div>
                 </div>
 
                 <Badge
@@ -112,6 +138,11 @@ export function PlayersTab({ tournament, data }: Props) {
                 )}
 
                 <div className="flex gap-1.5 ml-auto">
+                  {isManual && (
+                    <Button size="sm" variant="outline" onClick={() => setLogoEdit(p)}>
+                      <ImagePlus className="h-3.5 w-3.5 mr-1" /> Logo
+                    </Button>
+                  )}
                   {p.status === "pending" && (
                     <>
                       <Button size="sm" className="bg-emerald-600/80 hover:bg-emerald-600" onClick={() => setStatus(p, "approved")}>
@@ -138,6 +169,26 @@ export function PlayersTab({ tournament, data }: Props) {
       )}
 
       <AddPlayerDialog open={addOpen} onOpenChange={setAddOpen} tournament={tournament} data={data} />
+
+      {/* Update logo — manual players only */}
+      {logoEdit && !logoEdit.user_id && (
+        <Dialog open onOpenChange={() => setLogoEdit(null)}>
+          <DialogContent className="glass max-w-md">
+            <DialogHeader>
+              <DialogTitle>Update logo — {logoEdit.player_name}</DialogTitle>
+            </DialogHeader>
+            <ImageUpload
+              value={logoEdit.photo_url}
+              folder="players"
+              aspect="square"
+              onChange={(url) => updateLogo(logoEdit, url)}
+            />
+            <p className="text-xs text-muted-foreground">
+              JPG / PNG / WEBP. Only manual players can change logo here.
+            </p>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -152,6 +203,7 @@ function AddPlayerDialog({
 }) {
   const [name, setName] = useState("");
   const [club, setClub] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [memberQ, setMemberQ] = useState("");
   const [members, setMembers] = useState<Profile[]>([]);
@@ -166,18 +218,24 @@ function AddPlayerDialog({
       tournament_id: tournament.id,
       player_name: name.trim(),
       club: club.trim() || null,
-      status: "approved",
+      photo_url: photoUrl,
+      status: "approved", // direct add — no invitation
     });
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(`${name} added`);
     setName("");
     setClub("");
+    setPhotoUrl(null);
     data.reload();
   };
 
   const searchMembers = async (needle: string) => {
     setMemberQ(needle);
+    if (!needle.trim()) {
+      setMembers([]);
+      return;
+    }
     setSearching(true);
     const { data: rows } = await supabase
       .from("profiles")
@@ -189,6 +247,7 @@ function AddPlayerDialog({
     setSearching(false);
   };
 
+  // Direct add registered member (no invitation)
   const addMember = async (p: Profile) => {
     const { error } = await supabase.from("tournament_participants").insert({
       tournament_id: tournament.id,
@@ -212,11 +271,24 @@ function AddPlayerDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Manual entry</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Manual entry (direct add)
+          </p>
           <div className="flex gap-2">
             <Input placeholder="Player name" value={name} onChange={(e) => setName(e.target.value)} />
             <Input placeholder="Club name" value={club} onChange={(e) => setClub(e.target.value)} />
           </div>
+
+          <div>
+            <p className="text-xs text-muted-foreground mb-2">Logo (JPG / PNG / WEBP)</p>
+            <ImageUpload
+              value={photoUrl}
+              folder="players"
+              aspect="square"
+              onChange={(url) => setPhotoUrl(url)}
+            />
+          </div>
+
           <Button size="sm" onClick={addManual} disabled={busy || !name.trim()} className="bg-gradient-brand text-primary-foreground">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserPlus className="h-4 w-4 mr-1.5" /> Add manually</>}
           </Button>
@@ -224,7 +296,7 @@ function AddPlayerDialog({
 
         <div className="space-y-3 pt-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" /> Add registered member
+            <Users className="h-3.5 w-3.5" /> Add registered member (direct — no invite)
           </p>
           <Input
             placeholder="Search by name, username or club"
@@ -256,4 +328,4 @@ function AddPlayerDialog({
       </DialogContent>
     </Dialog>
   );
-                      }
+          }
