@@ -36,40 +36,49 @@ const ADMIN_NAV = [
   {
     label: "Dashboard",
     to: "/dashboard",
+    search: { t: "dashboard" },
   },
   {
     label: "Tournament Manager",
-    to: "/dashboard?t=tournaments",
+    to: "/dashboard",
+    search: { t: "tournaments" },
     sub: [
       {
         label: "Overview",
-        to: "/dashboard?t=tournament-overview",
+        to: "/dashboard",
+        search: { t: "tournaments" },
       },
       {
-        label: "Tournament History",
-        to: "/dashboard?t=history",
+        label: "History",
+        to: "/dashboard",
+        search: { t: "history" },
       },
       {
         label: "Hall of Fame",
-        to: "/dashboard?t=hall-of-fame",
+        to: "/dashboard",
+        search: { t: "hall-of-fame" },
       },
       {
-        label: "Reports",
-        to: "/dashboard?t=reports",
+        label: "Announcements",
+        to: "/dashboard",
+        search: { t: "announcements" },
       },
     ],
   },
   {
     label: "Members",
-    to: "/dashboard?t=members",
+    to: "/dashboard",
+    search: { t: "players" },
   },
   {
-    label: "Roles & Permissions",
-    to: "/dashboard?t=roles",
+    label: "Reports",
+    to: "/dashboard",
+    search: { t: "reports" },
   },
   {
     label: "Settings",
-    to: "/dashboard?t=settings",
+    to: "/dashboard",
+    search: { t: "settings" },
   },
 ];
 
@@ -118,6 +127,7 @@ export function Header() {
             <Link
               key={n.label}
               to={n.to}
+              search={"search" in n ? n.search : undefined}
               onClick={() => setActiveMenu(n)}
               className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
               activeProps={{
@@ -228,8 +238,9 @@ export function Header() {
               <div className="flex flex-col gap-1 mt-8">
                 {NAV.map((n) => (
                   <Link
-                    key={n.to}
+                    key={n.label}
                     to={n.to}
+                    search={"search" in n ? n.search : undefined}
                     className="px-3 py-2 rounded-md hover:bg-white/5"
                   >
                     {n.label}
@@ -272,8 +283,9 @@ export function Header() {
           <nav className="max-w-7xl mx-auto flex items-center gap-2 px-4 py-2">
             {activeMenu.sub.map((item: any) => (
               <Link
-                key={item.to}
+                key={item.label}
                 to={item.to}
+                search={item.search}
                 className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
                 activeProps={{
                   className:

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { useTournaments } from "@/hooks/useContent";
 import { Badge } from "@/components/ui/badge";
@@ -16,14 +16,11 @@ export const Route = createFileRoute("/tournaments")({
           <h1 className="text-3xl md:text-4xl font-bold">Tournaments</h1>
           <p className="text-muted-foreground mt-2">Every tournament run by eFootball Nepal.</p>
           {isLoading && <div className="mt-8 text-muted-foreground">Loading…</div>}
-          {!isLoading && list.length === 0 && <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">No active tournaments right now — see the <a href="/history" className="text-brand-glow hover:underline">tournament history</a>.</div>}
+          {!isLoading && list.length === 0 && <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">No active tournaments right now — see the <Link to="/history" className="text-brand-glow hover:underline">tournament history</Link>.</div>}
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             {list.map((t) => (
-              <div  key={t.id}
-  className="glass rounded-2xl overflow-hidden cursor-pointer hover:scale-[1.02] transition"
-  onClick={()=>{
-    window.location.href=`/tournaments/${t.id}`;
-  }}
+              <Link key={t.id} to="/tournaments/$id" params={{ id: t.id }}
+  className="glass rounded-2xl overflow-hidden cursor-pointer hover:scale-[1.02] transition block"
 >
 
                 <SmartImage src={t.banner_url} alt={t.name} ratio="aspect-video"
@@ -41,7 +38,7 @@ export const Route = createFileRoute("/tournaments")({
                     {t.starts_at && <span className="inline-flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(t.starts_at).toLocaleDateString()}</span>}
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

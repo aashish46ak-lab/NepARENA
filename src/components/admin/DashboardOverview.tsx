@@ -1,222 +1,278 @@
-import { useEffect, useState, type ReactNode, type ElementType } from "react";
+import { useState, type ReactNode, type ElementType } from "react";
+import { Link } from "@tanstack/react-router";
 import {
-  Users, Trophy, Target, TrendingUp, TrendingDown, Wallet, Award,
-  BarChart3, Crosshair, Plus, UserPlus, Calendar, Megaphone, Flag, Download,
+  Users, Trophy, Target, Swords, Flag, Activity,
+  Crosshair, Plus, Megaphone, UserPlus, Settings, Radio, Loader2,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useDashboardStats, useTournamentScopedStats } from "./useDashboardStats";
 
-const revenueData = [
-  { day: "D1", amount: 1000 }, { day: "D2", amount: 2200 },
-  { day: "D3", amount: 2100 }, { day: "D4", amount: 2800 },
-  { day: "D5", amount: 3500 }, { day: "D6", amount: 4200 },
-  { day: "D7", amount: 4800 },
-];
-const regData = [
-  { day: "D1", count: 5 }, { day: "D2", count: 14 }, { day: "D3", count: 16 },
-  { day: "D4", count: 26 }, { day: "D5", count: 18 }, { day: "D6", count: 22 },
-  { day: "D7", count: 36 },
-];
-const goalsData = [
-  { md: "MD1", goals: 58 }, { md: "MD2", goals: 88 }, { md: "MD3", goals: 42 },
-  { md: "MD4", goals: 68 }, { md: "MD5", goals: 45 }, { md: "MD6", goals: 52 },
-  { md: "MD7", goals: 32 },
-];
+const STATUS_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4", "#f43f5e"];
 
 function Card({
-  icon: Icon, label, value, sub, trend, up, color,
+  icon: Icon, label, value, sub, color,
 }: {
-  icon: ElementType; label: string; value: string; sub?: string;
-  trend?: string; up?: boolean; color: string;
+  icon: ElementType; label: string; value: string | number; sub?: string; color: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/5 bg-slate-900/90 p-5">
+    <div className="glass rounded-2xl p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-slate-400">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-white">{value}</p>
-          {sub && <p className="text-xs text-slate-500">{sub}</p>}
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="mt-1 text-2xl font-bold">{value}</p>
+          {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
         </div>
         <div className={cn("rounded-xl p-2.5", color)}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
-      {trend && (
-        <p className={cn("mt-2 flex items-center gap-1 text-xs", up ? "text-emerald-400" : "text-rose-400")}>
-          {up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-          {trend}
-        </p>
-      )}
     </div>
   );
 }
 
-function Box({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
+function Box({ title, children, className, action }: { title: string; children: ReactNode; className?: string; action?: ReactNode }) {
   return (
-    <div className={cn("rounded-2xl border border-white/5 bg-slate-900/70 p-5", className)}>
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-300">{title}</h3>
+    <div className={cn("glass rounded-2xl p-5", className)}>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+        {action}
+      </div>
       {children}
     </div>
   );
 }
 
+const tooltipStyle = {
+  background: "hsl(222 47% 8%)",
+  border: "1px solid hsl(217 33% 20%)",
+  borderRadius: 8,
+} as const;
+
 export function DashboardOverview() {
-  const [name, setName] = useState("eFootball League S1");
-  const [players, setPlayers] = useState(24);
-  const [loading, setLoading] = useState(true);
+  const stats = useDashboardStats();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const scoped = useTournamentScopedStats(selectedId);
+  const selected = stats.tournaments.find((t) => t.id === selectedId) ?? null;
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("tournaments")
-          .select("name, participants_count")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (alive && data) {
-          if (data.name) setName(data.name);
-          if (typeof data.participants_count === "number") setPlayers(data.participants_count);
-        }
-      } catch { /* fallbacks */ }
-      finally { if (alive) setLoading(false); }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  if (loading) {
+  if (stats.loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  const collected = 4800;
-  const prize = 2200;
-
   return (
     <div className="space-y-5">
+      {/* Global stat cards — all live Supabase data */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card icon={Users} label="Players" value={`${players} / 32`} sub="Registered" trend="↑ 12%" up color="bg-blue-500/15 text-blue-400" />
-        <Card icon={Trophy} label="Matches" value="96" sub="Total" trend="↑ 8%" up color="bg-emerald-500/15 text-emerald-400" />
-        <Card icon={Target} label="Goals" value="278" sub="Total" trend="↑ 15%" up color="bg-orange-500/15 text-orange-400" />
-        <Card icon={BarChart3} label="Reports" value="3" sub="Pending" trend="↓ 25%" color="bg-violet-500/15 text-violet-400" />
+        <Card icon={Users} label="Members" value={stats.totalMembers} sub={`+${stats.newMembers7d} this week`} color="bg-blue-500/15 text-blue-400" />
+        <Card icon={Trophy} label="Tournaments" value={stats.totalTournaments} sub={`${stats.liveTournaments} live now`} color="bg-emerald-500/15 text-emerald-400" />
+        <Card icon={Swords} label="Matches" value={stats.totalMatches} sub={`${stats.playedMatches} played`} color="bg-violet-500/15 text-violet-400" />
+        <Card icon={Flag} label="Reports" value={stats.pendingReports} sub="Pending review" color="bg-rose-500/15 text-rose-400" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <Box title="Tournament Revenue" className="lg:col-span-3">
-          <p className="mb-3 text-3xl font-bold text-white">Rs. {collected.toLocaleString()}</p>
-          <div className="mb-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-            <div><p className="text-[11px] text-slate-500">Fee</p><p className="font-semibold text-slate-200">Rs. 100</p></div>
-            <div><p className="text-[11px] text-slate-500">Collected</p><p className="font-semibold text-slate-200">Rs. {collected}</p></div>
-            <div><p className="text-[11px] text-slate-500">Players</p><p className="font-semibold text-slate-200">{players}/32</p></div>
-            <div><p className="text-[11px] text-slate-500">Left</p><p className="font-semibold text-slate-200">{32 - players}</p></div>
+      {/* Tournament selector (Section 4) */}
+      <Box
+        title="Tournament Analytics"
+        action={
+          <Select value={selectedId ?? ""} onValueChange={(v) => setSelectedId(v || null)}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Select a tournament" />
+            </SelectTrigger>
+            <SelectContent>
+              {stats.tournaments.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      >
+        {!selected ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Pick a tournament to see live player, match and goal analytics.
+          </p>
+        ) : scoped.isLoading || !scoped.data ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-          <div className="h-40">
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="capitalize bg-brand/20 text-brand-glow">{selected.status.replace(/_/g, " ")}</Badge>
+              {selected.prize_pool && <Badge variant="outline">{selected.prize_pool}</Badge>}
+              {selected.max_players && (
+                <Badge variant="outline">{scoped.data.approved}/{selected.max_players} players</Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Card icon={UserPlus} label="Players" value={scoped.data.approved} sub={`${scoped.data.pending} pending approval`} color="bg-blue-500/15 text-blue-400" />
+              <Card icon={Swords} label="Matches" value={`${scoped.data.played}/${scoped.data.matches}`} sub="Played / total" color="bg-emerald-500/15 text-emerald-400" />
+              <Card icon={Target} label="Goals" value={scoped.data.goals} sub="Total scored" color="bg-orange-500/15 text-orange-400" />
+              <Card icon={Crosshair} label="Avg Goals" value={scoped.data.avgGoals} sub="Per match" color="bg-cyan-500/15 text-cyan-400" />
+            </div>
+            <div>
+              <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                <span>Tournament completion</span>
+                <span>{scoped.data.completion}%</span>
+              </div>
+              <Progress value={scoped.data.completion} className="h-2" />
+            </div>
+          </div>
+        )}
+      </Box>
+
+      {/* Charts — member growth + tournament status */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Box title="Member Growth (14 days)" className="lg:col-span-3">
+          <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
+              <AreaChart data={stats.memberGrowth}>
                 <defs>
-                  <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="gMembers" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(217 33% 17%)" />
                 <XAxis dataKey="day" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }} />
-                <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} fill="url(#g1)" />
+                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} fill="url(#gMembers)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Box>
 
-        <Box title="Status" className="lg:col-span-2">
-          <div className="flex flex-col items-center">
-            <div className="relative h-36 w-36">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={[{ v: 62 }, { v: 38 }]} cx="50%" cy="50%" innerRadius={45} outerRadius={60} startAngle={90} endAngle={-270} dataKey="v" stroke="none">
-                    <Cell fill="#22c55e" /><Cell fill="#3b82f6" />
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 grid place-items-center text-center">
-                <div><p className="text-2xl font-bold text-white">62%</p><p className="text-[10px] text-slate-400">Done</p></div>
+        <Box title="Tournaments by Status" className="lg:col-span-2">
+          {stats.statusSplit.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No tournaments yet.</p>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="h-40 w-40 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={stats.statusSplit} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value" stroke="none">
+                      {stats.statusSplit.map((_, i) => (
+                        <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
+              <ul className="space-y-1.5 text-xs">
+                {stats.statusSplit.map((s, i) => (
+                  <li key={s.name} className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-sm" style={{ background: STATUS_COLORS[i % STATUS_COLORS.length] }} />
+                    <span className="capitalize text-muted-foreground">{s.name}</span>
+                    <span className="font-semibold">{s.value}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p className="mt-2 text-xs text-slate-400">10 Aug 2026 – 30 Aug 2026</p>
-          </div>
+          )}
         </Box>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Box title="Player Registration">
+        <Box title="Player Registrations (14 days)">
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={regData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <AreaChart data={stats.registrations}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(217 33% 17%)" />
                 <XAxis dataKey="day" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }} />
+                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} />
                 <Area type="monotone" dataKey="count" stroke="#06b6d4" strokeWidth={2} fill="#06b6d433" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Box>
-        <Box title="Goals Per Matchday">
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={goalsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="md" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }} />
-                <Bar dataKey="goals" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <Box title="Goals per Matchday">
+          {stats.goalsPerMatchday.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No played matches with matchdays yet.</p>
+          ) : (
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.goalsPerMatchday}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(217 33% 17%)" />
+                  <XAxis dataKey="md" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="goals" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Box>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card icon={Wallet} label="Collected" value={`Rs. ${collected}`} sub={`From ${players} players`} trend="↑ 18%" up color="bg-emerald-500/15 text-emerald-400" />
-        <Card icon={Award} label="Prize Pool" value={`Rs. ${prize}`} sub="Total prize" color="bg-violet-500/15 text-violet-400" />
-        <Card icon={BarChart3} label="Profit" value={`Rs. ${collected - prize}`} sub="Collected − Prize" trend="↑ 18%" up color="bg-amber-500/15 text-amber-400" />
-        <Card icon={Crosshair} label="Avg Goals" value="2.89" sub="Per match" trend="↑ 12%" up color="bg-cyan-500/15 text-cyan-400" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Box title="Quick Actions">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {[
+              { icon: Plus, label: "Create Tournament", t: "tournaments", c: "bg-blue-500/15 text-blue-400" },
+              { icon: UserPlus, label: "Manage Players", t: "players", c: "bg-emerald-500/15 text-emerald-400" },
+              { icon: Radio, label: "Tournament Manager", t: "tournaments", c: "bg-violet-500/15 text-violet-400" },
+              { icon: Megaphone, label: "Announcement", t: "announcements", c: "bg-amber-500/15 text-amber-400" },
+              { icon: Flag, label: "Reports", t: "reports", c: "bg-rose-500/15 text-rose-400" },
+              { icon: Settings, label: "Site Settings", t: "settings", c: "bg-cyan-500/15 text-cyan-400" },
+            ].map((a) => (
+              <Link
+                key={a.label}
+                to="/dashboard"
+                search={{ t: a.t }}
+                className={cn("flex flex-col items-center gap-2 rounded-xl border border-white/5 p-4 text-center transition hover:scale-[1.02]", a.c)}
+              >
+                <a.icon className="h-5 w-5" />
+                <span className="text-[11px] font-medium">{a.label}</span>
+              </Link>
+            ))}
+          </div>
+        </Box>
+
+        <Box title="Recent Activity">
+          {stats.activity.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No admin activity logged yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {stats.activity.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 rounded-lg border border-white/5 px-3 py-2 text-sm">
+                  <Activity className="h-4 w-4 shrink-0 text-brand-glow" />
+                  <span className="flex-1 truncate">{a.action}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(a.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Box>
       </div>
 
-      <Box title="Quick Actions">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {[
-            { icon: Plus, label: "Create Tournament", c: "bg-blue-500/15 text-blue-400" },
-            { icon: UserPlus, label: "Add Player", c: "bg-emerald-500/15 text-emerald-400" },
-            { icon: Calendar, label: "Generate Fixtures", c: "bg-violet-500/15 text-violet-400" },
-            { icon: Megaphone, label: "Announcement", c: "bg-amber-500/15 text-amber-400" },
-            { icon: Flag, label: "End Tournament", c: "bg-rose-500/15 text-rose-400" },
-            { icon: Download, label: "Export Data", c: "bg-cyan-500/15 text-cyan-400" },
-          ].map((a) => (
-            <button key={a.label} type="button" className={cn("flex flex-col items-center gap-2 rounded-xl border border-white/5 p-4 text-center", a.c)}>
-              <a.icon className="h-5 w-5" />
-              <span className="text-[11px] font-medium">{a.label}</span>
-            </button>
-          ))}
+      {stats.liveTournaments > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+          <div>
+            <p className="text-sm font-semibold text-emerald-300">
+              {stats.liveTournaments} tournament{stats.liveTournaments > 1 ? "s" : ""} live
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {stats.tournaments.filter((t) => ["live", "ongoing", "check_in"].includes(t.status)).map((t) => t.name).join(" · ")}
+            </p>
+          </div>
         </div>
-      </Box>
-
-      <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-        <div>
-          <p className="text-sm font-semibold text-emerald-300">Current Tournament · LIVE</p>
-          <p className="text-xs text-slate-400">{name} · {players} Players</p>
-        </div>
-      </div>
+      )}
     </div>
   );
-        }
+}
