@@ -4,6 +4,7 @@ import { logActivity } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -11,6 +12,15 @@ import { Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, playerName, type TournamentData } from "./shared";
 import { cn } from "@/lib/utils";
+
+function playerPhoto(data: TournamentData, id: string | null): string | null {
+  if (!id) return null;
+  const p = data.players.find((x) => x.id === id);
+  if (!p) return null;
+  if (p.photo_url) return p.photo_url;
+  if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
+  return null;
+}
 
 export function ResultsTab({ tournament, data }: { tournament: Tournament; data: TournamentData }) {
   const groups = useMemo(() => {
@@ -23,9 +33,8 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
   }, [data.matches, data.matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
-  const activeName = selected && groups.some(([n]) => n === selected)
-    ? selected
-    : groups[0]?.[0] ?? null;
+  const activeName =
+    selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
   const ready = data.matches.filter((m) => m.home_id && m.away_id);
@@ -43,12 +52,11 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
   return (
     <div className="space-y-4 pt-4">
       <p className="text-xs text-muted-foreground">
-        {ready.length} of {data.matches.length} matches have both participants assigned. Standings update automatically when a result is saved.
+        {ready.length} of {data.matches.length} matches have both participants assigned.
       </p>
 
-      {/* Horizontal matchday selector */}
-      <div className="overflow-x-auto pb-1 -mx-1 px-1">
-        <div className="flex gap-2 min-w-max">
+      <div className="overflow-x-auto pb-1">
+        <div className="flex gap-2">
           {groups.map(([name, matches]) => {
             const played = matches.filter((m) => m.played).length;
             const isActive = name === activeName;
@@ -58,16 +66,16 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
                 type="button"
                 onClick={() => setSelected(name)}
                 className={cn(
-                  "rounded-xl border px-4 py-3 text-left min-w-[140px] transition",
+                  "shrink-0 w-[calc((100%-1rem)/3)] min-w-[110px] max-w-[160px] rounded-xl border px-3 py-2.5 text-left transition",
                   isActive
-                    ? "border-brand bg-brand/15 shadow-[0_0_0_1px_rgba(59,130,246,0.35)]"
+                    ? "border-brand bg-brand/15"
                     : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                 )}
               >
-                <div className={cn("text-sm font-semibold", isActive && "text-brand-glow")}>
+                <div className={cn("text-sm font-semibold truncate", isActive && "text-brand-glow")}>
                   {name}
                 </div>
-                <div className="text-[11px] text-muted-foreground mt-1">
+                <div className="text-[11px] text-muted-foreground mt-0.5">
                   {played}/{matches.length} played
                 </div>
               </button>
@@ -76,7 +84,6 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
         </div>
       </div>
 
-      {/* Selected matchday results */}
       {activeName && (
         <div className="glass rounded-2xl p-4 space-y-2">
           <h3 className="text-sm font-semibold mb-1">{activeName}</h3>
@@ -86,6 +93,8 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
               match={m}
               home={playerName(data.players, m.home_id)}
               away={playerName(data.players, m.away_id)}
+              homePhoto={playerPhoto(data, m.home_id)}
+              awayPhoto={playerPhoto(data, m.away_id)}
               disabled={!m.home_id || !m.away_id}
               onSaved={() => {
                 void logActivity("result.save", { tournament: tournament.name, match: m.id });
@@ -100,11 +109,13 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 }
 
 function ResultRow({
-  match, home, away, disabled, onSaved,
+  match, home, away, homePhoto, awayPhoto, disabled, onSaved,
 }: {
   match: Match;
   home: string;
   away: string;
+  homePhoto: string | null;
+  awayPhoto: string | null;
   disabled: boolean;
   onSaved: () => void;
 }) {
@@ -154,20 +165,35 @@ function ResultRow({
 
   return (
     <div className={`rounded-xl border border-border/60 p-3 space-y-2 ${disabled ? "opacity-50" : ""}`}>
-      <div className="flex items-center gap-2">
-        <span className="flex-1 min-w-0 truncate text-right text-sm font-medium">{home}</span>
-        <Input className="w-14 h-8 text-center" inputMode="numeric" placeholder="-" value={hs}
+      <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
+          <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px] text-right">{home}</span>
+          <Avatar className="h-7 w-7 shrink-0">
+            <AvatarImage src={homePhoto ?? undefined} />
+            <AvatarFallback className="bg-secondary text-[10px]">{home.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </div>
+
+        <Input className="w-12 h-8 text-center shrink-0" inputMode="numeric" placeholder="-" value={hs}
           onChange={(e) => setHs(e.target.value)} disabled={disabled} />
-        <span className="text-muted-foreground">-</span>
-        <Input className="w-14 h-8 text-center" inputMode="numeric" placeholder="-" value={as}
+        <span className="text-muted-foreground text-xs">-</span>
+        <Input className="w-12 h-8 text-center shrink-0" inputMode="numeric" placeholder="-" value={as}
           onChange={(e) => setAs(e.target.value)} disabled={disabled} />
-        <span className="flex-1 min-w-0 truncate text-sm font-medium">{away}</span>
-        {match.played && <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0">played</Badge>}
+
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Avatar className="h-7 w-7 shrink-0">
+            <AvatarImage src={awayPhoto ?? undefined} />
+            <AvatarFallback className="bg-secondary text-[10px]">{away.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px]">{away}</span>
+        </div>
+
+        {match.played && <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0 text-[10px]">played</Badge>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <Select value={status} onValueChange={setStatus} disabled={disabled}>
-          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="scheduled">Scheduled</SelectItem>
             <SelectItem value="live">Live</SelectItem>
@@ -198,10 +224,10 @@ function ResultRow({
             <span className="text-muted-foreground">-</span>
             <Input className="h-8 w-14 text-center" inputMode="numeric" value={pa} onChange={(e) => setPa(e.target.value)} />
           </div>
-          <Input className="h-8 text-xs" placeholder="Extra time (e.g. 3 - 1 AET)" value={et} onChange={(e) => setEt(e.target.value)} />
+          <Input className="h-8 text-xs" placeholder="Extra time" value={et} onChange={(e) => setEt(e.target.value)} />
           <Input className="h-8 text-xs" placeholder="Match notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       )}
     </div>
   );
-      }
+          }
