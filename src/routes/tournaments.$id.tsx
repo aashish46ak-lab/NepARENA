@@ -1,0 +1,427 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
+  Award, Loader2, ExternalLink, UserPlus, CheckCircle2,
+} from "lucide-react";
+import { PageShell } from "@/components/PageShell";
+import { SmartImage } from "@/components/SmartImage";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  supabase,
+  type Tournament, type TournamentParticipant, type Match, type Matchday,
+} from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { sortStandings, type StandingRow } from "@/components/tournament-manager/shared";
+
+export const Route = createFileRoute("/tournaments/$id")({
+  head: () => ({
+    meta: [
+      { title: "Tournament — eFootball Nepal" },
+      { name: "description", content: "Tournament standings, fixtures, rules and registration for eFootball Nepal competitions." },
+      { property: "og:title", content: "Tournament — eFootball Nepal" },
+      { property: "og:description", content: "Tournament standings, fixtures, rules and registration." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: TournamentDetailPage,
+});
+
+const TABS = [
+  { id: "overview", label: "Overview", icon: Trophy },
+  { id: "standings", label: "Standings", icon: Table2 },
+  { id: "fixtures", label: "Fixtures", icon: List },
+  { id: "rules", label: "Rules", icon: FileText },
+  { id: "report", label: "Report", icon: ShieldAlert },
+] as const;
+
+function TournamentDetailPage() {
+  const { id } = Route.useParams();
+  const [tab, setTab] = useState<string>("overview");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["public_tournament", id],
+    queryFn: async () => {
+      const [t, p, m, md, s] = await Promise.all([
+        supabase.from("tournaments").select("*").eq("id", id).maybeSingle(),
+        supabase.from("tournament_participants").select("*").eq("tournament_id", id).eq("status", "approved").order("created_at"),
+        supabase.from("matches").select("*").eq("tournament_id", id).order("round").order("position"),
+        supabase.from("matchdays").select("*").eq("tournament_id", id).order("sort_order"),
+        supabase.from("tournament_standings").select("*").eq("tournament_id", id),
+      ]);
+      return {
+        tournament: (t.data as Tournament | null) ?? null,
+        players: (p.data ?? []) as TournamentParticipant[],
+        matches: (m.data ?? []) as Match[],
+        matchdays: (md.data ?? []) as Matchday[],
+        standings: sortStandings((s.data ?? []) as StandingRow[]),
+      };
+    },
+  });
+
+  if (isLoading || !data) {
+    return (
+      <PageShell>
+        <div className="grid min-h-[50vh] place-items-center">
+          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+        </div>
+      </PageShell>
+    );
+  }
+
+  const { tournament, players, matches, matchdays, standings } = data;
+
+  if (!tournament) {
+    return (
+      <PageShell>
+        <div className="mx-auto max-w-xl py-24 text-center">
+          <Trophy className="mx-auto h-10 w-10 text-muted-foreground" />
+          <h1 className="mt-4 text-2xl font-bold">Tournament not found</h1>
+          <Button asChild className="mt-6 bg-gradient-brand">
+            <Link to="/tournaments">Browse tournaments</Link>
+          </Button>
+        </div>
+      </PageShell>
+    );
+  }
+
+  const nameOf = (pid: string | null) =>
+    pid ? (players.find((p) => p.id === pid)?.player_name ?? "TBD") : "TBD";
+
+  return (
+    <PageShell>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-10">
+        {/* Hero */}
+        <div className="glass overflow-hidden rounded-3xl">
+          {tournament.banner_url && (
+            <SmartImage src={tournament.banner_url} alt={tournament.name} ratio="aspect-[21/9]" />
+          )}
+          <div className="flex flex-wrap items-center gap-4 p-6">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-brand">
+              <Trophy className="text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold md:text-3xl">{tournament.name}</h1>
+                <Badge className="bg-brand/25 text-brand-glow capitalize">
+                  {tournament.status.replace(/_/g, " ")}
+                </Badge>
+                {tournament.registration_open && (
+                  <Badge className="bg-emerald-500/20 text-emerald-300">Registration open</Badge>
+                )}
+              </div>
+              {tournament.description && (
+                <p className="mt-1 text-sm text-muted-foreground">{tournament.description}</p>
+              )}
+            </div>
+            {tournament.registration_open && <RegisterButton tournament={tournament} players={players} />}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="glass flex flex-wrap gap-2 rounded-2xl p-3">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition",
+                tab === t.id ? "bg-primary text-primary-foreground" : "hover:bg-accent",
+              )}
+            >
+              <t.icon size={16} />
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="glass rounded-2xl p-6">
+          {tab === "overview" && (
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+              <Info icon={<Users className="h-5 w-5 text-brand-glow" />} title="Players" value={players.length} />
+              <Info
+                icon={<Calendar className="h-5 w-5 text-brand-glow" />}
+                title="Starts"
+                value={tournament.starts_at ? new Date(tournament.starts_at).toLocaleDateString() : "—"}
+              />
+              <Info icon={<Award className="h-5 w-5 text-brand-glow" />} title="Prize Pool" value={tournament.prize_pool || "—"} />
+              <Info
+                icon={<List className="h-5 w-5 text-brand-glow" />}
+                title="Matches"
+                value={`${matches.filter((m) => m.played).length} / ${matches.length}`}
+              />
+            </div>
+          )}
+
+          {tab === "standings" && (
+            <div>
+              <h2 className="mb-5 text-xl font-bold">Standings</h2>
+              {standings.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Standings appear once matches are played.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                        <th className="p-3">#</th>
+                        <th className="p-3">Player</th>
+                        <th className="p-3 text-center">MP</th>
+                        <th className="p-3 text-center">W</th>
+                        <th className="p-3 text-center">D</th>
+                        <th className="p-3 text-center">L</th>
+                        <th className="p-3 text-center">GF</th>
+                        <th className="p-3 text-center">GA</th>
+                        <th className="p-3 text-center">GD</th>
+                        <th className="p-3 text-center font-bold">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.map((s, i) => (
+                        <tr key={s.participant_id} className="border-b border-border/40">
+                          <td className="p-3 text-muted-foreground">{i + 1}</td>
+                          <td className="p-3 font-medium">{s.player_name}</td>
+                          <td className="p-3 text-center">{s.played}</td>
+                          <td className="p-3 text-center">{s.won}</td>
+                          <td className="p-3 text-center">{s.drawn}</td>
+                          <td className="p-3 text-center">{s.lost}</td>
+                          <td className="p-3 text-center">{s.goals_for}</td>
+                          <td className="p-3 text-center">{s.goals_against}</td>
+                          <td className="p-3 text-center">{s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}</td>
+                          <td className="p-3 text-center font-bold text-brand-glow">{s.points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "fixtures" && (
+            <div className="space-y-6">
+              {matches.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Fixtures haven't been generated yet.
+                </p>
+              ) : (
+                (matchdays.length > 0
+                  ? matchdays.map((d) => ({ label: d.name, id: d.id }))
+                  : [...new Set(matches.map((m) => m.round))].map((r) => ({ label: `Round ${r}`, id: `r-${r}` }))
+                ).map((group) => {
+                  const groupMatches = matches.filter((m) =>
+                    matchdays.length > 0
+                      ? m.matchday_id === group.id
+                      : `r-${m.round}` === group.id,
+                  );
+                  if (groupMatches.length === 0) return null;
+                  return (
+                    <div key={group.id}>
+                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.label}
+                      </h3>
+                      <div className="space-y-2">
+                        {groupMatches.map((m) => (
+                          <div
+                            key={m.id}
+                            className="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-4 py-3"
+                          >
+                            <span className={cn("flex-1 text-right", m.played && (m.home_score ?? 0) > (m.away_score ?? 0) && "font-bold text-brand-glow")}>
+                              {nameOf(m.home_id)}
+                            </span>
+                            <span className="shrink-0 rounded-lg bg-secondary px-3 py-1 text-sm font-bold">
+                              {m.played
+                                ? `${m.home_score} - ${m.away_score}${m.penalty_home != null && m.penalty_away != null ? ` (${m.penalty_home}-${m.penalty_away} p)` : ""}`
+                                : "vs"}
+                            </span>
+                            <span className={cn("flex-1", m.played && (m.away_score ?? 0) > (m.home_score ?? 0) && "font-bold text-brand-glow")}>
+                              {nameOf(m.away_id)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {tab === "rules" && (
+            <div>
+              <h2 className="mb-4 text-xl font-bold">Tournament Rules</h2>
+              {tournament.rules_text ? (
+                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                  {tournament.rules_text}
+                </p>
+              ) : tournament.rules_url ? (
+                <Button asChild variant="outline">
+                  <a href={tournament.rules_url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" /> View rules document
+                  </a>
+                </Button>
+              ) : (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Rules for this tournament haven't been published yet.
+                </p>
+              )}
+              {tournament.rules_text && tournament.rules_url && (
+                <Button asChild variant="outline" className="mt-4">
+                  <a href={tournament.rules_url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" /> Full rules document
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+
+          {tab === "report" && <ReportForm tournament={tournament} players={players} />}
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function Info({ icon, title, value }: { icon: React.ReactNode; title: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border/60 p-5">
+      {icon}
+      <p className="mt-2 text-sm text-muted-foreground">{title}</p>
+      <h3 className="text-xl font-bold">{value}</h3>
+    </div>
+  );
+}
+
+function RegisterButton({ tournament, players }: { tournament: Tournament; players: TournamentParticipant[] }) {
+  const { user, profile } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const existing = user ? players.find((p) => p.user_id === user.id) : undefined;
+
+  if (!user) {
+    return (
+      <Button asChild className="bg-gradient-brand">
+        <Link to="/auth">
+          <UserPlus className="mr-2 h-4 w-4" /> Sign in to register
+        </Link>
+      </Button>
+    );
+  }
+  if (existing) {
+    return (
+      <Badge className="bg-emerald-500/20 px-4 py-2 text-emerald-300">
+        <CheckCircle2 className="mr-1.5 h-4 w-4" /> You're registered
+      </Badge>
+    );
+  }
+
+  const register = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("tournament_participants").insert({
+      tournament_id: tournament.id,
+      user_id: user.id,
+      player_name: profile?.username ?? user.email?.split("@")[0] ?? "Player",
+      club: profile?.favourite_club ?? null,
+      status: "pending",
+    });
+    setBusy(false);
+    if (error) toast.error(error.message);
+    else toast.success("Registration submitted — an admin will approve you shortly.");
+  };
+
+  return (
+    <Button onClick={register} disabled={busy} className="bg-gradient-brand">
+      {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+      Register
+    </Button>
+  );
+}
+
+function ReportForm({ tournament, players }: { tournament: Tournament; players: TournamentParticipant[] }) {
+  const { user } = useAuth();
+  const [player, setPlayer] = useState("");
+  const [reason, setReason] = useState("");
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!user) {
+    return (
+      <div className="py-6 text-center">
+        <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
+        <p className="mt-3 text-sm text-muted-foreground">Sign in to submit a report.</p>
+        <Button asChild className="mt-4 bg-gradient-brand">
+          <Link to="/auth">Sign in</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const submit = async () => {
+    if (!reason.trim()) {
+      toast.error("Please give a short reason.");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: user.id,
+      type: player ? "player" : "tournament",
+      tournament_id: tournament.id,
+      player_name: player || null,
+      reason: reason.trim(),
+      description: details.trim() || null,
+    });
+    setBusy(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Report submitted — the admins will review it.");
+      setReason("");
+      setDetails("");
+      setPlayer("");
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-xl space-y-4">
+      <h2 className="text-xl font-bold">Report an issue</h2>
+      <p className="text-sm text-muted-foreground">
+        Report a player (no-show, cheating, abuse) or a tournament issue. Admins review every report.
+      </p>
+      <Select value={player} onValueChange={setPlayer}>
+        <SelectTrigger>
+          <SelectValue placeholder="Report the tournament itself (or pick a player)" />
+        </SelectTrigger>
+        <SelectContent>
+          {players.filter((p) => p.user_id !== user.id).map((p) => (
+            <SelectItem key={p.id} value={p.player_name}>{p.player_name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Input
+        placeholder="Short reason (e.g. opponent didn't show up)"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <Textarea
+        rows={4}
+        placeholder="Details, evidence, match info…"
+        value={details}
+        onChange={(e) => setDetails(e.target.value)}
+      />
+      <Button onClick={submit} disabled={busy} className="bg-gradient-brand">
+        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Submit report
+      </Button>
+    </div>
+  );
+}
