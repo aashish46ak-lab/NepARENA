@@ -373,20 +373,21 @@ export function FixturesTab({ tournament, data }: Props) {
           </div>
 
           {activeName && (
-            <div className="glass rounded-2xl p-4 space-y-2">
+            <div className="glass inline-block w-full max-w-[340px] rounded-2xl p-4 space-y-2 overflow-hidden">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">{activeName}</h3>
+                <h3 className="text-sm font-semibold truncate">{activeName}</h3>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8"
+                  className="h-8 shrink-0"
                   onClick={() => downloadMatchday(activeName, activeMatches)}
                 >
                   <Download className="h-3.5 w-3.5 mr-1.5" />
-                  Download PNG
+                  PNG
                 </Button>
               </div>
 
+              <div className="space-y-2 overflow-x-auto">
               {activeMatches.map((m) => {
                 const homeP = getPlayer(data, m.home_id);
                 const awayP = getPlayer(data, m.away_id);
@@ -452,6 +453,7 @@ export function FixturesTab({ tournament, data }: Props) {
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
         </>
@@ -547,4 +549,4 @@ function drawCircleAvatar(
   ctx.lineWidth = 1;
   ctx.stroke();
       }
-                            
+                   
