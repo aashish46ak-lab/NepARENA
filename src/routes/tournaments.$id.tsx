@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
@@ -265,9 +265,23 @@ function PublicFixtures({
   }, [matches, matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [windowStart, setWindowStart] = useState(0);
+
   const activeName =
     selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
+
+  useEffect(() => {
+    if (!activeName || groups.length === 0) return;
+    const idx = groups.findIndex(([n]) => n === activeName);
+    if (idx < 0) return;
+    if (idx < windowStart) setWindowStart(idx);
+    else if (idx >= windowStart + 3) setWindowStart(Math.max(0, idx - 2));
+  }, [activeName, groups, windowStart]);
+
+  const maxStart = Math.max(0, groups.length - 3);
+  const safeStart = Math.min(windowStart, maxStart);
+  const visibleGroups = groups.slice(safeStart, safeStart + 3);
 
   const labelOf = (id: string | null) => {
     if (!id) return "TBD";
@@ -292,10 +306,19 @@ function PublicFixtures({
 
   return (
     <div className="space-y-4">
-      {/* Compact chips — size fits name */}
-      <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1">
-        <div className="flex gap-2">
-          {groups.map(([name, list]) => {
+      <div className="flex items-center gap-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0"
+          disabled={safeStart <= 0}
+          onClick={() => setWindowStart((s) => Math.max(0, s - 1))}
+        >
+          ‹
+        </Button>
+
+        <div className="flex flex-1 gap-2 justify-center min-w-0">
+          {visibleGroups.map(([name, list]) => {
             const played = list.filter((m) => m.played).length;
             const isActive = name === activeName;
             return (
@@ -304,7 +327,7 @@ function PublicFixtures({
                 type="button"
                 onClick={() => setSelected(name)}
                 className={cn(
-                  "snap-start shrink-0 w-auto rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
+                  "shrink-0 w-auto rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
                   isActive
                     ? "border-brand bg-brand/15"
                     : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
@@ -320,6 +343,16 @@ function PublicFixtures({
             );
           })}
         </div>
+
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0"
+          disabled={safeStart >= maxStart}
+          onClick={() => setWindowStart((s) => Math.min(maxStart, s + 1))}
+        >
+          ›
+        </Button>
       </div>
 
       {activeName && (
@@ -432,12 +465,46 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
+  const [myReports, setMyReports] = useState<
+    {
+      id: string;
+      reason: string;
+      description: string | null;
+      player_name: string | null;
+      status: string;
+      created_at: string;
+      resolved_at: string | null;
+    }[]
+  >([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+
+  const loadMyReports = async () => {
+    if (!user) return;
+    setLoadingReports(true);
+    const { data, error } = await supabase
+      .from("reports")
+      .select("id, reason, description, player_name, status, created_at, resolved_at")
+      .eq("reporter_id", user.id)
+      .eq("tournament_id", tournament.id)
+      .order("created_at", { ascending: false });
+    setLoadingReports(false);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setMyReports(data ?? []);
+  };
+
+  useEffect(() => {
+    void loadMyReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, tournament.id]);
 
   if (!user) {
     return (
       <div className="py-6 text-center">
         <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
-        <p className="mt-3 text-sm text-muted-foreground">Sign in to submit a report.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Sign in to submit a report and track status.</p>
         <Button asChild className="mt-4 bg-gradient-brand">
           <Link to="/auth">Sign in</Link>
         </Button>
@@ -454,52 +521,4 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     const { error } = await supabase.from("reports").insert({
       reporter_id: user.id,
       type: player ? "player" : "tournament",
-      tournament_id: tournament.id,
-      player_name: player || null,
-      reason: reason.trim(),
-      description: details.trim() || null,
-    });
-    setBusy(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Report submitted — the admins will review it.");
-      setReason("");
-      setDetails("");
-      setPlayer("");
-    }
-  };
-
-  return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <h2 className="text-xl font-bold">Report an issue</h2>
-      <p className="text-sm text-muted-foreground">
-        Report a player (no-show, cheating, abuse) or a tournament issue. Admins review every report.
-      </p>
-      <Select value={player} onValueChange={setPlayer}>
-        <SelectTrigger>
-          <SelectValue placeholder="Report the tournament itself (or pick a player)" />
-        </SelectTrigger>
-        <SelectContent>
-          {players.filter((p) => p.user_id !== user.id).map((p) => (
-            <SelectItem key={p.id} value={p.player_name}>{p.player_name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Input
-        placeholder="Short reason (e.g. opponent didn't show up)"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      />
-      <Textarea
-        rows={4}
-        placeholder="Details, evidence, match info…"
-        value={details}
-        onChange={(e) => setDetails(e.target.value)}
-      />
-      <Button onClick={submit} disabled={busy} className="bg-gradient-brand">
-        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Submit report
-      </Button>
-    </div>
-  );
-                            }
+      tournament_id: tournament.id
