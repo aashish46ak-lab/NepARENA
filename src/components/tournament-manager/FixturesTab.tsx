@@ -23,7 +23,6 @@ function getPlayer(data: TournamentData, id: string | null): TournamentParticipa
   return data.players.find((p) => p.id === id);
 }
 
-/** Club name if set, otherwise player name */
 function sideLabel(p: TournamentParticipant | undefined): string {
   if (!p) return "TBD";
   const club = p.club?.trim();
@@ -273,7 +272,7 @@ export function FixturesTab({ tournament, data }: Props) {
         </div>
       ) : (
         <>
-          {/* Only 3 matchdays visible; scroll for more */}
+          {/* Compact matchday chips — size fits name */}
           <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1">
             <div className="flex gap-2">
               {groups.map(([name, matches]) => {
@@ -285,13 +284,13 @@ export function FixturesTab({ tournament, data }: Props) {
                     type="button"
                     onClick={() => setSelected(name)}
                     className={cn(
-                      "snap-start shrink-0 w-[calc((100%-1rem)/3)] min-w-[calc((100%-1rem)/3)] rounded-xl border px-3 py-2.5 text-left transition",
+                      "snap-start shrink-0 w-auto rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
                       isActive
                         ? "border-brand bg-brand/15"
                         : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                     )}
                   >
-                    <div className={cn("text-sm font-semibold truncate", isActive && "text-brand-glow")}>
+                    <div className={cn("text-sm font-semibold", isActive && "text-brand-glow")}>
                       {name}
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -335,7 +334,6 @@ export function FixturesTab({ tournament, data }: Props) {
                     key={m.id}
                     className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
                   >
-                    {/* Home: Logo + Club (or player if no club) */}
                     <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
                       <span className="text-sm font-semibold truncate max-w-[140px] text-right">
                         {homeLabel}
@@ -348,12 +346,10 @@ export function FixturesTab({ tournament, data }: Props) {
                       </Avatar>
                     </div>
 
-                    {/* Score: empty until result saved */}
                     <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
                       {scoreText || "\u00A0"}
                     </div>
 
-                    {/* Away: Logo + Club (or player if no club) */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={awayPhoto ?? undefined} />
@@ -451,4 +447,4 @@ function roundRect(
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
-                                  }
+}
