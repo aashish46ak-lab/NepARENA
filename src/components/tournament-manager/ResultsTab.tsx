@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { supabase, type Match, type Tournament } from "@/lib/supabase";
+import { supabase, type Match, type Tournament, type TournamentParticipant } from "@/lib/supabase";
 import { logActivity } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,21 @@ import {
 } from "@/components/ui/select";
 import { Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { matchdayName, playerName, type TournamentData } from "./shared";
+import { matchdayName, type TournamentData } from "./shared";
 import { cn } from "@/lib/utils";
 
-function playerPhoto(data: TournamentData, id: string | null): string | null {
-  if (!id) return null;
-  const p = data.players.find((x) => x.id === id);
+function getPlayer(data: TournamentData, id: string | null): TournamentParticipant | undefined {
+  if (!id) return undefined;
+  return data.players.find((p) => p.id === id);
+}
+
+function sideLabel(p: TournamentParticipant | undefined): string {
+  if (!p) return "TBD";
+  const club = p.club?.trim();
+  return club || p.player_name;
+}
+
+function sidePhoto(data: TournamentData, p: TournamentParticipant | undefined): string | null {
   if (!p) return null;
   if (p.photo_url) return p.photo_url;
   if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
@@ -37,8 +46,6 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
     selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
-  const ready = data.matches.filter((m) => m.home_id && m.away_id);
-
   if (data.matches.length === 0) {
     return (
       <div className="pt-4">
@@ -51,11 +58,8 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 
   return (
     <div className="space-y-4 pt-4">
-      <p className="text-xs text-muted-foreground">
-        {ready.length} of {data.matches.length} matches have both participants assigned.
-      </p>
-
-      <div className="overflow-x-auto pb-1">
+      {/* Only 3 matchdays visible */}
+      <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1">
         <div className="flex gap-2">
           {groups.map(([name, matches]) => {
             const played = matches.filter((m) => m.played).length;
@@ -66,7 +70,7 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
                 type="button"
                 onClick={() => setSelected(name)}
                 className={cn(
-                  "shrink-0 w-[calc((100%-1rem)/3)] min-w-[110px] max-w-[160px] rounded-xl border px-3 py-2.5 text-left transition",
+                  "snap-start shrink-0 w-[calc((100%-1rem)/3)] min-w-[calc((100%-1rem)/3)] rounded-xl border px-3 py-2.5 text-left transition",
                   isActive
                     ? "border-brand bg-brand/15"
                     : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
@@ -87,21 +91,25 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
       {activeName && (
         <div className="glass rounded-2xl p-4 space-y-2">
           <h3 className="text-sm font-semibold mb-1">{activeName}</h3>
-          {activeMatches.map((m) => (
-            <ResultRow
-              key={m.id}
-              match={m}
-              home={playerName(data.players, m.home_id)}
-              away={playerName(data.players, m.away_id)}
-              homePhoto={playerPhoto(data, m.home_id)}
-              awayPhoto={playerPhoto(data, m.away_id)}
-              disabled={!m.home_id || !m.away_id}
-              onSaved={() => {
-                void logActivity("result.save", { tournament: tournament.name, match: m.id });
-                data.reload();
-              }}
-            />
-          ))}
+          {activeMatches.map((m) => {
+            const homeP = getPlayer(data, m.home_id);
+            const awayP = getPlayer(data, m.away_id);
+            return (
+              <ResultRow
+                key={m.id}
+                match={m}
+                homeLabel={sideLabel(homeP)}
+                awayLabel={sideLabel(awayP)}
+                homePhoto={sidePhoto(data, homeP)}
+                awayPhoto={sidePhoto(data, awayP)}
+                disabled={!m.home_id || !m.away_id}
+                onSaved={() => {
+                  void logActivity("result.save", { tournament: tournament.name, match: m.id });
+                  data.reload();
+                }}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -109,11 +117,11 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 }
 
 function ResultRow({
-  match, home, away, homePhoto, awayPhoto, disabled, onSaved,
+  match, homeLabel, awayLabel, homePhoto, awayPhoto, disabled, onSaved,
 }: {
   match: Match;
-  home: string;
-  away: string;
+  homeLabel: string;
+  awayLabel: string;
   homePhoto: string | null;
   awayPhoto: string | null;
   disabled: boolean;
@@ -121,12 +129,7 @@ function ResultRow({
 }) {
   const [hs, setHs] = useState(match.home_score?.toString() ?? "");
   const [as, setAs] = useState(match.away_score?.toString() ?? "");
-  const [ph, setPh] = useState(match.penalty_home?.toString() ?? "");
-  const [pa, setPa] = useState(match.penalty_away?.toString() ?? "");
-  const [et, setEt] = useState(match.extra_time ?? "");
-  const [notes, setNotes] = useState(match.notes ?? "");
   const [status, setStatus] = useState(match.status ?? "scheduled");
-  const [expanded, setExpanded] = useState(false);
 
   const save = async () => {
     const played = hs !== "" && as !== "";
@@ -135,12 +138,8 @@ function ResultRow({
       .update({
         home_score: hs === "" ? null : Number(hs),
         away_score: as === "" ? null : Number(as),
-        penalty_home: ph === "" ? null : Number(ph),
-        penalty_away: pa === "" ? null : Number(pa),
-        extra_time: et || null,
-        notes: notes || null,
-        status,
-        played: played || status === "finished",
+        status: played ? "finished" : status,
+        played,
       })
       .eq("id", match.id);
     if (error) return toast.error(error.message);
@@ -152,82 +151,72 @@ function ResultRow({
     const { error } = await supabase
       .from("matches")
       .update({
-        home_score: null, away_score: null,
-        penalty_home: null, penalty_away: null,
-        extra_time: null, notes: null,
-        status: "scheduled", played: false,
+        home_score: null,
+        away_score: null,
+        status: "scheduled",
+        played: false,
       })
       .eq("id", match.id);
     if (error) return toast.error(error.message);
+    setHs("");
+    setAs("");
+    setStatus("scheduled");
     toast.success("Result cleared");
     onSaved();
   };
 
   return (
     <div className={`rounded-xl border border-border/60 p-3 space-y-2 ${disabled ? "opacity-50" : ""}`}>
-      <div className="flex items-center gap-1.5">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
-          <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px] text-right">{home}</span>
-          <Avatar className="h-7 w-7 shrink-0">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+          <span className="text-sm font-semibold truncate max-w-[120px] text-right">{homeLabel}</span>
+          <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={homePhoto ?? undefined} />
-            <AvatarFallback className="bg-secondary text-[10px]">{home.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-secondary text-[10px]">{homeLabel.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
         </div>
 
-        <Input className="w-12 h-8 text-center shrink-0" inputMode="numeric" placeholder="-" value={hs}
-          onChange={(e) => setHs(e.target.value)} disabled={disabled} />
+        <Input
+          className="w-12 h-8 text-center shrink-0"
+          inputMode="numeric"
+          placeholder=""
+          value={hs}
+          onChange={(e) => setHs(e.target.value)}
+          disabled={disabled}
+        />
         <span className="text-muted-foreground text-xs">-</span>
-        <Input className="w-12 h-8 text-center shrink-0" inputMode="numeric" placeholder="-" value={as}
-          onChange={(e) => setAs(e.target.value)} disabled={disabled} />
+        <Input
+          className="w-12 h-8 text-center shrink-0"
+          inputMode="numeric"
+          placeholder=""
+          value={as}
+          onChange={(e) => setAs(e.target.value)}
+          disabled={disabled}
+        />
 
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <Avatar className="h-7 w-7 shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={awayPhoto ?? undefined} />
-            <AvatarFallback className="bg-secondary text-[10px]">{away.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-secondary text-[10px]">{awayLabel.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <span className="text-xs font-medium truncate max-w-[90px] sm:max-w-[120px]">{away}</span>
+          <span className="text-sm font-semibold truncate max-w-[120px]">{awayLabel}</span>
         </div>
 
-        {match.played && <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0 text-[10px]">played</Badge>}
+        {match.played && (
+          <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0 text-[10px]">played</Badge>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={status} onValueChange={setStatus} disabled={disabled}>
-          <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="live">Live</SelectItem>
-            <SelectItem value="paused">Paused</SelectItem>
-            <SelectItem value="finished">Finished</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded((v) => !v)} disabled={disabled}>
-          {expanded ? "Hide details" : "Pens / ET / notes"}
-        </Button>
-        <div className="ml-auto flex gap-1.5">
-          {match.played && (
-            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={clear} title="Clear result">
-              <RotateCcw className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          <Button size="sm" className="h-8 bg-gradient-brand text-primary-foreground" onClick={save} disabled={disabled}>
-            <Save className="h-3.5 w-3.5 mr-1" /> Save
+      <div className="flex justify-end gap-1.5">
+        {match.played && (
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={clear} title="Clear result">
+            <RotateCcw className="h-3.5 w-3.5" />
           </Button>
-        </div>
+        )}
+        <Button size="sm" className="h-8 bg-gradient-brand text-primary-foreground" onClick={save} disabled={disabled}>
+          <Save className="h-3.5 w-3.5 mr-1" /> Save
+        </Button>
       </div>
-
-      {expanded && (
-        <div className="grid gap-2 sm:grid-cols-3 pt-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground shrink-0">Pens</span>
-            <Input className="h-8 w-14 text-center" inputMode="numeric" value={ph} onChange={(e) => setPh(e.target.value)} />
-            <span className="text-muted-foreground">-</span>
-            <Input className="h-8 w-14 text-center" inputMode="numeric" value={pa} onChange={(e) => setPa(e.target.value)} />
-          </div>
-          <Input className="h-8 text-xs" placeholder="Extra time" value={et} onChange={(e) => setEt(e.target.value)} />
-          <Input className="h-8 text-xs" placeholder="Match notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </div>
-      )}
     </div>
   );
-          }
+        }
