@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase, type Match, type Tournament } from "@/lib/supabase";
 import { generateFixtures, bracketLabel } from "@/lib/brackets";
 import { logActivity } from "@/lib/activity";
@@ -10,6 +10,7 @@ import { Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, playerName, type TournamentData } from "./shared";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { cn } from "@/lib/utils";
 
 interface Props {
   tournament: Tournament;
@@ -25,6 +26,21 @@ export function FixturesTab({ tournament, data }: Props) {
     settings?.logo_url ||
     "https://efootballnepal.vercel.app/android-chrome-512x512.png";
   const brandName = settings?.site_name || "eFootball Nepal";
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    for (const m of data.matches) {
+      const key = matchdayName(data.matchdays, m);
+      map.set(key, [...(map.get(key) ?? []), m]);
+    }
+    return [...map.entries()];
+  }, [data.matches, data.matchdays]);
+
+  const [selected, setSelected] = useState<string | null>(null);
+  const activeName = selected && groups.some(([n]) => n === selected)
+    ? selected
+    : groups[0]?.[0] ?? null;
+  const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
   const generate = async () => {
     if (approved.length < 2) return toast.error("Need at least 2 approved players");
@@ -83,6 +99,7 @@ export function FixturesTab({ tournament, data }: Props) {
       tournament: tournament.name,
       matches: payload.length,
     });
+    setSelected(null);
     data.reload();
   };
 
@@ -133,15 +150,12 @@ export function FixturesTab({ tournament, data }: Props) {
       return;
     }
 
-    // Background
     ctx.fillStyle = "#0b1220";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Accent bar
     ctx.fillStyle = "#1d4ed8";
     ctx.fillRect(0, 0, canvas.width, 6);
 
-    // Logo
     const logoSize = 72;
     try {
       const img = await loadImage(logoUrl);
@@ -150,18 +164,16 @@ export function FixturesTab({ tournament, data }: Props) {
       ctx.fill();
       ctx.drawImage(img, padding, 36, logoSize, logoSize);
     } catch {
-      // ignore logo load failure
+      // ignore
     }
 
-    // Brand + title
     ctx.fillStyle = "#60a5fa";
     ctx.font = "bold 18px system-ui, sans-serif";
     ctx.fillText((brandName || "eFootball Nepal").toUpperCase(), padding + logoSize + 20, 58);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 34px system-ui, sans-serif";
-    const title = `${tournament.name} — ${matchdayLabel}`;
-    ctx.fillText(title, padding + logoSize + 20, 100);
+    ctx.fillText(`${tournament.name} — ${matchdayLabel}`, padding + logoSize + 20, 100);
 
     ctx.fillStyle = "#94a3b8";
     ctx.font = "16px system-ui, sans-serif";
@@ -171,14 +183,12 @@ export function FixturesTab({ tournament, data }: Props) {
       128,
     );
 
-    // Divider
     ctx.strokeStyle = "rgba(148,163,184,0.25)";
     ctx.beginPath();
     ctx.moveTo(padding, headerH - 10);
     ctx.lineTo(width - padding, headerH - 10);
     ctx.stroke();
 
-    // Column headers
     let y = headerH + 10;
     ctx.fillStyle = "#64748b";
     ctx.font = "bold 14px system-ui, sans-serif";
@@ -191,7 +201,6 @@ export function FixturesTab({ tournament, data }: Props) {
     ctx.textAlign = "left";
     ctx.fillText("AWAY", width / 2 + 60, y);
 
-    // Matches
     y += 24;
     if (matches.length === 0) {
       ctx.textAlign = "center";
@@ -230,7 +239,6 @@ export function FixturesTab({ tournament, data }: Props) {
       });
     }
 
-    // Footer
     ctx.textAlign = "center";
     ctx.fillStyle = "#64748b";
     ctx.font = "14px system-ui, sans-serif";
@@ -240,7 +248,6 @@ export function FixturesTab({ tournament, data }: Props) {
       canvas.height - 24,
     );
 
-    // Download PNG
     const fileSafe = `\( {tournament.name}- \){matchdayLabel}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -251,13 +258,6 @@ export function FixturesTab({ tournament, data }: Props) {
     link.click();
     toast.success("Fixture image downloaded");
   };
-
-  // Group matches by matchday (or round when no matchday)
-  const groups = new Map<string, Match[]>();
-  for (const m of data.matches) {
-    const key = matchdayName(data.matchdays, m);
-    groups.set(key, [...(groups.get(key) ?? []), m]);
-  }
 
   return (
     <div className="space-y-4 pt-4">
@@ -287,55 +287,86 @@ export function FixturesTab({ tournament, data }: Props) {
           No fixtures yet. Generate them automatically or add matches manually.
         </div>
       ) : (
-        [...groups.entries()].map(([name, matches]) => (
-          <div key={name} className="glass rounded-2xl p-4 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {name}
-              </h3>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8"
-                onClick={() => downloadMatchday(name, matches)}
-              >
-                <Download className="h-3.5 w-3.5 mr-1.5" />
-                Download PNG
-              </Button>
+        <>
+          {/* Horizontal matchday selector */}
+          <div className="overflow-x-auto pb-1 -mx-1 px-1">
+            <div className="flex gap-2 min-w-max">
+              {groups.map(([name, matches]) => {
+                const played = matches.filter((m) => m.played).length;
+                const isActive = name === activeName;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setSelected(name)}
+                    className={cn(
+                      "rounded-xl border px-4 py-3 text-left min-w-[140px] transition",
+                      isActive
+                        ? "border-brand bg-brand/15 shadow-[0_0_0_1px_rgba(59,130,246,0.35)]"
+                        : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
+                    )}
+                  >
+                    <div className={cn("text-sm font-semibold", isActive && "text-brand-glow")}>
+                      {name}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      {played}/{matches.length} played
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            {matches.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center gap-2 rounded-xl border border-border/60 p-2"
-              >
-                <span className="text-[10px] text-muted-foreground w-6 shrink-0">
-                  #{m.position}
-                </span>
-                <SideSelect
-                  value={m.home_id}
-                  players={approved}
-                  onChange={(v) => setSide(m, "home_id", v)}
-                />
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {m.played ? `${m.home_score} - ${m.away_score}` : "vs"}
-                </span>
-                <SideSelect
-                  value={m.away_id}
-                  players={approved}
-                  onChange={(v) => setSide(m, "away_id", v)}
-                />
+          </div>
+
+          {/* Selected matchday matches */}
+          {activeName && (
+            <div className="glass rounded-2xl p-4 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">{activeName}</h3>
                 <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 shrink-0 text-muted-foreground"
-                  onClick={() => removeMatch(m)}
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => downloadMatchday(activeName, activeMatches)}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Download PNG
                 </Button>
               </div>
-            ))}
-          </div>
-        ))
+              {activeMatches.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-2 rounded-xl border border-border/60 p-2"
+                >
+                  <span className="text-[10px] text-muted-foreground w-6 shrink-0">
+                    #{m.position}
+                  </span>
+                  <SideSelect
+                    value={m.home_id}
+                    players={approved}
+                    onChange={(v) => setSide(m, "home_id", v)}
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {m.played ? `${m.home_score} - ${m.away_score}` : "vs"}
+                  </span>
+                  <SideSelect
+                    value={m.away_id}
+                    players={approved}
+                    onChange={(v) => setSide(m, "away_id", v)}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0 text-muted-foreground"
+                    onClick={() => removeMatch(m)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -393,4 +424,4 @@ function roundRect(
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
-          }
+      }
