@@ -26,7 +26,7 @@ export function PlayersTab({ tournament, data }: Props) {
   const setStatus = async (p: TournamentParticipant, status: "approved" | "rejected") => {
     const { error } = await supabase.from("tournament_participants").update({ status }).eq("id", p.id);
     if (error) return toast.error(error.message);
-    toast.success(status === "approved" ? `${p.player_name} approved` : `${p.player_name} rejected`);
+    toast.success(status === "approved" ? `\( {p.player_name} approved` : ` \){p.player_name} rejected`);
     void logActivity(`player.${status}`, { tournament: tournament.name, player: p.player_name });
     data.reload();
   };
@@ -60,78 +60,83 @@ export function PlayersTab({ tournament, data }: Props) {
           No players yet. Add players manually or invite registered members.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((p) => {
-            const prof = p.user_id ? data.profiles.get(p.user_id) : undefined;
-            const avatar = p.photo_url ?? prof?.avatar_url ?? null;
-            const st = statsOf(p.id);
-            return (
-              <div key={p.id} className="glass rounded-2xl p-4 space-y-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="h-11 w-11 shrink-0">
-                    <AvatarImage src={avatar ?? undefined} />
-                    <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">
-                      {p.player_name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{p.player_name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {prof?.username ? `@${prof.username}` : p.club ?? "—"}
+        <div className="overflow-x-auto pb-1">
+          <div className="flex gap-3">
+            {filtered.map((p) => {
+              const prof = p.user_id ? data.profiles.get(p.user_id) : undefined;
+              const avatar = p.photo_url ?? prof?.avatar_url ?? null;
+              const st = statsOf(p.id);
+              return (
+                <div
+                  key={p.id}
+                  className="glass rounded-2xl p-4 space-y-3 shrink-0 w-[calc((100%-1.5rem)/3)] min-w-[200px] max-w-[260px]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-11 w-11 shrink-0">
+                      <AvatarImage src={avatar ?? undefined} />
+                      <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">
+                        {p.player_name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{p.player_name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {prof?.username ? `@${prof.username}` : p.club ?? "—"}
+                      </div>
                     </div>
+                    <Badge
+                      variant={p.status === "approved" ? "default" : "outline"}
+                      className={
+                        p.status === "approved"
+                          ? "bg-emerald-500/20 text-emerald-300"
+                          : p.status === "rejected"
+                            ? "text-destructive border-destructive/40"
+                            : "text-amber-300 border-amber-500/40"
+                      }
+                    >
+                      {p.status}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant={p.status === "approved" ? "default" : "outline"}
-                    className={
-                      p.status === "approved"
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : p.status === "rejected"
-                          ? "text-destructive border-destructive/40"
-                          : "text-amber-300 border-amber-500/40"
-                    }
-                  >
-                    {p.status}
-                  </Badge>
-                </div>
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{p.club ?? "No club"}</span>
-                  <span>Joined {new Date(p.created_at).toLocaleDateString()}</span>
-                </div>
-
-                {st && (
-                  <div className="grid grid-cols-5 gap-1 text-center text-[11px] rounded-lg bg-secondary/50 py-1.5">
-                    <span>P {st.played}</span>
-                    <span className="text-emerald-300">W {st.won}</span>
-                    <span>D {st.drawn}</span>
-                    <span className="text-rose-300">L {st.lost}</span>
-                    <span className="font-bold">{st.points} pts</span>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="truncate">{p.club ?? "No club"}</span>
+                    <span className="shrink-0">Joined {new Date(p.created_at).toLocaleDateString()}</span>
                   </div>
-                )}
 
-                <div className="flex gap-2">
-                  {p.status === "pending" && (
-                    <>
-                      <Button size="sm" className="flex-1 bg-emerald-600/80 hover:bg-emerald-600" onClick={() => setStatus(p, "approved")}>
-                        <Check className="h-3.5 w-3.5 mr-1" /> Approve
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => setStatus(p, "rejected")}>
-                        <X className="h-3.5 w-3.5 mr-1" /> Reject
-                      </Button>
-                    </>
+                  {st && (
+                    <div className="grid grid-cols-5 gap-1 text-center text-[11px] rounded-lg bg-secondary/50 py-1.5">
+                      <span>P {st.played}</span>
+                      <span className="text-emerald-300">W {st.won}</span>
+                      <span>D {st.drawn}</span>
+                      <span className="text-rose-300">L {st.lost}</span>
+                      <span className="font-bold">{st.points} pts</span>
+                    </div>
                   )}
-                  {p.status === "rejected" && (
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setStatus(p, "approved")}>
-                      <Check className="h-3.5 w-3.5 mr-1" /> Approve anyway
+
+                  <div className="flex gap-2">
+                    {p.status === "pending" && (
+                      <>
+                        <Button size="sm" className="flex-1 bg-emerald-600/80 hover:bg-emerald-600" onClick={() => setStatus(p, "approved")}>
+                          <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => setStatus(p, "rejected")}>
+                          <X className="h-3.5 w-3.5 mr-1" /> Reject
+                        </Button>
+                      </>
+                    )}
+                    {p.status === "rejected" && (
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => setStatus(p, "approved")}>
+                        <Check className="h-3.5 w-3.5 mr-1" /> Approve anyway
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove(p)}>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  )}
-                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove(p)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -184,7 +189,7 @@ function AddPlayerDialog({
     const { data: rows } = await supabase
       .from("profiles")
       .select("*")
-      .or(`username.ilike.%${needle}%,full_name.ilike.%${needle}%`)
+      .or(`username.ilike.%\( {needle}%,full_name.ilike.% \){needle}%`)
       .eq("is_suspended", false)
       .limit(8);
     setMembers(((rows ?? []) as Profile[]).filter((p) => !participantIds.has(p.id)));
