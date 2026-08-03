@@ -28,26 +28,34 @@ import { toast } from "sonner";
 import { sortStandings, type StandingRow } from
 "@/components/tournament-manager/shared";
 export const Route = createFileRoute("/tournaments/$id")({
-head: () => ({
-meta: [
-{ title: "Tournament — eFootball Nepal" },
-{ name: "description", content: "Tournament standings, fixtures,
-rules and registration for eFootball Nepal competitions." },
-{ property: "og:title", content: "Tournament — eFootball Nepal"
-},
-{ property: "og:description", content: "Tournament standings,
-fixtures, rules and registration." }, { property: "og:type", content: "website" },
-{ name: "twitter:card", content: "summary_large_image" },
-],
+Head: () => ({
+  meta: [
+    { title: "Tournament — eFootball Nepal" },
+    { 
+      name: "description", 
+      content: "Tournament standings, fixtures, rules and registration for eFootball Nepal competitions." 
+    },
+    { 
+      property: "og:title", 
+      content: "Tournament — eFootball Nepal" 
+    },
+    { 
+      property: "og:description", 
+      content: "Tournament standings, fixtures, rules and registration." 
+    }, 
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ],
 }),
 component: TournamentDetailPage,
 });
+
 const TABS = [
-{ id: "overview", label: "Overview", icon: Trophy },
-{ id: "standings", label: "Standings", icon: Table2 },
-{ id: "fixtures", label: "Fixtures", icon: List },
-{ id: "rules", label: "Rules", icon: FileText },
-{ id: "report", label: "Report", icon: ShieldAlert },
+  { id: "overview", label: "Overview", icon: Trophy },
+  { id: "standings", label: "Standings", icon: Table2 },
+  { id: "fixtures", label: "Fixtures", icon: List },
+  { id: "rules", label: "Rules", icon: FileText },
+  { id: "report", label: "Report", icon: ShieldAlert },
 ] as const;
 function TournamentDetailPage() {
 const { id } = Route.useParams();
