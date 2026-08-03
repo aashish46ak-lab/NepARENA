@@ -154,9 +154,9 @@ export function ReportsPanel() {
                   <span className="font-medium">{r.reason}</span>
                   {statusBadge(r.status)}
                   <Badge variant="outline" className="capitalize">{r.type}</Badge>
-                  {r.screenshot_urls && r.screenshot_urls.length > 0 && (
-                    <Badge variant="outline">{r.screenshot_urls.length} photo{r.screenshot_urls.length > 1 ? "s" : ""}</Badge>
-                  )}
+                  {r.screenshot_url && (
+  <Badge variant="outline">1 photo</Badge>
+)}
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   {tournamentName(r.tournament_id)} · Reported by {reporterNames.get(r.reporter_id) ?? "…"}
