@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/activity";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -38,6 +39,8 @@ export function SettingsTab({
   const [bracket, setBracket] = useState(tournament.bracket_type ?? "round_robin");
   const [maxPlayers, setMaxPlayers] = useState(tournament.max_players?.toString() ?? "");
   const [deadline, setDeadline] = useState(tournament.registration_deadline?.slice(0, 16) ?? "");
+  const [rulesText, setRulesText] = useState(tournament.rules_text ?? "");
+  const [rulesUrl, setRulesUrl] = useState(tournament.rules_url ?? "");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -50,6 +53,8 @@ export function SettingsTab({
       bracket_type: bracket,
       max_players: maxPlayers === "" ? null : Number(maxPlayers),
       registration_deadline: deadline ? new Date(deadline).toISOString() : null,
+      rules_text: rulesText.trim() || null,
+      rules_url: rulesUrl.trim() || null,
     };
     const { data: row, error } = await supabase
       .from("tournaments")
@@ -120,9 +125,34 @@ export function SettingsTab({
         ))}
       </div>
 
+      <div className="glass rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Rules</h3>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Rules text</label>
+          <Textarea
+            rows={8}
+            value={rulesText}
+            onChange={(e) => setRulesText(e.target.value)}
+            placeholder="Write the tournament rules here (shown on the public Rules tab)…"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Rules document URL (optional)</label>
+          <Input
+            type="url"
+            value={rulesUrl}
+            onChange={(e) => setRulesUrl(e.target.value)}
+            placeholder="https://…"
+          />
+          <p className="text-xs text-muted-foreground">
+            Optional link to a full rules PDF/Google Doc. Public page shows text and/or this link.
+          </p>
+        </div>
+      </div>
+
       <Button onClick={save} disabled={saving} className="bg-gradient-brand text-primary-foreground">
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-1.5" /> Save settings</>}
       </Button>
     </div>
   );
-}
+            }
