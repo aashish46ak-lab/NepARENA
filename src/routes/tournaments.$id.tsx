@@ -364,7 +364,7 @@ function PublicFixtures({
             const awayPhoto = photoOf(m.away_id);
             const score =
               m.played && m.home_score != null && m.away_score != null
-                ? `\( {m.home_score}- \){m.away_score}`
+                ? `${m.home_score}-${m.away_score}`
                 : "";
 
             return (
@@ -465,6 +465,8 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [myReports, setMyReports] = useState<
     {
       id: string;
@@ -474,6 +476,7 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
       status: string;
       created_at: string;
       resolved_at: string | null;
+      screenshot_url: string | null;
     }[]
   >([]);
   const [loadingReports, setLoadingReports] = useState(false);
@@ -483,7 +486,7 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     setLoadingReports(true);
     const { data, error } = await supabase
       .from("reports")
-      .select("id, reason, description, player_name, status, created_at, resolved_at")
+      .select("id, reason, description, player_name, status, created_at, resolved_at, screenshot_url")
       .eq("reporter_id", user.id)
       .eq("tournament_id", tournament.id)
       .order("created_at", { ascending: false });
@@ -500,25 +503,19 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, tournament.id]);
 
+  useEffect(() => {
+    if (!screenshot) {
+      setScreenshotPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(screenshot);
+    setScreenshotPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [screenshot]);
+
   if (!user) {
     return (
       <div className="py-6 text-center">
         <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
         <p className="mt-3 text-sm text-muted-foreground">Sign in to submit a report and track status.</p>
-        <Button asChild className="mt-4 bg-gradient-brand">
-          <Link to="/auth">Sign in</Link>
-        </Button>
-      </div>
-    );
-  }
-
-  const submit = async () => {
-    if (!reason.trim()) {
-      toast.error("Please give a short reason.");
-      return;
-    }
-    setBusy(true);
-    const { error } = await supabase.from("reports").insert({
-      reporter_id: user.id,
-      type: player ? "player" : "tournament",
-      tournament_id: tournament.id
+        <Button asChi
