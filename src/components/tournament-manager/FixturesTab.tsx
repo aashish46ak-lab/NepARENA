@@ -7,7 +7,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
+import { Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, type TournamentData } from "./shared";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -73,10 +73,6 @@ export function FixturesTab({ tournament, data }: Props) {
   const selectMatchday = (name: string) => {
     setSelected(name);
     tabRefs.current.get(name)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  };
-
-  const scrollByAmount = (dir: -1 | 1) => {
-    scrollRef.current?.scrollBy({ left: dir * 220, behavior: "smooth" });
   };
 
   const generate = async () => {
@@ -318,58 +314,38 @@ export function FixturesTab({ tournament, data }: Props) {
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-9 w-9 shrink-0"
-              onClick={() => scrollByAmount(-1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            <div
-              ref={scrollRef}
-              className="flex flex-1 gap-2 min-w-0 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {groups.map(([name, matches]) => {
-                const played = matches.filter((m) => m.played).length;
-                const isActive = name === activeName;
-                return (
-                  <button
-                    key={name}
-                    ref={(el) => {
-                      if (el) tabRefs.current.set(name, el);
-                      else tabRefs.current.delete(name);
-                    }}
-                    type="button"
-                    onClick={() => selectMatchday(name)}
-                    className={cn(
-                      "inline-flex flex-col shrink-0 snap-start w-fit rounded-xl border px-3.5 py-2.5 text-left transition whitespace-nowrap",
-                      isActive
-                        ? "border-brand bg-brand/15"
-                        : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
-                    )}
-                  >
-                    <div className={cn("text-sm font-semibold truncate", isActive && "text-brand-glow")}>
-                      {name}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      {played}/{matches.length} played
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-9 w-9 shrink-0"
-              onClick={() => scrollByAmount(1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <div
+            ref={scrollRef}
+            className="mx-auto flex w-full max-w-[340px] overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {groups.map(([name, matches]) => {
+              const played = matches.filter((m) => m.played).length;
+              const isActive = name === activeName;
+              return (
+                <button
+                  key={name}
+                  ref={(el) => {
+                    if (el) tabRefs.current.set(name, el);
+                    else tabRefs.current.delete(name);
+                  }}
+                  type="button"
+                  onClick={() => selectMatchday(name)}
+                  className={cn(
+                    "flex shrink-0 basis-1/3 snap-start flex-col items-center rounded-xl border px-3 py-2.5 text-center transition",
+                    isActive
+                      ? "border-brand bg-brand/15"
+                      : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
+                  )}
+                >
+                  <div className={cn("text-sm font-semibold truncate w-full", isActive && "text-brand-glow")}>
+                    {name}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    {played}/{matches.length} played
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {activeName && (
@@ -548,5 +524,5 @@ function drawCircleAvatar(
   ctx.strokeStyle = "rgba(148,163,184,0.35)";
   ctx.lineWidth = 1;
   ctx.stroke();
-                                }
-                          
+      }
+    
