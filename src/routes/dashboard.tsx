@@ -1,7 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, type ElementType } from "react";
-import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { useAuth } from "@/hooks/useAuth";
 import { PageShell } from "@/components/PageShell";
 import { cn } from "@/lib/utils";
@@ -22,13 +20,11 @@ import { OwnerModeratorsPanel } from "@/components/admin/OwnerModeratorsPanel";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SiteSettingsPanel } from "@/components/admin/SiteSettingsPanel";
 
-const searchSchema = z.object({
-  t: fallback(z.string(), "dashboard").default("dashboard"),
-});
-
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (search: Record<string, unknown>): { t: string } => ({
+    t: typeof search.t === "string" ? search.t : "dashboard",
+  }),
   head: () => ({
     meta: [
       { title: "Admin — eFootball Nepal" },
