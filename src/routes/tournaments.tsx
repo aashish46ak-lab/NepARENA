@@ -23,12 +23,14 @@ function TournamentsLayout() {
   const matchRoute = useMatchRoute();
   const isDetail = matchRoute({ to: "/tournaments/$id", fuzzy: false });
 
-  // Detail page: let child route render
   if (isDetail) {
     return <Outlet />;
   }
 
-  // List page
+  return <TournamentsList />;
+}
+
+function TournamentsList() {
   const { data: all = [], isLoading } = useTournaments();
   const list = all.filter((t) => t.status !== "completed");
 
@@ -66,7 +68,7 @@ function TournamentsLayout() {
                 src={t.banner_url}
                 alt={t.name}
                 ratio="aspect-video"
-                zoom={false}   // important: don't steal the click
+                zoom={false}
                 fallback={
                   <div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center">
                     <Trophy className="h-16 w-16 text-brand" />
@@ -113,4 +115,4 @@ function TournamentsLayout() {
       </div>
     </PageShell>
   );
-                  }
+}
