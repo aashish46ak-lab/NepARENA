@@ -16,7 +16,6 @@ import { Route as MembersRouteImport } from './routes/members'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
 import { Route as GalleryRouteImport } from './routes/gallery'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
@@ -59,11 +58,6 @@ const GalleryRoute = GalleryRouteImport.update({
   path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -98,7 +92,6 @@ const AdminTournamentsIdRoute = AdminTournamentsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
@@ -114,7 +107,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
@@ -131,7 +123,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
@@ -149,7 +140,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
-    | '/dashboard'
     | '/gallery'
     | '/hall-of-fame'
     | '/history'
@@ -165,7 +155,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
-    | '/dashboard'
     | '/gallery'
     | '/hall-of-fame'
     | '/history'
@@ -181,7 +170,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
-    | '/dashboard'
     | '/gallery'
     | '/hall-of-fame'
     | '/history'
@@ -198,7 +186,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  DashboardRoute: typeof DashboardRoute
   GalleryRoute: typeof GalleryRoute
   HallOfFameRoute: typeof HallOfFameRoute
   HistoryRoute: typeof HistoryRoute
@@ -262,13 +249,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -329,7 +309,6 @@ const TournamentsRouteWithChildren = TournamentsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  DashboardRoute: DashboardRoute,
   GalleryRoute: GalleryRoute,
   HallOfFameRoute: HallOfFameRoute,
   HistoryRoute: HistoryRoute,
