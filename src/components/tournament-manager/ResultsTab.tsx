@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase, type Match, type Tournament, type TournamentParticipant } from "@/lib/supabase";
 import { logActivity } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Save, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, type TournamentData } from "./shared";
 import { cn } from "@/lib/utils";
@@ -17,8 +17,7 @@ function getPlayer(data: TournamentData, id: string | null): TournamentParticipa
 
 function sideLabel(p: TournamentParticipant | undefined): string {
   if (!p) return "TBD";
-  const club = p.club?.trim();
-  return club || p.player_name;
+  return p.club?.trim() || p.player_name;
 }
 
 function sidePhoto(data: TournamentData, p: TournamentParticipant | undefined): string | null {
@@ -39,9 +38,23 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
   }, [data.matches, data.matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [windowStart, setWindowStart] = useState(0);
+
   const activeName =
     selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
+
+  useEffect(() => {
+    if (!activeName || groups.length === 0) return;
+    const idx = groups.findIndex(([n]) => n === activeName);
+    if (idx < 0) return;
+    if (idx < windowStart) setWindowStart(idx);
+    else if (idx >= windowStart + 3) setWindowStart(Math.max(0, idx - 2));
+  }, [activeName, groups, windowStart]);
+
+  const maxStart = Math.max(0, groups.length - 3);
+  const safeStart = Math.min(windowStart, maxStart);
+  const visibleGroups = groups.slice(safeStart, safeStart + 3);
 
   if (data.matches.length === 0) {
     return (
@@ -55,10 +68,20 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 
   return (
     <div className="space-y-4 pt-4">
-      {/* Compact matchday chips */}
-      <div className="overflow-x-auto snap-x snap-mandatory scroll-smooth pb-1">
-        <div className="flex gap-2">
-          {groups.map(([name, matches]) => {
+      {/* Only 3 matchdays visible */}
+      <div className="flex items-center gap-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0"
+          disabled={safeStart <= 0}
+          onClick={() => setWindowStart((s) => Math.max(0, s - 1))}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <div className="flex flex-1 gap-2 justify-center min-w-0">
+          {visibleGroups.map(([name, matches]) => {
             const played = matches.filter((m) => m.played).length;
             const isActive = name === activeName;
             return (
@@ -67,7 +90,7 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
                 type="button"
                 onClick={() => setSelected(name)}
                 className={cn(
-                  "snap-start shrink-0 w-auto rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
+                  "shrink-0 w-auto rounded-xl border px-3 py-2 text-left transition whitespace-nowrap",
                   isActive
                     ? "border-brand bg-brand/15"
                     : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
@@ -83,6 +106,16 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
             );
           })}
         </div>
+
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0"
+          disabled={safeStart >= maxStart}
+          onClick={() => setWindowStart((s) => Math.min(maxStart, s + 1))}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
 
       {activeName && (
@@ -114,7 +147,13 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 }
 
 function ResultRow({
-  match, homeLabel, awayLabel, homePhoto, awayPhoto, disabled, onSaved,
+  match,
+  homeLabel,
+  awayLabel,
+  homePhoto,
+  awayPhoto,
+  disabled,
+  onSaved,
 }: {
   match: Match;
   homeLabel: string;
@@ -124,20 +163,34 @@ function ResultRow({
   disabled: boolean;
   onSaved: () => void;
 }) {
-  const [hs, setHs] = useState(match.home_score?.toString() ?? "");
-  const [as, setAs] = useState(match.away_score?.toString() ?? "");
+  const [hs, setHs] = useState(
+    match.home_score != null ? String(match.home_score) : "",
+  );
+  const [ascore, setAscore] = useState(
+    match.away_score != null ? String(match.away_score) : "",
+  );
+
+  // Sync when data reloads after save
+  useEffect(() => {
+    setHs(match.home_score != null ? String(match.home_score) : "");
+    setAscore(match.away_score != null ? String(match.away_score) : "");
+  }, [match.home_score, match.away_score, match.id]);
 
   const save = async () => {
-    const played = hs !== "" && as !== "";
+    const played = hs !== "" && ascore !== "";
+    const homeNum = hs === "" ? null : Number(hs);
+    const awayNum = ascore === "" ? null : Number(ascore);
+
     const { error } = await supabase
       .from("matches")
       .update({
-        home_score: hs === "" ? null : Number(hs),
-        away_score: as === "" ? null : Number(as),
+        home_score: homeNum,
+        away_score: awayNum,
         status: played ? "finished" : "scheduled",
         played,
       })
       .eq("id", match.id);
+
     if (error) return toast.error(error.message);
     toast.success("Result saved — standings updated");
     onSaved();
@@ -155,7 +208,7 @@ function ResultRow({
       .eq("id", match.id);
     if (error) return toast.error(error.message);
     setHs("");
-    setAs("");
+    setAscore("");
     toast.success("Result cleared");
     onSaved();
   };
@@ -167,32 +220,34 @@ function ResultRow({
           <span className="text-sm font-semibold truncate max-w-[120px] text-right">{homeLabel}</span>
           <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={homePhoto ?? undefined} />
-            <AvatarFallback className="bg-secondary text-[10px]">{homeLabel.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-secondary text-[10px]">
+              {homeLabel.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
         </div>
 
         <Input
           className="w-12 h-8 text-center shrink-0"
           inputMode="numeric"
-          placeholder=""
           value={hs}
-          onChange={(e) => setHs(e.target.value)}
+          onChange={(e) => setHs(e.target.value.replace(/[^0-9]/g, ""))}
           disabled={disabled}
         />
         <span className="text-muted-foreground text-xs">-</span>
         <Input
           className="w-12 h-8 text-center shrink-0"
           inputMode="numeric"
-          placeholder=""
-          value={as}
-          onChange={(e) => setAs(e.target.value)}
+          value={ascore}
+          onChange={(e) => setAscore(e.target.value.replace(/[^0-9]/g, ""))}
           disabled={disabled}
         />
 
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={awayPhoto ?? undefined} />
-            <AvatarFallback className="bg-secondary text-[10px]">{awayLabel.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="bg-secondary text-[10px]">
+              {awayLabel.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
           <span className="text-sm font-semibold truncate max-w-[120px]">{awayLabel}</span>
         </div>
@@ -208,10 +263,15 @@ function ResultRow({
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
         )}
-        <Button size="sm" className="h-8 bg-gradient-brand text-primary-foreground" onClick={save} disabled={disabled}>
+        <Button
+          size="sm"
+          className="h-8 bg-gradient-brand text-primary-foreground"
+          onClick={save}
+          disabled={disabled}
+        >
           <Save className="h-3.5 w-3.5 mr-1" /> Save
         </Button>
       </div>
     </div>
   );
-        }
+          }
