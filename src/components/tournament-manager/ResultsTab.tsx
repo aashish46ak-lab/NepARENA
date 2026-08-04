@@ -7,10 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { matchdayName, type TournamentData } from "./shared";
+import {
+  matchdayName,
+  recomputeStandings,
+  type TournamentData,
+} from "./shared";
 import { cn } from "@/lib/utils";
 
-function getPlayer(data: TournamentData, id: string | null): TournamentParticipant | undefined {
+function getPlayer(
+  data: TournamentData,
+  id: string | null,
+): TournamentParticipant | undefined {
   if (!id) return undefined;
   return data.players.find((p) => p.id === id);
 }
@@ -20,14 +27,23 @@ function sideLabel(p: TournamentParticipant | undefined): string {
   return p.club?.trim() || p.player_name;
 }
 
-function sidePhoto(data: TournamentData, p: TournamentParticipant | undefined): string | null {
+function sidePhoto(
+  data: TournamentData,
+  p: TournamentParticipant | undefined,
+): string | null {
   if (!p) return null;
   if (p.photo_url) return p.photo_url;
   if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
   return null;
 }
 
-export function ResultsTab({ tournament, data }: { tournament: Tournament; data: TournamentData }) {
+export function ResultsTab({
+  tournament,
+  data,
+}: {
+  tournament: Tournament;
+  data: TournamentData;
+}) {
   const groups = useMemo(() => {
     const map = new Map<string, Match[]>();
     for (const m of data.matches) {
@@ -42,26 +58,26 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const activeName =
-    selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
+    selected && groups.some(([n]) => n === selected)
+      ? selected
+      : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
 
   const selectMatchday = (name: string) => {
     setSelected(name);
-    tabRefs.current.get(name)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    tabRefs.current
+      .get(name)
+      ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   };
 
   const activeIdx = groups.findIndex(([n]) => n === activeName);
 
   const prevMatchday = () => {
-    if (activeIdx > 0) {
-      selectMatchday(groups[activeIdx - 1][0]);
-    }
+    if (activeIdx > 0) selectMatchday(groups[activeIdx - 1][0]);
   };
 
   const nextMatchday = () => {
-    if (activeIdx < groups.length - 1) {
-      selectMatchday(groups[activeIdx + 1][0]);
-    }
+    if (activeIdx < groups.length - 1) selectMatchday(groups[activeIdx + 1][0]);
   };
 
   if (data.matches.length === 0) {
@@ -76,7 +92,6 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 
   return (
     <div className="space-y-4 pt-4">
-      {/* Matchdays Navigation Toolbar */}
       <div className="flex items-center gap-1.5 max-w-[380px] mx-auto">
         <Button
           size="icon"
@@ -111,7 +126,12 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
                     : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                 )}
               >
-                <div className={cn("text-xs font-semibold truncate w-full", isActive && "text-brand-glow")}>
+                <div
+                  className={cn(
+                    "text-xs font-semibold truncate w-full",
+                    isActive && "text-brand-glow",
+                  )}
+                >
                   {name}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -133,13 +153,13 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
         </Button>
       </div>
 
-      {/* Active Matchday Matches List */}
       {activeName && (
         <div className="glass flex flex-col w-full max-w-[420px] mx-auto rounded-2xl p-4 space-y-3 overflow-hidden">
           <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
             <h3 className="text-sm font-semibold truncate">{activeName}</h3>
             <span className="text-xs text-muted-foreground">
-              {activeMatches.filter((m) => m.played).length} / {activeMatches.length} Finished
+              {activeMatches.filter((m) => m.played).length} /{" "}
+              {activeMatches.length} Finished
             </span>
           </div>
 
@@ -151,13 +171,17 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
                 <ResultRow
                   key={m.id}
                   match={m}
+                  tournamentId={tournament.id}
                   homeLabel={sideLabel(homeP)}
                   awayLabel={sideLabel(awayP)}
                   homePhoto={sidePhoto(data, homeP)}
                   awayPhoto={sidePhoto(data, awayP)}
                   disabled={!m.home_id || !m.away_id}
                   onSaved={() => {
-                    void logActivity("result.save", { tournament: tournament.name, match: m.id });
+                    void logActivity("result.save", {
+                      tournament: tournament.name,
+                      match: m.id,
+                    });
                     data.reload();
                   }}
                 />
@@ -172,6 +196,7 @@ export function ResultsTab({ tournament, data }: { tournament: Tournament; data:
 
 function ResultRow({
   match,
+  tournamentId,
   homeLabel,
   awayLabel,
   homePhoto,
@@ -180,6 +205,7 @@ function ResultRow({
   onSaved,
 }: {
   match: Match;
+  tournamentId: string;
   homeLabel: string;
   awayLabel: string;
   homePhoto: string | null;
@@ -195,7 +221,6 @@ function ResultRow({
   );
   const [saving, setSaving] = useState(false);
 
-  // Sync state whenever match payload changes after save/reload
   useEffect(() => {
     setHs(match.home_score != null ? String(match.home_score) : "");
     setAscore(match.away_score != null ? String(match.away_score) : "");
@@ -218,10 +243,22 @@ function ResultRow({
       })
       .eq("id", match.id);
 
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Result saved — standings updated");
-    onSaved();
+    if (error) {
+      setSaving(false);
+      return toast.error(error.message);
+    }
+
+    try {
+      await recomputeStandings(tournamentId);
+      toast.success("Result saved — standings updated");
+      onSaved();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Standings update failed",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const clear = async () => {
@@ -237,23 +274,39 @@ function ResultRow({
       })
       .eq("id", match.id);
 
-    setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      setSaving(false);
+      return toast.error(error.message);
+    }
+
     setHs("");
     setAscore("");
-    toast.success("Result cleared");
-    onSaved();
+
+    try {
+      await recomputeStandings(tournamentId);
+      toast.success("Result cleared — standings updated");
+      onSaved();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Standings update failed",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className={cn(
-      "rounded-xl border border-border/60 p-3 space-y-2.5 transition",
-      disabled && "opacity-50 pointer-events-none bg-secondary/10"
-    )}>
+    <div
+      className={cn(
+        "rounded-xl border border-border/60 p-3 space-y-2.5 transition",
+        disabled && "opacity-50 pointer-events-none bg-secondary/10",
+      )}
+    >
       <div className="flex items-center gap-2">
-        {/* Home Side */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
-          <span className="text-xs font-semibold truncate text-right">{homeLabel}</span>
+          <span className="text-xs font-semibold truncate text-right">
+            {homeLabel}
+          </span>
           <Avatar className="h-7 w-7 shrink-0">
             <AvatarImage src={homePhoto ?? undefined} />
             <AvatarFallback className="bg-secondary text-[10px]">
@@ -262,7 +315,6 @@ function ResultRow({
           </Avatar>
         </div>
 
-        {/* Input Controls */}
         <div className="flex items-center gap-1 shrink-0 px-1">
           <Input
             className="w-10 h-8 text-center px-0 text-sm font-bold shrink-0"
@@ -278,12 +330,13 @@ function ResultRow({
             inputMode="numeric"
             maxLength={2}
             value={ascore}
-            onChange={(e) => setAscore(e.target.value.replace(/[^0-9]/g, ""))}
+            onChange={(e) =>
+              setAscore(e.target.value.replace(/[^0-9]/g, ""))
+            }
             disabled={disabled || saving}
           />
         </div>
 
-        {/* Away Side */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <Avatar className="h-7 w-7 shrink-0">
             <AvatarImage src={awayPhoto ?? undefined} />
@@ -295,7 +348,6 @@ function ResultRow({
         </div>
       </div>
 
-      {/* Row Footer Actions */}
       <div className="flex items-center justify-between pt-1 border-t border-border/30">
         <div>
           {match.played ? (
@@ -332,4 +384,4 @@ function ResultRow({
       </div>
     </div>
   );
-      }
+                               }
