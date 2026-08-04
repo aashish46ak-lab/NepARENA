@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { AdminSection, EmptyState } from "./AdminUI";
 import { useCrud } from "./crud";
 import { RowEditor, Field } from "./RowEditor";
-import { TournamentManager } from "@/components/tournament-manager/TournamentManager";
 import { archiveTournamentToHistory } from "@/components/tournament-manager/shared";
 import type { Tournament } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   MoreVertical, Pencil, ImagePlus, Trash2, Settings2,
-  Trophy, Radio, X, ChevronDown,
+  Trophy, Radio,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 const empty: Partial<Tournament> = {
   slug: "",
@@ -42,6 +41,7 @@ const empty: Partial<Tournament> = {
 };
 
 export function TournamentsPanel() {
+  const navigate = useNavigate();
   const { rows, loading, create, update, remove } = useCrud<Tournament>(
     "tournaments",
     { invalidate: ["tournaments", "tournament_history", "hall_of_fame"] },
@@ -49,15 +49,14 @@ export function TournamentsPanel() {
 
   const [editing, setEditing] = useState<Tournament | null>(null);
   const [banner, setBanner] = useState<Tournament | null>(null);
-  const [manage, setManage] = useState<Tournament | null>(null);
-  const manageRef = useRef<HTMLDivElement>(null);
 
-  // Slide open + scroll into view
-  useEffect(() => {
-    if (manage && manageRef.current) {
-      manageRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [manage?.id]);
+  const openManage = (t: Tournament) => {
+    // New page — full manage screen
+    navigate({
+      to: "/admin/tournaments/$id",
+      params: { id: t.id },
+    });
+  };
 
   const changeStatus = async (
     tournament: Tournament,
@@ -121,12 +120,7 @@ export function TournamentsPanel() {
           {rows.map((t) => (
             <div
               key={t.id}
-              className={cn(
-                "flex items-center gap-4 rounded-xl border p-4 transition",
-                manage?.id === t.id
-                  ? "border-brand bg-brand/5"
-                  : "border-border/60",
-              )}
+              className="flex items-center gap-4 rounded-xl border border-border/60 p-4"
             >
               <div className="h-16 w-28 rounded-lg overflow-hidden bg-secondary shrink-0">
                 {t.banner_url && (
@@ -158,104 +152,52 @@ export function TournamentsPanel() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  size="sm"
-                  variant={manage?.id === t.id ? "default" : "secondary"}
-                  onClick={() =>
-                    setManage(manage?.id === t.id ? null : t)
-                  }
-                >
-                  <Settings2 className="h-4 w-4 mr-1.5" />
-                  {manage?.id === t.id ? "Close" : "Manage"}
-                </Button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditing(t)}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit Tournament
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setBanner(t)}>
-                      <ImagePlus className="h-4 w-4 mr-2" />
-                      Change Banner
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() =>
-                        setManage(manage?.id === t.id ? null : t)
-                      }
-                    >
-                      <Settings2 className="h-4 w-4 mr-2" />
-                      Manage Tournament
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => changeStatus(t, "ongoing")}
-                    >
-                      <Radio className="h-4 w-4 mr-2" />
-                      Set Ongoing
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => changeStatus(t, "completed")}
-                    >
-                      <Trophy className="h-4 w-4 mr-2" />
-                      End Tournament
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => {
-                        if (confirm("Delete " + t.name + "?")) remove(t.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              {/* Only 3-dot menu — no separate Manage button */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setEditing(t)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit Tournament
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setBanner(t)}>
+                    <ImagePlus className="h-4 w-4 mr-2" />
+                    Change Banner
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => openManage(t)}>
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    Manage Tournament
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => changeStatus(t, "ongoing")}>
+                    <Radio className="h-4 w-4 mr-2" />
+                    Set Ongoing
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => changeStatus(t, "completed")}
+                  >
+                    <Trophy className="h-4 w-4 mr-2" />
+                    End Tournament
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => {
+                      if (confirm("Delete " + t.name + "?")) remove(t.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* ===== Manage slide BELOW the list ===== */}
-      {manage && (
-        <div
-          ref={manageRef}
-          className="mt-6 rounded-2xl border border-brand/40 bg-background/80 shadow-lg overflow-hidden animate-in slide-in-from-top-2 duration-300"
-        >
-          <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 bg-brand/10">
-            <div className="flex items-center gap-2 min-w-0">
-              <ChevronDown className="h-4 w-4 text-brand shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Managing</p>
-                <h2 className="font-semibold truncate">{manage.name}</h2>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setManage(null)}
-            >
-              <X className="h-4 w-4 mr-1" /> Close
-            </Button>
-          </div>
-          <div className="p-4 max-h-[75vh] overflow-y-auto">
-            <TournamentManager
-              tournament={manage}
-              open
-              onOpenChange={(v) => {
-                if (!v) setManage(null);
-              }}
-            />
-          </div>
         </div>
       )}
 
@@ -459,4 +401,4 @@ function slugify(text: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-      }
+          }
