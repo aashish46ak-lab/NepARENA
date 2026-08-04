@@ -51,7 +51,6 @@ export function TournamentsPanel() {
   const [banner, setBanner] = useState<Tournament | null>(null);
 
   const openManage = (t: Tournament) => {
-    // New page — full manage screen
     navigate({
       to: "/admin/tournaments/$id",
       params: { id: t.id },
@@ -120,82 +119,108 @@ export function TournamentsPanel() {
           {rows.map((t) => (
             <div
               key={t.id}
-              className="flex items-center gap-4 rounded-xl border border-border/60 p-4"
+              className="rounded-xl border border-border/60 p-3 sm:p-4"
             >
-              <div className="h-16 w-28 rounded-lg overflow-hidden bg-secondary shrink-0">
-                {t.banner_url && (
-                  <img
-                    src={t.banner_url}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold truncate">{t.name}</h3>
-                  <Badge variant="outline" className="capitalize shrink-0">
-                    {t.status === "completed"
-                      ? "Ended"
-                      : t.status.replace(/_/g, " ")}
-                  </Badge>
-                  {t.registration_open && (
-                    <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0">
-                      Reg open
-                    </Badge>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                {/* Banner */}
+                <div className="h-36 w-full sm:h-16 sm:w-28 rounded-lg overflow-hidden bg-secondary shrink-0">
+                  {t.banner_url ? (
+                    <img
+                      src={t.banner_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full grid place-items-center text-muted-foreground text-xs">
+                      No banner
+                    </div>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground mt-2 flex gap-3">
-                  <span>Players: {t.participants_count}</span>
-                  {t.prize_pool && <span>{t.prize_pool}</span>}
+
+                {/* Text + menu */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1.5">
+                      <h3 className="font-semibold text-base leading-snug break-words">
+                        {t.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className="capitalize shrink-0"
+                        >
+                          {t.status === "completed"
+                            ? "Ended"
+                            : t.status.replace(/_/g, " ")}
+                        </Badge>
+                        {t.registration_open && (
+                          <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0">
+                            Reg open
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 shrink-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditing(t)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit Tournament
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setBanner(t)}>
+                          <ImagePlus className="h-4 w-4 mr-2" />
+                          Change Banner
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => openManage(t)}>
+                          <Settings2 className="h-4 w-4 mr-2" />
+                          Manage Tournament
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => changeStatus(t, "ongoing")}
+                        >
+                          <Radio className="h-4 w-4 mr-2" />
+                          Set Ongoing
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => changeStatus(t, "completed")}
+                        >
+                          <Trophy className="h-4 w-4 mr-2" />
+                          End Tournament
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            if (confirm("Delete " + t.name + "?"))
+                              remove(t.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span>Players: {t.participants_count}</span>
+                    {t.prize_pool && (
+                      <span className="break-all">Prize: {t.prize_pool}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Only 3-dot menu — no separate Manage button */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setEditing(t)}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit Tournament
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setBanner(t)}>
-                    <ImagePlus className="h-4 w-4 mr-2" />
-                    Change Banner
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => openManage(t)}>
-                    <Settings2 className="h-4 w-4 mr-2" />
-                    Manage Tournament
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => changeStatus(t, "ongoing")}>
-                    <Radio className="h-4 w-4 mr-2" />
-                    Set Ongoing
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => changeStatus(t, "completed")}
-                  >
-                    <Trophy className="h-4 w-4 mr-2" />
-                    End Tournament
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => {
-                      if (confirm("Delete " + t.name + "?")) remove(t.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           ))}
         </div>
