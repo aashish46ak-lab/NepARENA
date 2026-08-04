@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Save, Trophy } from "lucide-react";
 import { toast } from "sonner";
-import { sortStandings, type StandingRow } from "./shared";
+import { archiveTournamentToHistory } from "./shared";
 
 const STATUSES: { value: TournamentStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -26,8 +26,6 @@ const STATUSES: { value: TournamentStatus; label: string }[] = [
   { value: "archived", label: "Archived" },
 ];
 
-const PLACE_LABELS = ["Champion (1st)", "Runner-up (2nd)", "3rd Place"];
-
 export function SettingsTab({
   tournament,
   onPatched,
@@ -40,101 +38,47 @@ export function SettingsTab({
   const [regOpen, setRegOpen] = useState(tournament.registration_open);
   const [published, setPublished] = useState(tournament.is_published);
   const [featured, setFeatured] = useState(tournament.is_featured);
-  const [bracket, setBracket] = useState(tournament.bracket_type ?? "round_robin");
-  const [maxPlayers, setMaxPlayers] = useState(tournament.max_players?.toString() ?? "");
-  const [deadline, setDeadline] = useState(tournament.registration_deadline?.slice(0, 16) ?? "");
+  const [bracket, setBracket] = useState(
+    tournament.bracket_type ?? "round_robin",
+  );
+  const [maxPlayers, setMaxPlayers] = useState(
+    tournament.max_players?.toString() ?? "",
+  );
+  const [deadline, setDeadline] = useState(
+    tournament.registration_deadline?.slice(0, 16) ?? "",
+  );
   const [rulesText, setRulesText] = useState(tournament.rules_text ?? "");
   const [rulesUrl, setRulesUrl] = useState(tournament.rules_url ?? "");
   const [saving, setSaving] = useState(false);
 
-  /** Load standings + players, compute top 3, write history + hall of fame */
-  const archiveTournament = async () => {
-    const [{ data: standingsRaw }, { data: playersRaw }] = await Promise.all([
-      supabase.from("tournament_standings").select("*").eq("tournament_id", tournament.id),
-      supabase.from("tournament_participants").select("*").eq("tournament_id", tournament.id),
-    ]);
-
-    const standings = sortStandings((standingsRaw ?? []) as StandingRow[]);
-    const players = playersRaw ?? [];
-
-    const top3 = standings.slice(0, 3);
-    if (top3.length === 0) {
-      throw new Error(
-        "No standings found. Enter match results first so standings exist, then end the tournament.",
-      );
-    }
-
-    const year = new Date().getFullYear();
-    const display = (row: StandingRow) => {
-      const p = players.find((x: { id: string }) => x.id === row.participant_id);
-      const club = (row.club || p?.club || "").trim();
-      return club || row.player_name || "Unknown";
-    };
-    const photoOf = (row: StandingRow) => {
-      const p = players.find((x: { id: string }) => x.id === row.participant_id);
-      return p?.photo_url || p?.club_logo_url || null;
-    };
-
-    const winner = display(top3[0]);
-    const runnerUp = top3[1] ? display(top3[1]) : null;
-    const third = top3[2] ? display(top3[2]) : null;
-
-    // Avoid duplicate history for same tournament name + year
-    await supabase
-      .from("tournament_history")
-      .delete()
-      .eq("tournament_name", tournament.name)
-      .eq("year", year);
-
-    const { error: histErr } = await supabase.from("tournament_history").insert({
-      tournament_name: tournament.name,
-      winner,
-      runner_up: runnerUp,
-      third_place: third,
-      year,
-      banner_url: tournament.banner_url,
-      prize_pool: tournament.prize_pool,
-      sort_order: 0,
-    });
-    if (histErr) throw new Error("History save failed: " + histErr.message);
-
-    // Remove old HoF rows for this tournament name (re-end safe)
-    await supabase.from("hall_of_fame").delete().eq("tournament", tournament.name);
-
-    const hofRows = top3.map((row, i) => ({
-      player_name: display(row),
-      achievement: PLACE_LABELS[i] || `${i + 1}th Place`,
-      tournament: tournament.name,
-      photo_url: photoOf(row),
-      year,
-      sort_order: i,
-    }));
-
-    const { error: hofErr } = await supabase.from("hall_of_fame").insert(hofRows);
-    if (hofErr) throw new Error("Hall of Fame save failed: " + hofErr.message);
-
-    return { winner, runnerUp, third, count: top3.length };
-  };
-
   const save = async () => {
     setSaving(true);
     try {
-      // When marking completed → archive first
       if (status === "completed" && tournament.status !== "completed") {
-        const result = await archiveTournament();
+        const result = await archiveTournamentToHistory(tournament);
         toast.success(
-          `Tournament ended. History + Hall of Fame updated (${result.count} players). Winner: ${result.winner}`,
+          "Tournament ended. Winner: " +
+            result.winner +
+            " (" +
+            result.count +
+            " on podium)",
         );
       }
 
       const patch = {
         status,
-        registration_open: status === "completed" || status === "archived" ? false : regOpen || status === "registration_open",
+        registration_open:
+          status === "completed" || status === "archived"
+            ? false
+            : regOpen || status === "registration_open",
         is_published: published,
-        is_featured: status === "completed" || status === "archived" ? false : featured,
+        is_featured:
+          status === "completed" || status === "archived" ? false : featured,
         bracket_type: bracket,
         max_players: maxPlayers === "" ? null : Number(maxPlayers),
-        registration_deadline: deadline ? new Date(deadline).toISOString() : null,
+        registration_deadline: deadline
+          ? new Date(deadline).toISOString()
+          : null,
         rules_text: rulesText.trim() || null,
         rules_url: rulesUrl.trim() || null,
         ends_at:
@@ -169,7 +113,9 @@ export function SettingsTab({
       qc.invalidateQueries({ queryKey: ["hall_of_fame"] });
       if (row) onPatched(row as Tournament);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to end tournament");
+      toast.error(
+        e instanceof Error ? e.message : "Failed to end tournament",
+      );
     } finally {
       setSaving(false);
     }
@@ -184,7 +130,10 @@ export function SettingsTab({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Status</label>
-            <Select value={status} onValueChange={(v) => setStatus(v as TournamentStatus)}>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as TournamentStatus)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -199,7 +148,8 @@ export function SettingsTab({
             {status === "completed" && tournament.status !== "completed" && (
               <p className="text-xs text-amber-300 flex items-start gap-1.5 mt-1">
                 <Trophy className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                Saving will write top 3 from standings into History and Hall of Fame.
+                Saving will write top 3 from standings into History and Hall of
+                Fame.
               </p>
             )}
           </div>
@@ -269,7 +219,9 @@ export function SettingsTab({
           >
             <span>
               <span className="block text-sm font-medium">{s.label}</span>
-              <span className="block text-xs text-muted-foreground">{s.desc}</span>
+              <span className="block text-xs text-muted-foreground">
+                {s.desc}
+              </span>
             </span>
             <Switch checked={s.value} onCheckedChange={s.set} />
           </label>
@@ -290,7 +242,9 @@ export function SettingsTab({
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Rules document URL (optional)</label>
+          <label className="text-sm font-medium">
+            Rules document URL (optional)
+          </label>
           <Input
             type="url"
             value={rulesUrl}
@@ -300,7 +254,11 @@ export function SettingsTab({
         </div>
       </div>
 
-      <Button onClick={save} disabled={saving} className="bg-gradient-brand text-primary-foreground">
+      <Button
+        onClick={save}
+        disabled={saving}
+        className="bg-gradient-brand text-primary-foreground"
+      >
         {saving ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
@@ -314,4 +272,4 @@ export function SettingsTab({
       </Button>
     </div>
   );
-      }
+    }
