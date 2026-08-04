@@ -30,7 +30,7 @@ export function sortStandings(rows: StandingRow[]): StandingRow[] {
       b.points - a.points ||
       b.goal_diff - a.goal_diff ||
       b.goals_for - a.goals_for ||
-      a.player_name.localeCompare(b.player_name),
+      (a.player_name ?? "").localeCompare(b.player_name ?? ""),
   );
 }
 
