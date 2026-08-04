@@ -90,24 +90,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "eFootball Nepal" },
       
-      // Facebook / Open Graph / Messenger Preview
+      // Correct Domain & Image Meta Tags for Messenger/Facebook
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://efootballnepal.vercel.app/" },
+      { property: "og:url", content: "https://ballnepal.vercel.app/" },
       { property: "og:site_name", content: "eFootball Nepal" },
       { property: "og:title", content: "eFootball Nepal — Tournaments & Community" },
       { property: "og:description", content: "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community." },
-      { property: "og:image", content: "https://efootballnepal.vercel.app/og-image.png" },
-      { property: "og:image:secure_url", content: "https://efootballnepal.vercel.app/og-image.png" },
+      { property: "og:image", content: "https://ballnepal.vercel.app/og-image.png" },
+      { property: "og:image:secure_url", content: "https://ballnepal.vercel.app/og-image.png" },
       { property: "og:image:type", content: "image/png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "eFootball Nepal Banner" },
+      { property: "og:image:alt", content: "eFootball Nepal Logo" },
 
-      // Twitter Card Preview
+      // Twitter Cards
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "eFootball Nepal — Tournaments & Community" },
       { name: "twitter:description", content: "The official home of competitive eFootball in Nepal." },
-      { name: "twitter:image", content: "https://efootballnepal.vercel.app/og-image.png" },
+      { name: "twitter:image", content: "https://ballnepal.vercel.app/og-image.png" },
     ],
     links: [
       {
