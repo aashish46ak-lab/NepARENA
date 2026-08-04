@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ReactPortal from "react-dom";
 import { AdminSection, EmptyState } from "./AdminUI";
 import { useCrud } from "./crud";
 import { supabase } from "@/lib/supabase";
@@ -39,12 +40,6 @@ function statusBadge(s: ReportStatus) {
   return <Badge className={cn("capitalize", map[s])}>{s.replace("_", " ")}</Badge>;
 }
 
-/**
- * The DB column `screenshot_url` is plain `text`, but the report form stores
- * multiple screenshots by JSON.stringify-ing an array into it (see
- * tournaments.$id.tsx). This parses that back into a real string[] the same
- * way the public page does, so admin sees the same photos correctly.
- */
 function screenshotList(raw: string | string[] | null | undefined): string[] {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
@@ -225,9 +220,9 @@ export function ReportsPanel() {
         </div>
       )}
 
-      {/* VIEW REPORT DETAILS DIALOG */}
+      {/* DIALOG WITH SCREENSHOTS */}
       <Dialog open={!!viewing} onOpenChange={(open) => { if (!open) { setViewing(null); closeLightbox(); } }}>
-        <DialogContent className="glass max-w-lg">
+        <DialogContent className="glass max-w-lg z-[50]">
           <DialogHeader>
             <DialogTitle>Report details</DialogTitle>
           </DialogHeader>
@@ -258,26 +253,28 @@ export function ReportsPanel() {
                 </p>
               </div>
 
-              {/* SCREENSHOT PREVIEW THUMBNAILS */}
+              {/* SCREENSHOT THUMBNAILS - WITH STOP PROPAGATION */}
               {viewingScreenshots.length > 0 && (
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-muted-foreground">Screenshots</p>
                   <div className="flex flex-wrap gap-2">
                     {viewingScreenshots.map((url, i) => (
-                      <button
+                      <div
                         key={i}
-                        type="button"
-                        onClick={() => openLightbox(i)}
-                        className="overflow-hidden rounded-lg border border-border/60 hover:opacity-80 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openLightbox(i);
+                        }}
+                        className="cursor-pointer overflow-hidden rounded-lg border border-border/60 hover:opacity-80 transition hover:border-primary"
                       >
-                        <img src={url} alt={`Screenshot ${i + 1}`} className="h-20 w-20 object-cover" />
-                      </button>
+                        <img src={url} alt={`Screenshot ${i + 1}`} className="h-20 w-20 object-cover pointer-events-none" />
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => { update(viewing.id, { status: "dismissed" }); setViewing(null); }}>
                   Dismiss
                 </Button>
@@ -290,49 +287,67 @@ export function ReportsPanel() {
         </DialogContent>
       </Dialog>
 
-      {/* SCREENSHOT LIGHTBOX / FULLSCREEN PREVIEW */}
+      {/* LIGHTBOX PREVIEW - HIGH Z-INDEX & POINTER EVENTS FIXED */}
       {lightboxIndex !== null && viewingScreenshots.length > 0 && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4 pointer-events-auto"
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
+          onClick={(e) => {
+            e.stopPropagation();
+            closeLightbox();
+          }}
         >
           <button
             type="button"
-            onClick={closeLightbox}
-            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+            onClick={(e) => {
+              e.stopPropagation();
+              closeLightbox();
+            }}
+            className="absolute right-4 top-4 z-[10000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
 
           {viewingScreenshots.length > 1 && (
             <button
               type="button"
-              onClick={prevPhoto}
-              className="absolute left-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-4 transition"
+              onClick={(e) => {
+                e.stopPropagation();
+                prevPhoto();
+              }}
+              className="absolute left-3 z-[10000] grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer sm:left-6"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-6 w-6" />
             </button>
           )}
 
-          <img
-            src={viewingScreenshots[lightboxIndex]}
-            alt={`Screenshot ${lightboxIndex + 1}`}
-            className="max-h-[85vh] max-w-full rounded-lg object-contain select-none"
-          />
+          <div 
+            className="relative flex max-h-[85vh] max-w-[90vw] items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={viewingScreenshots[lightboxIndex]}
+              alt={`Screenshot ${lightboxIndex + 1}`}
+              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain select-none shadow-2xl"
+            />
+          </div>
 
           {viewingScreenshots.length > 1 && (
             <button
               type="button"
-              onClick={nextPhoto}
-              className="absolute right-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4 transition"
+              onClick={(e) => {
+                e.stopPropagation();
+                nextPhoto();
+              }}
+              className="absolute right-3 z-[10000] grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer sm:right-6"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-6 w-6" />
             </button>
           )}
 
           {viewingScreenshots.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-sm text-white border border-white/10">
               {lightboxIndex + 1} / {viewingScreenshots.length}
             </div>
           )}
@@ -343,4 +358,4 @@ export function ReportsPanel() {
 }
 
 export default ReportsPanel;
-      
+              
