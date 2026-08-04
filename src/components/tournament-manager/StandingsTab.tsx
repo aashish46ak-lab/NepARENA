@@ -25,12 +25,17 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => {
-        // Fallback using proxy if direct crossOrigin fails
+        // Fallback using proxy if direct crossOrigin or local relative path needs URL resolution
         const proxyImg = new Image();
         proxyImg.crossOrigin = "anonymous";
         proxyImg.onload = () => resolve(proxyImg);
         proxyImg.onerror = () => resolve(null);
-        proxyImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
+        
+        if (url.startsWith("http")) {
+          proxyImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
+        } else {
+          resolve(null);
+        }
       };
       img.src = url;
     });
@@ -60,14 +65,16 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       ctx.fillStyle = "#0b1220";
       ctx.fillRect(0, 0, width, height);
 
-      // --- TOURNAMENT LOGO & HEADER LAYOUT ---
+      // --- TOURNAMENT LOGO SELECTION ---
+      // 1st Preference: Tournament Specific Logo/Banner from data
+      // 2nd Preference: Default App Logo (/android-chrome-512x512.png or /pwa-512x512.png)
       const tournamentLogoUrl =
         (data as any).logo_url ||
         (data as any).banner_url ||
         (data as any).logo ||
-        null;
+        "/android-chrome-512x512.png"; // Fallback to app icon
 
-      let textStartX = 20; // Default if no logo
+      let textStartX = 20;
 
       if (tournamentLogoUrl) {
         const logoImg = await fetchImageSafe(tournamentLogoUrl);
@@ -75,17 +82,17 @@ export function StandingsTab({ data }: { data: TournamentData }) {
           // Circular clipped Tournament Logo
           ctx.save();
           ctx.beginPath();
-          ctx.arc(50, 55, 30, 0, Math.PI * 2);
+          ctx.arc(50, 55, 28, 0, Math.PI * 2);
           ctx.closePath();
           ctx.clip();
-          ctx.drawImage(logoImg, 20, 25, 60, 60);
+          ctx.drawImage(logoImg, 22, 27, 56, 56);
           ctx.restore();
 
-          textStartX = 95; // Shift text right when logo exists
+          textStartX = 92; // Shift text right when logo exists
         }
       }
 
-      // 1. Brand Title ("eFootball Nepal")
+      // 1. Brand Name ("eFootball Nepal")
       ctx.fillStyle = "#38bdf8";
       ctx.font = "bold 13px sans-serif";
       ctx.fillText("eFootball Nepal", textStartX, 38);
@@ -323,4 +330,4 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       </div>
     </div>
   );
-      }
+}
