@@ -27,6 +27,7 @@ export function PendingMatchesPanel() {
     }
     setLoading(true);
     try {
+      // Only live/ongoing + approved participant matches
       setItems(await loadPendingMatches(user.id));
     } catch (e) {
       console.error(e);
@@ -40,28 +41,32 @@ export function PendingMatchesPanel() {
     void reload();
   }, [user?.id]);
 
-  // Not logged in OR not in any live tournament with pending matches → show nothing
+  // Not logged in → nothing
   if (!user) return null;
+  // Still loading → nothing (no empty box on home)
   if (loading) return null;
+  // Not in any live tournament / no pending → normal home
   if (items.length === 0) return null;
 
   return (
-    <div id="pending-matches" className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-3 w-3 shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-        </span>
-        <h2 className="text-lg font-bold text-red-400">
-          Pending matches ({items.length})
-        </h2>
+    <section className="max-w-7xl mx-auto px-4 pt-8">
+      <div id="pending-matches" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-3 w-3 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+          </span>
+          <h2 className="text-lg font-bold text-red-400">
+            Pending matches ({items.length})
+          </h2>
+        </div>
+        <div className="space-y-3">
+          {items.map((pm) => (
+            <PendingMatchCard key={pm.match.id} pm={pm} onDone={reload} />
+          ))}
+        </div>
       </div>
-      <div className="space-y-3">
-        {items.map((pm) => (
-          <PendingMatchCard key={pm.match.id} pm={pm} onDone={reload} />
-        ))}
-      </div>
-    </div>
+    </section>
   );
 }
 
