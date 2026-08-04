@@ -476,7 +476,6 @@ function RegisterButton({ tournament, allParticipants }: { tournament: Tournamen
     </Button>
   );
 }
-
 const MAX_SCREENSHOTS = 5;
 
 function ReportForm({ tournament, players }: { tournament: Tournament; players: TournamentParticipant[] }) {
@@ -509,18 +508,19 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
   const prevPhoto = () =>
     setLightbox((l) => (l ? { ...l, index: (l.index - 1 + l.photos.length) % l.photos.length } : l));
 
-  let touchStartX = 0;
+  // Touch event handlers for mobile swipe in lightbox
+  const touchStartXRef = useRef<number>(0);
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX = e.touches[0].clientX;
+    touchStartXRef.current = e.touches[0].clientX;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
-    const delta = e.changedTouches[0].clientX - touchStartX;
+    const delta = e.changedTouches[0].clientX - touchStartXRef.current;
     if (Math.abs(delta) < 40) return;
     if (delta < 0) nextPhoto();
     else prevPhoto();
   };
 
-  const loadMyReports = async () => {
+  const loadMyReports = useCallback(async () => {
     if (!user) return;
     setLoadingReports(true);
     const { data, error } = await supabase
@@ -535,12 +535,11 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
       return;
     }
     setMyReports(data ?? []);
-  };
+  }, [user, tournament.id]);
 
   useEffect(() => {
     void loadMyReports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, tournament.id]);
+  }, [loadMyReports]);
 
   useEffect(() => {
     const urls = screenshots.map((f) => URL.createObjectURL(f));
@@ -848,3 +847,8 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     </div>
   );
 }
+
+
+      
+
+                          
