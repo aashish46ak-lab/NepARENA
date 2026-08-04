@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
@@ -331,8 +331,11 @@ function PublicFixtures({
             <button
               key={name}
               ref={(el) => {
-                if (el) tabRefs.set(name, el);
-                else tabRefs.delete(name);
+                if (el) {
+                  tabRefs.set(name, el);
+                } else {
+                  tabRefs.delete(name);
+                }
               }}
               type="button"
               onClick={() => selectMatchday(name)}
@@ -508,7 +511,6 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
   const prevPhoto = () =>
     setLightbox((l) => (l ? { ...l, index: (l.index - 1 + l.photos.length) % l.photos.length } : l));
 
-  // Touch event handlers for mobile swipe in lightbox
   const touchStartXRef = useRef<number>(0);
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0].clientX;
@@ -847,8 +849,3 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     </div>
   );
 }
-
-
-      
-
-                          
