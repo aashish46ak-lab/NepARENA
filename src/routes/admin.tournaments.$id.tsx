@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
 import { TournamentManager } from "@/components/tournament-manager/TournamentManager";
 import { supabase, type Tournament } from "@/lib/supabase";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/tournaments/$id")({
   ssr: false,
@@ -41,6 +42,13 @@ function AdminTournamentPage() {
       <PageShell>
         <div className="py-20 text-center text-muted-foreground">
           Tournament not found
+          <div className="mt-4">
+            <Button asChild variant="outline">
+              <Link to="/dashboard" search={{ t: "tournaments" }}>
+                Back to tournaments
+              </Link>
+            </Button>
+          </div>
         </div>
       </PageShell>
     );
@@ -48,7 +56,14 @@ function AdminTournamentPage() {
 
   return (
     <PageShell>
-      <div className="max-w-7xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10 space-y-4">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to="/dashboard" search={{ t: "tournaments" }}>
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Back to tournaments
+          </Link>
+        </Button>
+
         <TournamentManager tournament={tournament} open onOpenChange={() => {}} />
       </div>
     </PageShell>
