@@ -32,6 +32,23 @@ function statusBadge(s: ReportStatus) {
   return <Badge className={cn("capitalize", map[s])}>{s.replace("_", " ")}</Badge>;
 }
 
+/**
+ * The DB column `screenshot_url` is plain `text`, but the report form stores
+ * multiple screenshots by JSON.stringify-ing an array into it (see
+ * tournaments.$id.tsx). This parses that back into a real string[] the same
+ * way the public page does, so admin sees the same photos correctly.
+ */
+function screenshotList(raw: string | string[] | null | undefined): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((u) => typeof u === "string") : [raw];
+  } catch {
+    return [raw];
+  }
+}
+
 export function ReportsPanel() {
   const { rows, loading, update, remove } = useCrud<Report>("reports");
   const [filter, setFilter] = useState<ReportStatus | "all">("all");
@@ -50,7 +67,7 @@ export function ReportsPanel() {
   }, []);
 
   useEffect(() => {
-    const ids = [...new Set(rows.map((r) => r.reporter_id).filter(Boolean))];
+    const ids = [...new Set(rows.map((r) => r.reporter_id).filter(Boolean))] as string[];
     if (ids.length === 0) return;
     void (async () => {
       const { data } = await supabase
@@ -78,8 +95,7 @@ export function ReportsPanel() {
 
   const pendingCount = rows.filter((r) => r.status === "pending").length;
 
-  // screenshot_url is now an array column (text[]) — same column name, holds multiple URLs.
-  const viewingScreenshots = viewing?.screenshot_url ?? [];
+  const viewingScreenshots = screenshotList(viewing?.screenshot_url);
 
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
@@ -141,61 +157,64 @@ export function ReportsPanel() {
         <EmptyState message="No reports in this view." />
       ) : (
         <div className="space-y-2">
-          {list.map((r) => (
-            <div
-              key={r.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 p-4"
-            >
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-rose-500/15">
-                <Flag className="h-4 w-4 text-rose-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{r.reason}</span>
-                  {statusBadge(r.status)}
-                  <Badge variant="outline" className="capitalize">{r.type}</Badge>
-                  {r.screenshot_url && r.screenshot_url.length > 0 && (
-                    <Badge variant="outline">
-                      {r.screenshot_url.length} photo{r.screenshot_url.length > 1 ? "s" : ""}
-                    </Badge>
-                  )}
+          {list.map((r) => {
+            const shots = screenshotList(r.screenshot_url);
+            return (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 p-4"
+              >
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-rose-500/15">
+                  <Flag className="h-4 w-4 text-rose-400" />
                 </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {tournamentName(r.tournament_id)} · Reported by {(r.reporter_id ? reporterNames.get(r.reporter_id) : null) ?? "…"}
-                  {r.player_name ? ` · Player: ${r.player_name}` : ""} · {new Date(r.created_at).toLocaleString()}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{r.reason}</span>
+                    {statusBadge(r.status)}
+                    <Badge variant="outline" className="capitalize">{r.type}</Badge>
+                    {shots.length > 0 && (
+                      <Badge variant="outline">
+                        {shots.length} photo{shots.length > 1 ? "s" : ""}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {tournamentName(r.tournament_id)} · Reported by {(r.reporter_id ? reporterNames.get(r.reporter_id) : null) ?? "…"}
+                    {r.player_name ? ` · Player: ${r.player_name}` : ""} · {new Date(r.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button size="sm" variant="outline" onClick={() => setViewing(r)}>
+                    <Eye className="mr-1.5 h-3.5 w-3.5" /> View
+                  </Button>
+                  <Select
+                    value={r.status}
+                    onValueChange={(v) => update(r.id, { status: v as ReportStatus })}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in_review">In review</SelectItem>
+                      <SelectItem value="resolved">Resolve</SelectItem>
+                      <SelectItem value="dismissed">Dismiss</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-destructive"
+                    onClick={() => {
+                      if (confirm("Delete this report?")) remove(r.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Button size="sm" variant="outline" onClick={() => setViewing(r)}>
-                  <Eye className="mr-1.5 h-3.5 w-3.5" /> View
-                </Button>
-                <Select
-                  value={r.status}
-                  onValueChange={(v) => update(r.id, { status: v as ReportStatus })}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_review">In review</SelectItem>
-                    <SelectItem value="resolved">Resolve</SelectItem>
-                    <SelectItem value="dismissed">Dismiss</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-destructive"
-                  onClick={() => {
-                    if (confirm("Delete this report?")) remove(r.id);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -311,4 +330,5 @@ export function ReportsPanel() {
       )}
     </AdminSection>
   );
-}
+        }
+        
