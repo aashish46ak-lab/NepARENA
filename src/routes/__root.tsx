@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
+import { InstallPrompt } from "@/components/InstallPrompt";
+import { registerPWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
   return (
@@ -107,6 +109,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   href: "/android-chrome-512x512.png",
   type: "image/png",
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
     ],
   }),
   shellComponent: RootShell,
@@ -132,11 +137,16 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    void registerPWA();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RoleRedirect />
         <Outlet />
+        <InstallPrompt />
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </QueryClientProvider>
