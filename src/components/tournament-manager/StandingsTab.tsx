@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Download, Loader2, Check } from "lucide-react";
+import { useState } from "react";
+import { Download, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
     return p?.club_logo_url || p?.photo_url || null;
   };
 
-  // Canvas-based Clean Compact Download & Gallery Save Handler
+  // Canvas Image Generator for Direct Save
   const handleSaveImage = async () => {
     if (loading || rows.length === 0) return;
     setLoading(true);
@@ -27,13 +27,13 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const width = 600;
-      const rowHeight = 36;
-      const headerHeight = 110;
+      const width = 640;
+      const rowHeight = 38;
+      const headerHeight = 100;
       const tableHeaderHeight = 32;
-      const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 20;
+      const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 24;
 
-      canvas.width = width * 2; // High DPI crisp scale
+      canvas.width = width * 2; // Sharp scale
       canvas.height = height * 2;
       ctx.scale(2, 2);
 
@@ -42,33 +42,33 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       ctx.fillRect(0, 0, width, height);
 
       // --- HEADER SECTION ---
-      // Brand Logo / Text
+      // Brand Name
       ctx.fillStyle = "#38bdf8";
-      ctx.font = "bold 16px sans-serif";
-      ctx.fillText("eFootball Nepal", 20, 30);
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillText("eFootball Nepal", 20, 28);
 
-      // Tournament / League Name
+      // Dynamic Tournament Name (Actual Title)
+      const tournamentTitle = (data as any).name || data.title || "Tournament Standings";
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 18px sans-serif";
-      const tournamentTitle = data.title || "League Standings";
-      ctx.fillText(tournamentTitle, 20, 56);
+      ctx.fillText(tournamentTitle, 20, 54);
 
-      // Sub-header & Date
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "12px sans-serif";
+      // Date & Official Badge
       const currentDate = new Date().toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
       });
-      ctx.fillText(`Official Standings • ${currentDate}`, 20, 76);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "12px sans-serif";
+      ctx.fillText(`Official Standings • ${currentDate}`, 20, 74);
 
       // Separator Line
       ctx.strokeStyle = "#1e293b";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(20, 92);
-      ctx.lineTo(width - 20, 92);
+      ctx.moveTo(20, 88);
+      ctx.lineTo(width - 20, 88);
       ctx.stroke();
 
       // --- TABLE HEADER ---
@@ -77,23 +77,21 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       ctx.font = "bold 11px sans-serif";
 
       ctx.fillText("#", 25, startY + 18);
-      ctx.fillText("CLUB", 60, startY + 18);
-      ctx.fillText("PTS", 370, startY + 18);
-      ctx.fillText("P", 415, startY + 18);
-      ctx.fillText("W", 450, startY + 18);
-      ctx.fillText("D", 485, startY + 18);
-      ctx.fillText("L", 520, startY + 18);
-      ctx.fillText("GD", 555, startY + 18);
+      ctx.fillText("CLUB", 85, startY + 18);
+      ctx.fillText("PTS", 410, startY + 18);
+      ctx.fillText("P", 455, startY + 18);
+      ctx.fillText("W", 490, startY + 18);
+      ctx.fillText("D", 525, startY + 18);
+      ctx.fillText("L", 560, startY + 18);
+      ctx.fillText("GD", 595, startY + 18);
 
-      // Table Header Line
+      // Line
       ctx.beginPath();
       ctx.moveTo(20, startY + 28);
       ctx.lineTo(width - 20, startY + 28);
       ctx.stroke();
 
-      // --- TABLE ROWS ---
-      startY += tableHeaderHeight;
-
+      // Helper to load external logo without CORS blocking
       const loadImage = (url: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
@@ -104,107 +102,124 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         });
       };
 
+      // --- TABLE ROWS ---
+      startY += tableHeaderHeight;
+
       for (let i = 0; i < rows.length; i++) {
         const s = rows[i];
         const y = startY + i * rowHeight;
         const name = displayName(s.club, s.player_name);
         const logoUrl = logoOf(s.participant_id);
 
+        // Alternating row background
         if (i % 2 === 0) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
           ctx.fillRect(20, y, width - 40, rowHeight);
         }
 
-        // Rank Number
-        ctx.fillStyle = i === 0 ? "#f59e0b" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : "#94a3b8";
-        ctx.font = "bold 12px sans-serif";
-        ctx.fillText(`${i + 1}`, 25, y + 22);
+        // --- Rank Number Plate (Gold, Silver, Bronze) ---
+        if (i === 0) {
+          // Gold Plate
+          ctx.fillStyle = "#eab308";
+          ctx.beginPath();
+          ctx.arc(28, y + 19, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#000000";
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillText("1", 25, y + 23);
+        } else if (i === 1) {
+          // Silver Plate
+          ctx.fillStyle = "#94a3b8";
+          ctx.beginPath();
+          ctx.arc(28, y + 19, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#000000";
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillText("2", 25, y + 23);
+        } else if (i === 2) {
+          // Bronze Plate
+          ctx.fillStyle = "#d97706";
+          ctx.beginPath();
+          ctx.arc(28, y + 19, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillText("3", 25, y + 23);
+        } else {
+          // Normal Rank
+          ctx.fillStyle = "#64748b";
+          ctx.font = "12px sans-serif";
+          ctx.fillText(`${i + 1}`, 25, y + 23);
+        }
 
-        // Club Logo
+        // Draw Club Logo
         if (logoUrl) {
           try {
             const img = await loadImage(logoUrl);
             ctx.save();
             ctx.beginPath();
-            ctx.arc(70, y + 18, 10, 0, Math.PI * 2);
+            ctx.arc(62, y + 19, 11, 0, Math.PI * 2);
             ctx.closePath();
             ctx.clip();
-            ctx.drawImage(img, 60, y + 8, 20, 20);
+            ctx.drawImage(img, 51, y + 8, 22, 22);
             ctx.restore();
           } catch {
-            ctx.fillStyle = "#334155";
+            // Fallback placeholder circle if image fails to load
+            ctx.fillStyle = "#1e293b";
             ctx.beginPath();
-            ctx.arc(70, y + 18, 10, 0, Math.PI * 2);
+            ctx.arc(62, y + 19, 11, 0, Math.PI * 2);
             ctx.fill();
           }
         }
 
         // Club Name
         ctx.fillStyle = "#ffffff";
-        ctx.font = "500 12px sans-serif";
-        const truncatedName = name.length > 28 ? name.substring(0, 25) + "..." : name;
-        ctx.fillText(truncatedName, 90, y + 22);
+        ctx.font = i < 3 ? "bold 12px sans-serif" : "500 12px sans-serif";
+        const truncatedName = name.length > 30 ? name.substring(0, 27) + "..." : name;
+        ctx.fillText(truncatedName, 85, y + 23);
 
-        // Stats
+        // Stats Values
         ctx.font = "12px sans-serif";
         ctx.fillStyle = "#f8fafc";
-        ctx.fillText(`${s.points}`, 370, y + 22);
+        ctx.fillText(`${s.points}`, 410, y + 23);
 
         ctx.fillStyle = "#94a3b8";
-        ctx.fillText(`${s.played}`, 415, y + 22);
-        ctx.fillText(`${s.won}`, 450, y + 22);
-        ctx.fillText(`${s.drawn}`, 485, y + 22);
-        ctx.fillText(`${s.lost}`, 520, y + 22);
+        ctx.fillText(`${s.played}`, 455, y + 23);
+        ctx.fillText(`${s.won}`, 490, y + 23);
+        ctx.fillText(`${s.drawn}`, 525, y + 23);
+        ctx.fillText(`${s.lost}`, 560, y + 23);
 
         const gdStr = s.goal_diff > 0 ? `+${s.goal_diff}` : `${s.goal_diff}`;
-        ctx.fillText(gdStr, 555, y + 22);
+        ctx.fillText(gdStr, 595, y + 23);
 
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+        // Divider
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
         ctx.beginPath();
         ctx.moveTo(20, y + rowHeight);
         ctx.lineTo(width - 20, y + rowHeight);
         ctx.stroke();
       }
 
-      // Export Blob
-      canvas.toBlob(async (blob) => {
-        if (!blob) throw new Error("Canvas Blob failed");
-        
-        const fileName = `standings-${data.title || "league"}.png`;
-        const file = new File([blob], fileName, { type: "image/png" });
-
-        // Mobile Web Share API (Mobile Gallery push option)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              files: [file],
-              title: "Standings Image",
-              text: "Official League Standings",
-            });
-            toast.success("Image saved to Gallery!");
-            return;
-          } catch (shareErr) {
-            // Mobile share canceled/failed, fallback to auto download
-          }
-        }
-
-        // Standard direct download fallback
+      // --- DIRECT DOWNLOAD (NO SHARE DIALOG) ---
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const fileName = `${(tournamentTitle).replace(/\s+/g, "_")}_Standings.png`;
         const pngUrl = URL.createObjectURL(blob);
-        const downloadLink = document.createElement("a");
-        downloadLink.href = pngUrl;
-        downloadLink.download = fileName;
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
+        const link = document.createElement("a");
+        link.href = pngUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         URL.revokeObjectURL(pngUrl);
 
-        // Show Toast Notification
-        toast.success("Standings Image Saved Successfully!");
+        // Notification
+        toast.success("Image Saved Successfully!");
       }, "image/png");
 
     } catch (err) {
-      console.error("Error generating standings image:", err);
-      toast.error("Failed to save image. Try taking a screenshot.");
+      console.error("Error saving standings image:", err);
+      toast.error("Failed to generate image.");
     } finally {
       setLoading(false);
     }
@@ -222,7 +237,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
 
   return (
     <div className="pt-4 space-y-3">
-      {/* Header & Save Button */}
+      {/* Header & Direct Save Button */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           Tie-breakers: Points → Goal difference → Goals scored.
@@ -290,5 +305,5 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       </div>
     </div>
   );
-  }
-                     
+          }
+        
