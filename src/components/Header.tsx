@@ -21,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { NotificationsBell } from "@/components/NotificationsBell";
 
 const PUBLIC_NAV = [
   { to: "/", label: "Home" },
@@ -101,7 +102,6 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/60">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-
         <Link
           to={isAdmin ? "/dashboard" : "/"}
           className="flex items-center gap-2 font-bold"
@@ -117,12 +117,12 @@ export function Header() {
               <Trophy className="h-4 w-4 text-primary-foreground" />
             </div>
           )}
-
           <span className="text-gradient-brand text-lg tracking-tight">
             {settings?.site_name ?? "eFootball Nepal"}
           </span>
         </Link>
-                <nav className="hidden md:flex items-center gap-1">
+
+        <nav className="hidden md:flex items-center gap-1">
           {NAV.map((n) => (
             <Link
               key={n.label}
@@ -141,6 +141,8 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          {user && <NotificationsBell />}
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -153,7 +155,6 @@ export function Header() {
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
-
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="text-sm font-medium truncate">
@@ -163,63 +164,32 @@ export function Header() {
                     {user.email}
                   </div>
                 </DropdownMenuLabel>
-
                 <DropdownMenuSeparator />
-
-                {!isAdmin && (
-                  <DropdownMenuItem
-                    onClick={() => router.navigate({ to: "/profile" })}
-                  >
-                    <UserIcon className="h-4 w-4 mr-2" />
-                    My Profile
-                  </DropdownMenuItem>
-                )}
-
-                {isAdmin && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => router.navigate({ to: "/dashboard" })}
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Dashboard
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => router.navigate({ to: "/" })}
-                    >
-                      🌐 View Website
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                {!isAdmin && (
-                  <DropdownMenuItem
-                    onClick={() => router.navigate({ to: "/members" })}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Community
-                  </DropdownMenuItem>
-                )}
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem
-                  onClick={() =>
-                    signOut().then(() => router.navigate({ to: "/" }))
-                  }
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign out
+                <DropdownMenuItem asChild>
+                  <Link to="/profile">
+                    <UserIcon className="h-4 w-4 mr-2" /> My Profile
+                  </Link>
                 </DropdownMenuItem>
-
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" search={{ t: "dashboard" }}>
+                      <Shield className="h-4 w-4 mr-2" /> Admin
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    void signOut();
+                    router.navigate({ to: "/" });
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" /> Sign out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button
-              asChild
-              size="sm"
-              className="bg-gradient-brand text-primary-foreground hover:opacity-90"
-            >
+            <Button asChild size="sm" className="bg-gradient-brand text-primary-foreground">
               <Link to="/auth">Sign in</Link>
             </Button>
           )}
@@ -230,7 +200,6 @@ export function Header() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-
             <SheetContent
               side="right"
               className="w-64 glass border-l border-border"
@@ -246,7 +215,7 @@ export function Header() {
                     {n.label}
                   </Link>
                 ))}
-                                {!isAdmin && user && (
+                {!isAdmin && user && (
                   <Link
                     to="/profile"
                     className="px-3 py-2 rounded-md hover:bg-white/5"
@@ -254,7 +223,6 @@ export function Header() {
                     My Profile
                   </Link>
                 )}
-
                 {isAdmin && (
                   <>
                     <Link
@@ -263,7 +231,6 @@ export function Header() {
                     >
                       Dashboard
                     </Link>
-
                     <Link
                       to="/"
                       className="px-3 py-2 rounded-md hover:bg-white/5"
