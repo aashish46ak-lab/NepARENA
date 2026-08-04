@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
-import { Crown, Medal, Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { sortStandings, type TournamentData } from "./shared";
 
 export function StandingsTab({ data }: { data: TournamentData }) {
   const rows = sortStandings(data.standings);
-  const cardRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
   const displayName = (club: string | null, playerName: string) =>
@@ -17,47 +17,194 @@ export function StandingsTab({ data }: { data: TournamentData }) {
     return p?.club_logo_url || p?.photo_url || null;
   };
 
-  // Dynamic CDN Loader function (Mobile Phone friendly, No NPM Terminal needed)
+  // Canvas-based Clean Compact Download & Gallery Save Handler
   const handleSaveImage = async () => {
-    if (!cardRef.current || loading) return;
+    if (loading || rows.length === 0) return;
+    setLoading(true);
 
     try {
-      setLoading(true);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-      // Load html-to-image dynamically from CDN
-      if (!(window as any).htmlToImage) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js";
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
+      const width = 600;
+      const rowHeight = 36;
+      const headerHeight = 110;
+      const tableHeaderHeight = 32;
+      const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 20;
+
+      canvas.width = width * 2; // High DPI crisp scale
+      canvas.height = height * 2;
+      ctx.scale(2, 2);
+
+      // Background
+      ctx.fillStyle = "#0b1220";
+      ctx.fillRect(0, 0, width, height);
+
+      // --- HEADER SECTION ---
+      // Brand Logo / Text
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText("eFootball Nepal", 20, 30);
+
+      // Tournament / League Name
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 18px sans-serif";
+      const tournamentTitle = data.title || "League Standings";
+      ctx.fillText(tournamentTitle, 20, 56);
+
+      // Sub-header & Date
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "12px sans-serif";
+      const currentDate = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+      ctx.fillText(`Official Standings • ${currentDate}`, 20, 76);
+
+      // Separator Line
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(20, 92);
+      ctx.lineTo(width - 20, 92);
+      ctx.stroke();
+
+      // --- TABLE HEADER ---
+      let startY = headerHeight;
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 11px sans-serif";
+
+      ctx.fillText("#", 25, startY + 18);
+      ctx.fillText("CLUB", 60, startY + 18);
+      ctx.fillText("PTS", 370, startY + 18);
+      ctx.fillText("P", 415, startY + 18);
+      ctx.fillText("W", 450, startY + 18);
+      ctx.fillText("D", 485, startY + 18);
+      ctx.fillText("L", 520, startY + 18);
+      ctx.fillText("GD", 555, startY + 18);
+
+      // Table Header Line
+      ctx.beginPath();
+      ctx.moveTo(20, startY + 28);
+      ctx.lineTo(width - 20, startY + 28);
+      ctx.stroke();
+
+      // --- TABLE ROWS ---
+      startY += tableHeaderHeight;
+
+      const loadImage = (url: string): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = () => reject();
+          img.src = url;
         });
+      };
+
+      for (let i = 0; i < rows.length; i++) {
+        const s = rows[i];
+        const y = startY + i * rowHeight;
+        const name = displayName(s.club, s.player_name);
+        const logoUrl = logoOf(s.participant_id);
+
+        if (i % 2 === 0) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
+          ctx.fillRect(20, y, width - 40, rowHeight);
+        }
+
+        // Rank Number
+        ctx.fillStyle = i === 0 ? "#f59e0b" : i === 1 ? "#cbd5e1" : i === 2 ? "#d97706" : "#94a3b8";
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillText(`${i + 1}`, 25, y + 22);
+
+        // Club Logo
+        if (logoUrl) {
+          try {
+            const img = await loadImage(logoUrl);
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(70, y + 18, 10, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(img, 60, y + 8, 20, 20);
+            ctx.restore();
+          } catch {
+            ctx.fillStyle = "#334155";
+            ctx.beginPath();
+            ctx.arc(70, y + 18, 10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Club Name
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "500 12px sans-serif";
+        const truncatedName = name.length > 28 ? name.substring(0, 25) + "..." : name;
+        ctx.fillText(truncatedName, 90, y + 22);
+
+        // Stats
+        ctx.font = "12px sans-serif";
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillText(`${s.points}`, 370, y + 22);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText(`${s.played}`, 415, y + 22);
+        ctx.fillText(`${s.won}`, 450, y + 22);
+        ctx.fillText(`${s.drawn}`, 485, y + 22);
+        ctx.fillText(`${s.lost}`, 520, y + 22);
+
+        const gdStr = s.goal_diff > 0 ? `+${s.goal_diff}` : `${s.goal_diff}`;
+        ctx.fillText(gdStr, 555, y + 22);
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+        ctx.beginPath();
+        ctx.moveTo(20, y + rowHeight);
+        ctx.lineTo(width - 20, y + rowHeight);
+        ctx.stroke();
       }
 
-      const htmlToImage = (window as any).htmlToImage;
-      if (!htmlToImage) throw new Error("Library not loaded");
+      // Export Blob
+      canvas.toBlob(async (blob) => {
+        if (!blob) throw new Error("Canvas Blob failed");
+        
+        const fileName = `standings-${data.title || "league"}.png`;
+        const file = new File([blob], fileName, { type: "image/png" });
 
-      // Generate PNG Data URL
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
-        cacheBust: true,
-        style: {
-          backgroundColor: "#0b1220",
-          borderRadius: "16px",
-          padding: "16px",
-        },
-      });
+        // Mobile Web Share API (Mobile Gallery push option)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: "Standings Image",
+              text: "Official League Standings",
+            });
+            toast.success("Image saved to Gallery!");
+            return;
+          } catch (shareErr) {
+            // Mobile share canceled/failed, fallback to auto download
+          }
+        }
 
-      // Trigger download on phone
-      const downloadLink = document.createElement("a");
-      downloadLink.href = dataUrl;
-      downloadLink.download = `standings-${data.id || "table"}.png`;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+        // Standard direct download fallback
+        const pngUrl = URL.createObjectURL(blob);
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pngUrl;
+        downloadLink.download = fileName;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(pngUrl);
+
+        // Show Toast Notification
+        toast.success("Standings Image Saved Successfully!");
+      }, "image/png");
+
     } catch (err) {
-      console.error("Failed to save image:", err);
-      alert("Mobile preview error. Try again or take a screenshot.");
+      console.error("Error generating standings image:", err);
+      toast.error("Failed to save image. Try taking a screenshot.");
     } finally {
       setLoading(false);
     }
@@ -75,7 +222,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
 
   return (
     <div className="pt-4 space-y-3">
-      {/* Header with Save Button */}
+      {/* Header & Save Button */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           Tie-breakers: Points → Goal difference → Goals scored.
@@ -92,25 +239,23 @@ export function StandingsTab({ data }: { data: TournamentData }) {
           ) : (
             <Download className="h-3.5 w-3.5" />
           )}
-          {loading ? "Saving..." : "Save Image"}
+          {loading ? "Generating..." : "Save Image"}
         </Button>
       </div>
 
-      {/* Target Container to Save */}
-      <div ref={cardRef} className="glass rounded-2xl overflow-x-auto bg-background">
-        <table className="w-full text-sm min-w-[640px]">
+      {/* Screen Table View */}
+      <div className="glass rounded-2xl overflow-x-auto bg-background">
+        <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="text-xs uppercase tracking-wider text-muted-foreground border-b border-border/60">
-              <th className="p-3 text-left w-10">#</th>
-              <th className="p-3 text-left">Club</th>
-              <th className="p-3 text-center font-bold">Pts</th>
-              <th className="p-3 text-center">P</th>
-              <th className="p-3 text-center">W</th>
-              <th className="p-3 text-center">D</th>
-              <th className="p-3 text-center">L</th>
-              <th className="p-3 text-center">GF</th>
-              <th className="p-3 text-center">GA</th>
-              <th className="p-3 text-center">GD</th>
+              <th className="p-2.5 text-left w-10">#</th>
+              <th className="p-2.5 text-left">Club</th>
+              <th className="p-2.5 text-center font-bold">Pts</th>
+              <th className="p-2.5 text-center">P</th>
+              <th className="p-2.5 text-center">W</th>
+              <th className="p-2.5 text-center">D</th>
+              <th className="p-2.5 text-center">L</th>
+              <th className="p-2.5 text-center">GD</th>
             </tr>
           </thead>
           <tbody>
@@ -119,38 +264,24 @@ export function StandingsTab({ data }: { data: TournamentData }) {
               const logo = logoOf(s.participant_id);
               return (
                 <tr key={s.participant_id} className="border-b border-border/40 last:border-0">
-                  <td className="p-3">
-                    <span className="inline-flex items-center gap-1">
-                      {i === 0 && <Crown className="h-3.5 w-3.5 text-amber-300" />}
-                      {i === 1 && <Medal className="h-3.5 w-3.5 text-slate-300" />}
-                      {i === 2 && <Medal className="h-3.5 w-3.5 text-orange-400" />}
-                      {i + 1}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar className="h-7 w-7 shrink-0">
+                  <td className="p-2.5 font-medium text-xs text-muted-foreground">{i + 1}</td>
+                  <td className="p-2.5">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6 shrink-0">
                         <AvatarImage src={logo ?? undefined} />
-                        <AvatarFallback className="bg-secondary text-[10px]">
+                        <AvatarFallback className="bg-secondary text-[9px]">
                           {name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{name}</div>
-                        {s.club && s.club.trim() && s.player_name !== s.club && (
-                          <div className="truncate text-xs text-muted-foreground">{s.player_name}</div>
-                        )}
-                      </div>
+                      <span className="truncate font-medium text-xs">{name}</span>
                     </div>
                   </td>
-                  <td className="p-3 text-center font-bold">{s.points}</td>
-                  <td className="p-3 text-center">{s.played}</td>
-                  <td className="p-3 text-center text-emerald-300">{s.won}</td>
-                  <td className="p-3 text-center">{s.drawn}</td>
-                  <td className="p-3 text-center text-rose-300">{s.lost}</td>
-                  <td className="p-3 text-center">{s.goals_for}</td>
-                  <td className="p-3 text-center">{s.goals_against}</td>
-                  <td className="p-3 text-center">{s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}</td>
+                  <td className="p-2.5 text-center font-bold text-xs">{s.points}</td>
+                  <td className="p-2.5 text-center text-xs">{s.played}</td>
+                  <td className="p-2.5 text-center text-xs text-emerald-400">{s.won}</td>
+                  <td className="p-2.5 text-center text-xs">{s.drawn}</td>
+                  <td className="p-2.5 text-center text-xs text-rose-400">{s.lost}</td>
+                  <td className="p-2.5 text-center text-xs">{s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}</td>
                 </tr>
               );
             })}
@@ -159,4 +290,5 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       </div>
     </div>
   );
-                        }
+  }
+                     
