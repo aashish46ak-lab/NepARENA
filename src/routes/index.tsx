@@ -120,10 +120,8 @@ function HomePage() {
 
   return (
     <PageShell>
-      {/* Pending matches for logged-in players */}
-      <section className="max-w-7xl mx-auto px-4 pt-8">
-        <PendingMatchesPanel />
-      </section>
+      {/* Only renders when user is approved in a LIVE/ONGOING tournament with unplayed matches */}
+      <PendingMatchesPanel />
 
       {/* HERO */}
       <section className="relative overflow-hidden">
