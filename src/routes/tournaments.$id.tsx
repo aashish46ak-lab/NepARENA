@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
-  Award, Loader2, ExternalLink, UserPlus, CheckCircle2,
+  Award, Loader2, ExternalLink, UserPlus, CheckCircle2, ImagePlus, X,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { SmartImage } from "@/components/SmartImage";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { uploadPublicImage } from "@/lib/upload";
 import { toast } from "sonner";
 import { sortStandings, type StandingRow } from "@/components/tournament-manager/shared";
 
