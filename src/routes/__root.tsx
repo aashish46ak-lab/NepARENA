@@ -133,14 +133,14 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <HeadContent />
+  <HeadContent />
 
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
-          crossOrigin="anonymous"
-        />
-      </head>
+  <script
+    async
+    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
+    crossOrigin="anonymous"
+  />
+</head>
 
       <body>
         {children}
