@@ -560,6 +560,19 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     );
   }
 
+  const isParticipant = players.some((p) => p.user_id === user.id);
+
+  if (!isParticipant) {
+    return (
+      <div className="py-6 text-center">
+        <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
+        <p className="mt-3 text-sm text-muted-foreground">
+          Only players registered in this tournament can submit a report.
+        </p>
+      </div>
+    );
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
@@ -834,4 +847,4 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
       )}
     </div>
   );
-    }
+}
