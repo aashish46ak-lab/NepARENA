@@ -174,6 +174,7 @@ export interface Matchday {
   name: string;
   sort_order: number;
   is_published: boolean;
+  notify_enabled?: boolean;
   created_at: string;
 }
 
@@ -239,4 +240,14 @@ export interface Report {
   assigned_to: string | null;
   created_at: string;
   resolved_at: string | null;
+}
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string | null;
+  type: string;
+  link: string | null;
+  read_at: string | null;
+  created_at: string;
 }
