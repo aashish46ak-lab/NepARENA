@@ -159,7 +159,7 @@ export function ReportsPanel() {
 )}
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {tournamentName(r.tournament_id)} · Reported by {reporterNames.get(r.reporter_id) ?? "…"}
+                  {tournamentName(r.tournament_id)} · Reported by {(r.reporter_id ? reporterNames.get(r.reporter_id) : null) ?? "…"}
                   {r.player_name ? ` · Player: ${r.player_name}` : ""} · {new Date(r.created_at).toLocaleString()}
                 </p>
               </div>
@@ -217,7 +217,7 @@ export function ReportsPanel() {
                   <Flag className="h-3.5 w-3.5" /> Tournament: {tournamentName(viewing.tournament_id)}
                 </p>
                 <p className="flex items-center gap-2">
-                  <User className="h-3.5 w-3.5" /> Reported by: {reporterNames.get(viewing.reporter_id) ?? "Unknown user"}
+                  <User className="h-3.5 w-3.5" /> Reported by: {(viewing.reporter_id ? reporterNames.get(viewing.reporter_id) : null) ?? "Unknown user"}
                 </p>
                 {viewing.player_name && (
                   <p className="flex items-center gap-2">
