@@ -17,7 +17,7 @@ import { SettingsTab } from "./SettingsTab";
 const TABS = [
   { value: "overview", label: "Overview" },
   { value: "players", label: "Players" },
-  { value: "invitations", label: "Invitations" },
+  { value: "invitations", label: "Add Players" },
   { value: "fixtures", label: "Fixtures" },
   { value: "results", label: "Results" },
   { value: "standings", label: "Standings" },
@@ -66,9 +66,8 @@ export function TournamentManager({
       <TabsContent value="results">
         <ResultsTab tournament={current} data={data} />
       </TabsContent>
-      {/* 🟢 EXACT FIX HERE: tournament={current} PASS GARIEKO CHHA */}
       <TabsContent value="standings">
-        <StandingsTab tournament={current} data={data} />
+        <StandingsTab data={data} />
       </TabsContent>
       <TabsContent value="settings">
         <SettingsTab tournament={current} onPatched={setCurrent} />
@@ -95,5 +94,4 @@ export function TournamentManager({
       </DialogContent>
     </Dialog>
   );
-          }
-      
+}
