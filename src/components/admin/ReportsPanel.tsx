@@ -98,8 +98,6 @@ export function ReportsPanel() {
 
   const viewingScreenshots = screenshotList(viewing?.screenshot_url);
 
-  const openLightbox = (index: number) => setLightboxIndex(index);
-  const closeLightbox = () => setLightboxIndex(null);
   const nextPhoto = () =>
     setLightboxIndex((i) => (i === null ? null : (i + 1) % viewingScreenshots.length));
   const prevPhoto = () =>
@@ -219,9 +217,12 @@ export function ReportsPanel() {
         </div>
       )}
 
-      {/* MAIN DIALOG */}
-      <Dialog open={!!viewing} onOpenChange={(open) => { if (!open) { setViewing(null); closeLightbox(); } }}>
-        <DialogContent className="glass max-w-lg relative">
+      {/* 1. MAIN REPORT DETAILS DIALOG */}
+      <Dialog 
+        open={!!viewing && lightboxIndex === null} 
+        onOpenChange={(open) => { if (!open) setViewing(null); }}
+      >
+        <DialogContent className="glass max-w-lg">
           <DialogHeader>
             <DialogTitle>Report details</DialogTitle>
           </DialogHeader>
@@ -252,17 +253,17 @@ export function ReportsPanel() {
                 </p>
               </div>
 
-              {/* SCREENSHOT THUMBNAILS */}
+              {/* SCREENSHOT PREVIEWS */}
               {viewingScreenshots.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Screenshots (Click to view full image)</p>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Screenshots</p>
                   <div className="flex flex-wrap gap-2">
                     {viewingScreenshots.map((url, i) => (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => openLightbox(i)}
-                        className="group relative h-20 w-20 overflow-hidden rounded-lg border border-border/60 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                        onClick={() => setLightboxIndex(i)}
+                        className="group relative h-20 w-20 overflow-hidden rounded-lg border border-border/60 hover:border-primary focus:outline-none"
                       >
                         <img src={url} alt={`Screenshot ${i + 1}`} className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
                         <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -282,70 +283,69 @@ export function ReportsPanel() {
                   Mark resolved
                 </Button>
               </div>
-
-              {/* LIGHTBOX INSIDE DIALOGCONTENT (Solves Radix Focus Lock Issue) */}
-              {lightboxIndex !== null && viewingScreenshots.length > 0 && (
-                <div
-                  className="fixed inset-0 z-[999] flex items-center justify-center bg-black/95 p-4 rounded-lg"
-                  onTouchStart={onTouchStart}
-                  onTouchEnd={onTouchEnd}
-                  onClick={closeLightbox}
-                >
-                  <button
-                    type="button"
-                    onClick={closeLightbox}
-                    className="absolute right-4 top-4 z-[1000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-
-                  {viewingScreenshots.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        prevPhoto();
-                      }}
-                      className="absolute left-3 z-[1000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 sm:left-6"
-                    >
-                      <ChevronLeft className="h-6 w-6" />
-                    </button>
-                  )}
-
-                  <div 
-                    className="relative flex max-h-[85vh] max-w-[90vw] items-center justify-center"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <img
-                      src={viewingScreenshots[lightboxIndex]}
-                      alt={`Screenshot ${lightboxIndex + 1}`}
-                      className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain select-none shadow-2xl"
-                    />
-                  </div>
-
-                  {viewingScreenshots.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        nextPhoto();
-                      }}
-                      className="absolute right-3 z-[1000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 sm:right-6"
-                    >
-                      <ChevronRight className="h-6 w-6" />
-                    </button>
-                  )}
-
-                  {viewingScreenshots.length > 1 && (
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-xs text-white border border-white/10">
-                      {lightboxIndex + 1} / {viewingScreenshots.length}
-                    </div>
-                  )}
-                </div>
-              )}
-
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 2. LIGHTBOX DIALOG (MODAL DISCONNECT PATTERN) */}
+      <Dialog 
+        open={lightboxIndex !== null} 
+        onOpenChange={(open) => { if (!open) setLightboxIndex(null); }}
+      >
+        <DialogContent className="max-w-4xl p-0 border-none bg-transparent shadow-none [&>button]:hidden">
+          <div
+            className="relative flex h-[85vh] w-full items-center justify-center bg-black/90 rounded-2xl overflow-hidden p-4"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
+            {/* Close Lightbox */}
+            <button
+              type="button"
+              onClick={() => setLightboxIndex(null)}
+              className="absolute right-4 top-4 z-50 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 transition"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            {/* Prev Image */}
+            {viewingScreenshots.length > 1 && (
+              <button
+                type="button"
+                onClick={prevPhoto}
+                className="absolute left-4 z-50 grid h-12 w-12 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 transition"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            )}
+
+            {/* Image Element */}
+            {lightboxIndex !== null && viewingScreenshots[lightboxIndex] && (
+              <img
+                src={viewingScreenshots[lightboxIndex]}
+                alt={`Screenshot ${lightboxIndex + 1}`}
+                className="max-h-full max-w-full rounded-lg object-contain select-none"
+              />
+            )}
+
+            {/* Next Image */}
+            {viewingScreenshots.length > 1 && (
+              <button
+                type="button"
+                onClick={nextPhoto}
+                className="absolute right-4 z-50 grid h-12 w-12 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 transition"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            )}
+
+            {/* Page Count */}
+            {viewingScreenshots.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1 text-xs text-white border border-white/10">
+                {(lightboxIndex ?? 0) + 1} / {viewingScreenshots.length}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </AdminSection>
@@ -353,3 +353,4 @@ export function ReportsPanel() {
 }
 
 export default ReportsPanel;
+      
