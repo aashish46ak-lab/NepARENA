@@ -66,8 +66,9 @@ export function TournamentManager({
       <TabsContent value="results">
         <ResultsTab tournament={current} data={data} />
       </TabsContent>
+      {/* 🟢 EXACT FIX HERE: tournament={current} PASS GARIEKO CHHA */}
       <TabsContent value="standings">
-        <StandingsTab data={data} />
+        <StandingsTab tournament={current} data={data} />
       </TabsContent>
       <TabsContent value="settings">
         <SettingsTab tournament={current} onPatched={setCurrent} />
@@ -94,4 +95,5 @@ export function TournamentManager({
       </DialogContent>
     </Dialog>
   );
-}
+          }
+      
