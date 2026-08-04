@@ -18,7 +18,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
   const displayName = (club: string | null, playerName: string) =>
     club?.trim() || playerName;
 
-  // Player / Club Logo Picker (Invite Logo -> Admin Set Logo -> Default)
+  // Player / Club Logo Picker
   const logoOf = (participantId: string) => {
     const p = data.players.find((x) => x.id === participantId);
     return (
@@ -45,7 +45,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
     return "eFootball Tournament";
   };
 
-  // CORS & Safari/Mobile Safe Image Loader
+  // CORS Safe Image Loader
   const fetchImageSafe = (url: string): Promise<HTMLImageElement | null> => {
     return new Promise((resolve) => {
       if (!url) return resolve(null);
@@ -78,6 +78,37 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
     });
   };
 
+  // FB-style Default User Avatar Canvas Drawer (Theme Matching)
+  const drawDefaultUserAvatar = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number
+  ) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    // Background Circle
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+
+    // Head
+    ctx.fillStyle = "#64748b";
+    ctx.beginPath();
+    ctx.arc(x, y - radius * 0.2, radius * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body / Shoulders
+    ctx.beginPath();
+    ctx.arc(x, y + radius * 0.95, radius * 0.72, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  };
+
   // Save Image Handler
   const handleSaveImage = async () => {
     if (loading || rows.length === 0) return;
@@ -88,13 +119,13 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const width = 720; // Expanded width for better spacing
+      const width = 720;
       const rowHeight = 38;
       const headerHeight = 135;
       const tableHeaderHeight = 32;
       const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 20;
 
-      canvas.width = width * 2; // Retina High Res
+      canvas.width = width * 2; // Retina Resolution
       canvas.height = height * 2;
       ctx.scale(2, 2);
 
@@ -102,7 +133,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       ctx.fillStyle = "#0b1220";
       ctx.fillRect(0, 0, width, height);
 
-      // --- 1. LEFT SIDE: PWA LOGO + BRAND NAME ---
+      // --- 1. LEFT SIDE: BRAND LOGO + TITLE ---
       const appLogoUrl = "/pwa-512x512.png";
       const appLogoImg = await fetchImageSafe(appLogoUrl) || await fetchImageSafe("/pwa-192x192.png");
 
@@ -121,46 +152,26 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       ctx.textAlign = "left";
       ctx.fillText("eFootball Nepal", 98, 63);
 
-      // --- 2. CENTER SECTION: OFFICIAL eFOOTBALL BADGE LOGO ---
-      const centerLogoUrl =
-        (tournament as any)?.logo_url ||
-        (data as any)?.tournament?.logo_url ||
-        "/pwa-192x192.png";
+      // --- 2. CENTER SECTION: SUBTLE VERTICAL DIVIDER LINE ---
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(width / 2, 36);
+      ctx.lineTo(width / 2, 82);
+      ctx.stroke();
 
-      const centerImg = await fetchImageSafe(centerLogoUrl);
-      const centerX = width / 2;
-
-      if (centerImg) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(centerX, 58, 26, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        // Inner highlight
-        ctx.fillStyle = "#1e293b";
-        ctx.fill();
-        ctx.drawImage(centerImg, centerX - 26, 32, 52, 52);
-        ctx.restore();
-
-        ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(centerX, 58, 27, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // --- 3. RIGHT SIDE: TOURNAMENT NAME (BIG & WHITE) + SUB-INFO ---
+      // --- 3. RIGHT SIDE: TOURNAMENT NAME & SUB-INFO ---
       const tournamentTitle = getTournamentTitle();
       const rightX = width - 24;
 
       ctx.textAlign = "right";
 
-      // Larger White Tournament Name (Font Size 20px)
+      // White Tournament Name (Bold 20px)
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 20px sans-serif";
       const truncatedTitle =
-        tournamentTitle.length > 26
-          ? tournamentTitle.substring(0, 23) + "..."
+        tournamentTitle.length > 25
+          ? tournamentTitle.substring(0, 22) + "..."
           : tournamentTitle;
       ctx.fillText(truncatedTitle, rightX, 52);
 
@@ -177,7 +188,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       // Reset Alignment
       ctx.textAlign = "left";
 
-      // Header Separator Line
+      // Header Horizontal Separator
       ctx.strokeStyle = "#1e293b";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -206,9 +217,6 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       ctx.lineTo(width - 20, startY + 28);
       ctx.stroke();
 
-      // Default Fallback Avatar Image
-      const defaultAvatarImg = await fetchImageSafe("/pwa-192x192.png");
-
       // --- TABLE ROWS ---
       startY += tableHeaderHeight;
 
@@ -218,7 +226,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
         const name = displayName(s.club, s.player_name);
         const logoUrl = logoOf(s.participant_id);
 
-        // Top 3 Podium Glow Effects
+        // Podium Row Highlight Effects
         if (i === 0) {
           ctx.fillStyle = "rgba(234, 179, 8, 0.12)";
           ctx.fillRect(20, y + 2, width - 40, rowHeight - 4);
@@ -239,9 +247,8 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
         ctx.font = i < 3 ? "bold 13px sans-serif" : "12px sans-serif";
         ctx.fillText(`${i + 1}`, 25, y + 23);
 
-        // --- PLAYER / CLUB LOGO RENDERING ---
-        let loadedClubImg = logoUrl ? await fetchImageSafe(logoUrl) : null;
-        if (!loadedClubImg) loadedClubImg = defaultAvatarImg;
+        // --- PLAYER / CLUB LOGO WITH FB-STYLE FALLBACK ---
+        const loadedClubImg = logoUrl ? await fetchImageSafe(logoUrl) : null;
 
         if (loadedClubImg) {
           ctx.save();
@@ -252,15 +259,8 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
           ctx.drawImage(loadedClubImg, 57, y + 8, 22, 22);
           ctx.restore();
         } else {
-          // Initials Fallback Badge
-          ctx.fillStyle = "#1e293b";
-          ctx.beginPath();
-          ctx.arc(68, y + 19, 11, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = "#94a3b8";
-          ctx.font = "bold 9px sans-serif";
-          ctx.fillText(name.slice(0, 2).toUpperCase(), 63, y + 22);
+          // DrawFB-style Default User Icon matching theme
+          drawDefaultUserAvatar(ctx, 68, y + 19, 11);
         }
 
         // Name
@@ -406,5 +406,4 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       </div>
     </div>
   );
-          }
-               
+                   }
