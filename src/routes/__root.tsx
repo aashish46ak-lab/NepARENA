@@ -82,6 +82,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      
+      // Official Google AdSense Account Verification Meta Tag
+      { name: "google-adsense-account", content: "ca-pub-3033911443659343" },
+
       { title: "eFootball Nepal — Tournaments, Community & Hall of Fame" },
       { name: "description", content: "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community." },
       { name: "author", content: "eFootball Nepal" },
@@ -90,7 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "eFootball Nepal" },
       
-      // Correct Domain & Image Meta Tags for Messenger/Facebook
+      // Meta Tags for Social Sharing
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://efootballnepal.vercel.app/" },
       { property: "og:site_name", content: "eFootball Nepal" },
@@ -151,19 +155,8 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  // Dynamically load AdSense script into DOM on initial render
   useEffect(() => {
     void registerPWA();
-
-    const scriptId = "google-adsense-script";
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343";
-      script.async = true;
-      script.crossOrigin = "anonymous";
-      document.head.appendChild(script);
-    }
   }, []);
 
   return (
