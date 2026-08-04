@@ -78,9 +78,9 @@ export function ReportsPanel() {
 
   const pendingCount = rows.filter((r) => r.status === "pending").length;
 
-  const viewingScreenshots = viewing?.screenshot_url
-  ? [viewing.screenshot_url]
-  : [];
+  // screenshot_url is now an array column (text[]) — same column name, holds multiple URLs.
+  const viewingScreenshots = viewing?.screenshot_url ?? [];
+
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
   const nextPhoto = () =>
@@ -154,9 +154,11 @@ export function ReportsPanel() {
                   <span className="font-medium">{r.reason}</span>
                   {statusBadge(r.status)}
                   <Badge variant="outline" className="capitalize">{r.type}</Badge>
-                  {r.screenshot_url && (
-  <Badge variant="outline">1 photo</Badge>
-)}
+                  {r.screenshot_url && r.screenshot_url.length > 0 && (
+                    <Badge variant="outline">
+                      {r.screenshot_url.length} photo{r.screenshot_url.length > 1 ? "s" : ""}
+                    </Badge>
+                  )}
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   {tournamentName(r.tournament_id)} · Reported by {(r.reporter_id ? reporterNames.get(r.reporter_id) : null) ?? "…"}
@@ -309,5 +311,4 @@ export function ReportsPanel() {
       )}
     </AdminSection>
   );
-                                               }
-                        
+}
