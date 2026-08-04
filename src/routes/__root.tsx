@@ -109,13 +109,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "The official home of competitive eFootball in Nepal." },
       { name: "twitter:image", content: "https://efootballnepal.vercel.app/og-image.png" },
     ],
-    scripts: [
-      {
-        async: true,
-        src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343",
-        crossOrigin: "anonymous",
-      },
-    ],
     links: [
       {
         rel: "stylesheet",
@@ -141,6 +134,11 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         {children}
@@ -153,8 +151,19 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // Dynamically load AdSense script into DOM on initial render
   useEffect(() => {
     void registerPWA();
+
+    const scriptId = "google-adsense-script";
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343";
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+    }
   }, []);
 
   return (
