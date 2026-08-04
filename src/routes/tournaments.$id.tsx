@@ -512,4 +512,214 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
         toast.error(`${file.name} isn't an image, skipped.`);
         continue;
       }
-      
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} is over 5MB, skipped.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    setScreenshots((prev) => {
+      const next = [...prev, ...validFiles].slice(0, MAX_SCREENSHOTS);
+      if (prev.length + validFiles.length > MAX_SCREENSHOTS) {
+        toast.error(`You can attach up to ${MAX_SCREENSHOTS} screenshots.`);
+      }
+      return next;
+    });
+  };
+
+  const removeScreenshot = (index: number) => {
+    setScreenshots((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 4) {
+      toast.error("Please describe the reason for the report.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const urls: string[] = [];
+      for (const file of screenshots) {
+        urls.push(await uploadPublicImage(file, "reports"));
+      }
+
+      const { error } = await supabase.from("reports").insert({
+        reporter_id: user.id,
+        type: "tournament",
+        tournament_id: tournament.id,
+        player_name: player.trim() || null,
+        reason: trimmedReason.slice(0, 200),
+        description: details.trim() ? details.trim().slice(0, 2000) : null,
+        screenshot_url: urls.length > 0 ? JSON.stringify(urls) : null,
+        status: "pending",
+      });
+      if (error) throw error;
+
+      toast.success("Report submitted — the admins will review it.");
+      setPlayer("");
+      setReason("");
+      setDetails("");
+      setScreenshots([]);
+      await loadMyReports();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit report.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const screenshotList = (raw: string | string[] | null): string[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((u) => typeof u === "string") : [raw];
+    } catch {
+      return [raw];
+    }
+  };
+
+  const statusColor = (status: string) =>
+    status === "resolved"
+      ? "bg-emerald-500/20 text-emerald-300"
+      : status === "dismissed"
+        ? "bg-secondary text-muted-foreground"
+        : status === "in_review"
+          ? "bg-brand/25 text-brand-glow"
+          : "bg-amber-500/20 text-amber-300";
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-2">
+      <form onSubmit={submit} className="space-y-4">
+        <h2 className="text-xl font-bold">Report an issue</h2>
+
+        <div className="space-y-1.5">
+          <label className="text-sm text-muted-foreground">Player involved (optional)</label>
+          <Select value={player} onValueChange={setPlayer}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a player" />
+            </SelectTrigger>
+            <SelectContent>
+              {players.map((p) => (
+                <SelectItem key={p.id} value={p.player_name}>
+                  {p.player_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm text-muted-foreground">Reason</label>
+          <Input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Match result dispute"
+            maxLength={200}
+            required
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm text-muted-foreground">Details (optional)</label>
+          <Textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            placeholder="Describe what happened…"
+            rows={4}
+            maxLength={2000}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm text-muted-foreground">
+            Screenshots (up to {MAX_SCREENSHOTS})
+          </label>
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-6 text-sm text-muted-foreground transition hover:bg-accent/40">
+            <ImagePlus className="h-5 w-5" />
+            Add screenshots
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </label>
+          {previews.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {previews.map((src, i) => (
+                <div key={src} className="relative">
+                  <img src={src} alt={`Screenshot ${i + 1}`} className="h-20 w-20 rounded-lg object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeScreenshot(i)}
+                    className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-destructive text-destructive-foreground"
+                    aria-label="Remove screenshot"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Button type="submit" disabled={busy} className="bg-gradient-brand">
+          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Submit report
+        </Button>
+      </form>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold">Your reports</h2>
+        {loadingReports ? (
+          <div className="grid place-items-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : myReports.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            You haven't submitted any reports for this tournament.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {myReports.map((r) => (
+              <div key={r.id} className="rounded-xl border border-border/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{r.reason}</p>
+                  <Badge className={cn("capitalize", statusColor(r.status))}>
+                    {r.status.replace(/_/g, " ")}
+                  </Badge>
+                </div>
+                {r.player_name && (
+                  <p className="mt-1 text-sm text-muted-foreground">Player: {r.player_name}</p>
+                )}
+                {r.description && (
+                  <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{r.description}</p>
+                )}
+                {screenshotList(r.screenshot_url).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {screenshotList(r.screenshot_url).map((u) => (
+                      <a key={u} href={u} target="_blank" rel="noreferrer">
+                        <img src={u} alt="Report screenshot" className="h-14 w-14 rounded-lg object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {new Date(r.created_at).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
