@@ -74,6 +74,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
                       </div>
                     </div>
                   </td>
+                  <td className="p-3 text-center font-bold">{s.points}</td>
                   <td className="p-3 text-center">{s.played}</td>
                   <td className="p-3 text-center text-emerald-300">{s.won}</td>
                   <td className="p-3 text-center">{s.drawn}</td>
@@ -81,7 +82,6 @@ export function StandingsTab({ data }: { data: TournamentData }) {
                   <td className="p-3 text-center">{s.goals_for}</td>
                   <td className="p-3 text-center">{s.goals_against}</td>
                   <td className="p-3 text-center">{s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}</td>
-                  <td className="p-3 text-center font-bold">{s.points}</td>
                 </tr>
               );
             })}
