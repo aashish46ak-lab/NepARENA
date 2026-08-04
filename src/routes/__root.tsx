@@ -151,10 +151,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
         <script
           async
-          src="ttps://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
           crossOrigin="anonymous"
         />
-
       </head>
 
       <body>
@@ -162,5 +161,24 @@ function RootShell({ children }: { children: ReactNode }) {
         <Scripts />
       </body>
     </html>
+  );
+}
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    void registerPWA();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RoleRedirect />
+        <Outlet />
+        <InstallPrompt />
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
