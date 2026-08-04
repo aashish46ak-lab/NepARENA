@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import ReactPortal from "react-dom";
 import { AdminSection, EmptyState } from "./AdminUI";
 import { useCrud } from "./crud";
 import { supabase } from "@/lib/supabase";
@@ -220,9 +219,9 @@ export function ReportsPanel() {
         </div>
       )}
 
-      {/* DIALOG WITH SCREENSHOTS */}
+      {/* MAIN DIALOG */}
       <Dialog open={!!viewing} onOpenChange={(open) => { if (!open) { setViewing(null); closeLightbox(); } }}>
-        <DialogContent className="glass max-w-lg z-[50]">
+        <DialogContent className="glass max-w-lg relative">
           <DialogHeader>
             <DialogTitle>Report details</DialogTitle>
           </DialogHeader>
@@ -253,22 +252,23 @@ export function ReportsPanel() {
                 </p>
               </div>
 
-              {/* SCREENSHOT THUMBNAILS - WITH STOP PROPAGATION */}
+              {/* SCREENSHOT THUMBNAILS */}
               {viewingScreenshots.length > 0 && (
                 <div>
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Screenshots</p>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Screenshots (Click to view full image)</p>
                   <div className="flex flex-wrap gap-2">
                     {viewingScreenshots.map((url, i) => (
-                      <div
+                      <button
                         key={i}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openLightbox(i);
-                        }}
-                        className="cursor-pointer overflow-hidden rounded-lg border border-border/60 hover:opacity-80 transition hover:border-primary"
+                        type="button"
+                        onClick={() => openLightbox(i)}
+                        className="group relative h-20 w-20 overflow-hidden rounded-lg border border-border/60 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                       >
-                        <img src={url} alt={`Screenshot ${i + 1}`} className="h-20 w-20 object-cover pointer-events-none" />
-                      </div>
+                        <img src={url} alt={`Screenshot ${i + 1}`} className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <Eye className="h-5 w-5 text-white" />
+                        </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -282,80 +282,74 @@ export function ReportsPanel() {
                   Mark resolved
                 </Button>
               </div>
+
+              {/* LIGHTBOX INSIDE DIALOGCONTENT (Solves Radix Focus Lock Issue) */}
+              {lightboxIndex !== null && viewingScreenshots.length > 0 && (
+                <div
+                  className="fixed inset-0 z-[999] flex items-center justify-center bg-black/95 p-4 rounded-lg"
+                  onTouchStart={onTouchStart}
+                  onTouchEnd={onTouchEnd}
+                  onClick={closeLightbox}
+                >
+                  <button
+                    type="button"
+                    onClick={closeLightbox}
+                    className="absolute right-4 top-4 z-[1000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+
+                  {viewingScreenshots.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        prevPhoto();
+                      }}
+                      className="absolute left-3 z-[1000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 sm:left-6"
+                    >
+                      <ChevronLeft className="h-6 w-6" />
+                    </button>
+                  )}
+
+                  <div 
+                    className="relative flex max-h-[85vh] max-w-[90vw] items-center justify-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <img
+                      src={viewingScreenshots[lightboxIndex]}
+                      alt={`Screenshot ${lightboxIndex + 1}`}
+                      className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain select-none shadow-2xl"
+                    />
+                  </div>
+
+                  {viewingScreenshots.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        nextPhoto();
+                      }}
+                      className="absolute right-3 z-[1000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 sm:right-6"
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </button>
+                  )}
+
+                  {viewingScreenshots.length > 1 && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-xs text-white border border-white/10">
+                      {lightboxIndex + 1} / {viewingScreenshots.length}
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
           )}
         </DialogContent>
       </Dialog>
-
-      {/* LIGHTBOX PREVIEW - HIGH Z-INDEX & POINTER EVENTS FIXED */}
-      {lightboxIndex !== null && viewingScreenshots.length > 0 && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4 pointer-events-auto"
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-          onClick={(e) => {
-            e.stopPropagation();
-            closeLightbox();
-          }}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeLightbox();
-            }}
-            className="absolute right-4 top-4 z-[10000] grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer"
-          >
-            <X className="h-6 w-6" />
-          </button>
-
-          {viewingScreenshots.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                prevPhoto();
-              }}
-              className="absolute left-3 z-[10000] grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer sm:left-6"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-          )}
-
-          <div 
-            className="relative flex max-h-[85vh] max-w-[90vw] items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={viewingScreenshots[lightboxIndex]}
-              alt={`Screenshot ${lightboxIndex + 1}`}
-              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain select-none shadow-2xl"
-            />
-          </div>
-
-          {viewingScreenshots.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                nextPhoto();
-              }}
-              className="absolute right-3 z-[10000] grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 cursor-pointer sm:right-6"
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-          )}
-
-          {viewingScreenshots.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-sm text-white border border-white/10">
-              {lightboxIndex + 1} / {viewingScreenshots.length}
-            </div>
-          )}
-        </div>
-      )}
     </AdminSection>
   );
 }
 
 export default ReportsPanel;
-              
