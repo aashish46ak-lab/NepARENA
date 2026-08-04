@@ -17,6 +17,24 @@ export function StandingsTab({ data }: { data: TournamentData }) {
     return p?.club_logo_url || p?.photo_url || null;
   };
 
+  // Safe Image Fetcher to prevent CORS Blocking on Canvas
+  const fetchImageSafe = (url: string): Promise<HTMLImageElement | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        // Fallback using proxy if direct crossOrigin fails
+        const proxyImg = new Image();
+        proxyImg.crossOrigin = "anonymous";
+        proxyImg.onload = () => resolve(proxyImg);
+        proxyImg.onerror = () => resolve(null);
+        proxyImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
+      };
+      img.src = url;
+    });
+  };
+
   // Canvas Image Generator for Direct Save
   const handleSaveImage = async () => {
     if (loading || rows.length === 0) return;
@@ -29,31 +47,50 @@ export function StandingsTab({ data }: { data: TournamentData }) {
 
       const width = 640;
       const rowHeight = 38;
-      const headerHeight = 100;
+      const headerHeight = 120;
       const tableHeaderHeight = 32;
-      const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 24;
+      const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 20;
 
-      canvas.width = width * 2; // Sharp scale
+      canvas.width = width * 2; // Sharp Retina resolution
       canvas.height = height * 2;
       ctx.scale(2, 2);
 
-      // Background
+      // Dark Theme Background
       ctx.fillStyle = "#0b1220";
       ctx.fillRect(0, 0, width, height);
 
-      // --- HEADER SECTION ---
-      // Brand Name
-      ctx.fillStyle = "#38bdf8";
-      ctx.font = "bold 15px sans-serif";
-      ctx.fillText("eFootball Nepal", 20, 28);
+      // --- TOP HEADER LAYOUT ---
+      const tournamentLogoUrl = (data as any).logo_url || (data as any).banner_url || null;
+      let logoOffset = 20;
 
-      // Dynamic Tournament Name (Actual Title)
+      // Draw Tournament Main Logo on Top Left
+      if (tournamentLogoUrl) {
+        const logoImg = await fetchImageSafe(tournamentLogoUrl);
+        if (logoImg) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(50, 55, 30, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(logoImg, 20, 25, 60, 60);
+          ctx.restore();
+          logoOffset = 95; // Shift text right when logo exists
+        }
+      }
+
+      // Brand Title
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "bold 14px sans-serif";
+      ctx.fillText("eFootball Nepal", logoOffset, 38);
+
+      // Tournament Name
       const tournamentTitle = (data as any).name || data.title || "Tournament Standings";
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 18px sans-serif";
-      ctx.fillText(tournamentTitle, 20, 54);
+      const truncatedTitle = tournamentTitle.length > 32 ? tournamentTitle.substring(0, 29) + "..." : tournamentTitle;
+      ctx.fillText(truncatedTitle, logoOffset, 62);
 
-      // Date & Official Badge
+      // Sub-header Info (Official Standings • Date)
       const currentDate = new Date().toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
@@ -61,14 +98,14 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       });
       ctx.fillStyle = "#94a3b8";
       ctx.font = "12px sans-serif";
-      ctx.fillText(`Official Standings • ${currentDate}`, 20, 74);
+      ctx.fillText(`Official Standings • ${currentDate}`, logoOffset, 82);
 
       // Separator Line
       ctx.strokeStyle = "#1e293b";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(20, 88);
-      ctx.lineTo(width - 20, 88);
+      ctx.moveTo(20, 105);
+      ctx.lineTo(width - 20, 105);
       ctx.stroke();
 
       // --- TABLE HEADER ---
@@ -85,22 +122,11 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       ctx.fillText("L", 560, startY + 18);
       ctx.fillText("GD", 595, startY + 18);
 
-      // Line
+      // Line under header
       ctx.beginPath();
       ctx.moveTo(20, startY + 28);
       ctx.lineTo(width - 20, startY + 28);
       ctx.stroke();
-
-      // Helper to load external logo without CORS blocking
-      const loadImage = (url: string): Promise<HTMLImageElement> => {
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => resolve(img);
-          img.onerror = () => reject();
-          img.src = url;
-        });
-      };
 
       // --- TABLE ROWS ---
       startY += tableHeaderHeight;
@@ -111,60 +137,43 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         const name = displayName(s.club, s.player_name);
         const logoUrl = logoOf(s.participant_id);
 
-        // Alternating row background
-        if (i % 2 === 0) {
+        // --- Subtle Row Backgrounds (Full Name Width Highlights) ---
+        if (i === 0) {
+          // 1st Place - Subtle Gold Fill
+          ctx.fillStyle = "rgba(234, 179, 8, 0.12)";
+          ctx.fillRect(20, y + 2, width - 40, rowHeight - 4);
+        } else if (i === 1) {
+          // 2nd Place - Subtle Silver Fill
+          ctx.fillStyle = "rgba(148, 163, 184, 0.12)";
+          ctx.fillRect(20, y + 2, width - 40, rowHeight - 4);
+        } else if (i === 2) {
+          // 3rd Place - Subtle Bronze Fill
+          ctx.fillStyle = "rgba(217, 119, 6, 0.12)";
+          ctx.fillRect(20, y + 2, width - 40, rowHeight - 4);
+        } else if (i % 2 === 0) {
+          // Normal Alternating Row
           ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
           ctx.fillRect(20, y, width - 40, rowHeight);
         }
 
-        // --- Rank Number Plate (Gold, Silver, Bronze) ---
-        if (i === 0) {
-          // Gold Plate
-          ctx.fillStyle = "#eab308";
-          ctx.beginPath();
-          ctx.arc(28, y + 19, 10, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#000000";
-          ctx.font = "bold 11px sans-serif";
-          ctx.fillText("1", 25, y + 23);
-        } else if (i === 1) {
-          // Silver Plate
-          ctx.fillStyle = "#94a3b8";
-          ctx.beginPath();
-          ctx.arc(28, y + 19, 10, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#000000";
-          ctx.font = "bold 11px sans-serif";
-          ctx.fillText("2", 25, y + 23);
-        } else if (i === 2) {
-          // Bronze Plate
-          ctx.fillStyle = "#d97706";
-          ctx.beginPath();
-          ctx.arc(28, y + 19, 10, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 11px sans-serif";
-          ctx.fillText("3", 25, y + 23);
-        } else {
-          // Normal Rank
-          ctx.fillStyle = "#64748b";
-          ctx.font = "12px sans-serif";
-          ctx.fillText(`${i + 1}`, 25, y + 23);
-        }
+        // Rank Numbers
+        ctx.fillStyle = i === 0 ? "#facc15" : i === 1 ? "#cbd5e1" : i === 2 ? "#fb923c" : "#64748b";
+        ctx.font = i < 3 ? "bold 13px sans-serif" : "12px sans-serif";
+        ctx.fillText(`${i + 1}`, 25, y + 23);
 
-        // Draw Club Logo
+        // Club Logo Handling
         if (logoUrl) {
-          try {
-            const img = await loadImage(logoUrl);
+          const clubImg = await fetchImageSafe(logoUrl);
+          if (clubImg) {
             ctx.save();
             ctx.beginPath();
             ctx.arc(62, y + 19, 11, 0, Math.PI * 2);
             ctx.closePath();
             ctx.clip();
-            ctx.drawImage(img, 51, y + 8, 22, 22);
+            ctx.drawImage(clubImg, 51, y + 8, 22, 22);
             ctx.restore();
-          } catch {
-            // Fallback placeholder circle if image fails to load
+          } else {
+            // Placeholder Circle
             ctx.fillStyle = "#1e293b";
             ctx.beginPath();
             ctx.arc(62, y + 19, 11, 0, Math.PI * 2);
@@ -173,14 +182,14 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         }
 
         // Club Name
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = i === 0 ? "#fef08a" : i === 1 ? "#f1f5f9" : i === 2 ? "#ffedd5" : "#ffffff";
         ctx.font = i < 3 ? "bold 12px sans-serif" : "500 12px sans-serif";
         const truncatedName = name.length > 30 ? name.substring(0, 27) + "..." : name;
         ctx.fillText(truncatedName, 85, y + 23);
 
         // Stats Values
         ctx.font = "12px sans-serif";
-        ctx.fillStyle = "#f8fafc";
+        ctx.fillStyle = i < 3 ? "#ffffff" : "#f8fafc";
         ctx.fillText(`${s.points}`, 410, y + 23);
 
         ctx.fillStyle = "#94a3b8";
@@ -192,7 +201,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         const gdStr = s.goal_diff > 0 ? `+${s.goal_diff}` : `${s.goal_diff}`;
         ctx.fillText(gdStr, 595, y + 23);
 
-        // Divider
+        // Row Separator
         ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
         ctx.beginPath();
         ctx.moveTo(20, y + rowHeight);
@@ -200,7 +209,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         ctx.stroke();
       }
 
-      // --- DIRECT DOWNLOAD (NO SHARE DIALOG) ---
+      // --- DIRECT DOWNLOAD (NO WEBSHARE POPUP) ---
       canvas.toBlob((blob) => {
         if (!blob) return;
         const fileName = `${(tournamentTitle).replace(/\s+/g, "_")}_Standings.png`;
@@ -213,7 +222,6 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         document.body.removeChild(link);
         URL.revokeObjectURL(pngUrl);
 
-        // Notification
         toast.success("Image Saved Successfully!");
       }, "image/png");
 
@@ -305,5 +313,4 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       </div>
     </div>
   );
-          }
-        
+}
