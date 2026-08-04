@@ -4,13 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import {
   loadPendingMatches,
+  notifyMatchResult,
   type PendingMatch,
 } from "@/lib/matches-pending";
 import { recomputeStandings } from "@/components/tournament-manager/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Swords, Send } from "lucide-react";
+import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export function PendingMatchesPanel() {
@@ -29,6 +30,7 @@ export function PendingMatchesPanel() {
       setItems(await loadPendingMatches(user.id));
     } catch (e) {
       console.error(e);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -38,29 +40,19 @@ export function PendingMatchesPanel() {
     void reload();
   }, [user?.id]);
 
+  // Not logged in OR not in any live tournament with pending matches → show nothing
   if (!user) return null;
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading your matches…
-      </div>
-    );
-  }
-
-  if (items.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-2">
-        No pending matches right now.
-      </p>
-    );
-  }
+  if (loading) return null;
+  if (items.length === 0) return null;
 
   return (
     <div id="pending-matches" className="space-y-3">
       <div className="flex items-center gap-2">
-        <Swords className="h-5 w-5 text-brand-glow" />
-        <h2 className="text-lg font-bold">
+        <span className="relative flex h-3 w-3 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+        </span>
+        <h2 className="text-lg font-bold text-red-400">
           Pending matches ({items.length})
         </h2>
       </div>
@@ -91,11 +83,14 @@ function PendingMatchCard({
       return;
     }
     setBusy(true);
+    const homeNum = Number(hs);
+    const awayNum = Number(ascore);
+
     const { error } = await supabase
       .from("matches")
       .update({
-        home_score: Number(hs),
-        away_score: Number(ascore),
+        home_score: homeNum,
+        away_score: awayNum,
         played: true,
         status: "finished",
         proof_url: proof.trim() || null,
@@ -109,6 +104,20 @@ function PendingMatchCard({
 
     try {
       await recomputeStandings(pm.tournamentId);
+      try {
+        await notifyMatchResult(
+          pm.tournamentId,
+          pm.tournamentName,
+          pm.match.home_id,
+          pm.match.away_id,
+          homeNum,
+          awayNum,
+          pm.homeLabel,
+          pm.awayLabel,
+        );
+      } catch {
+        // non-blocking
+      }
       toast.success("Result submitted");
       onDone();
     } catch (e) {
@@ -119,9 +128,15 @@ function PendingMatchCard({
   };
 
   return (
-    <div className="glass rounded-2xl p-4 space-y-3 border border-amber-500/20">
+    <div className="glass rounded-2xl p-4 space-y-3 border border-red-500/30">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge className="bg-amber-500/20 text-amber-300">Pending</Badge>
+        <span className="relative flex h-2.5 w-2.5 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+        </span>
+        <Badge className="bg-red-500/20 text-red-300 border-red-500/40">
+          Pending
+        </Badge>
         <span className="text-xs text-muted-foreground">
           {pm.tournamentName} · {pm.matchdayName}
         </span>
@@ -176,4 +191,4 @@ function PendingMatchCard({
       </div>
     </div>
   );
-            }
+  }
