@@ -1,4 +1,10 @@
-import { createFileRoute, Link, Outlet, useMatchRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useMatchRoute,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { useTournaments } from "@/hooks/useContent";
@@ -7,9 +13,14 @@ import { supabase, type Tournament } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Trophy, Users, Award, Calendar, UserPlus, Loader2, CheckCircle2,
+  Trophy,
+  Users,
+  Award,
+  Calendar,
+  UserPlus,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
-import { SmartImage } from "@/components/SmartImage";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tournaments")({
@@ -39,7 +50,7 @@ function TournamentsList() {
 
   return (
     <PageShell>
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 py-12 overflow-x-hidden">
         <h1 className="text-3xl md:text-4xl font-bold">Tournaments</h1>
         <p className="text-muted-foreground mt-2">
           Every tournament run by eFootball Nepal.
@@ -59,7 +70,7 @@ function TournamentsList() {
           </div>
         )}
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
           {list.map((t) => (
             <TournamentCard key={t.id} tournament={t} />
           ))}
@@ -73,9 +84,10 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [joined, setJoined] = useState<"pending" | "approved" | "rejected" | null>(null);
+  const [joined, setJoined] = useState<
+    "pending" | "approved" | "rejected" | null
+  >(null);
 
-  // Load existing request on mount / when user changes
   useEffect(() => {
     if (!user) {
       setJoined(null);
@@ -139,7 +151,6 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
       return;
     }
 
-    // Always insert as PENDING — admin must approve
     const { data: inserted, error } = await supabase
       .from("tournament_participants")
       .insert({
@@ -167,7 +178,6 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
       return;
     }
 
-    // Force pending if DB default/trigger flipped it to approved
     if (inserted && inserted.status !== "pending") {
       await supabase
         .from("tournament_participants")
@@ -180,60 +190,64 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
     toast.success("Join request sent — waiting for admin approval");
   };
 
+  const thumb = t.logo_url || t.banner_url || t.image_url;
+
   return (
-    <div className="glass rounded-2xl overflow-hidden flex flex-col h-full">
+    <div className="glass rounded-2xl overflow-hidden min-w-0 w-full">
       <Link
         to="/tournaments/$id"
         params={{ id: t.id }}
-        className="block cursor-pointer flex-1"
+        className="flex gap-3 p-3 sm:p-4 min-w-0 cursor-pointer"
       >
-        <SmartImage
-          src={t.banner_url}
-          alt={t.name}
-          ratio="aspect-video"
-          zoom={false}
-          fallback={
-            <div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center">
-              <Trophy className="h-16 w-16 text-brand" />
+        {/* Fixed 100×100 thumbnail — never stretches */}
+        <div className="h-[100px] w-[100px] shrink-0 rounded-xl overflow-hidden bg-secondary ring-1 ring-border/40">
+          {thumb ? (
+            <img
+              src={thumb}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-full w-full grid place-items-center bg-gradient-brand/20">
+              <Trophy className="h-8 w-8 text-brand" />
             </div>
-          }
-        />
-        <div className="p-4 sm:p-5 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-brand/25 text-brand-glow capitalize">
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 py-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge className="bg-brand/25 text-brand-glow capitalize text-[10px] sm:text-xs">
               {t.status.replace(/_/g, " ")}
             </Badge>
             {t.registration_open && (
-              <Badge className="bg-emerald-500/20 text-emerald-300">
+              <Badge className="bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-xs">
                 Registration open
               </Badge>
             )}
           </div>
 
-          <h3 className="text-lg sm:text-xl font-bold leading-snug break-words">
+          <h3 className="text-base sm:text-lg font-bold leading-snug line-clamp-2 break-words">
             {t.name}
           </h3>
 
-          {t.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {t.description}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
             {t.prize_pool && (
-              <span className="inline-flex items-center gap-1">
-                <Award className="h-4 w-4 shrink-0" />
-                <span className="break-all">{t.prize_pool}</span>
+              <span className="inline-flex items-center gap-1 min-w-0">
+                <Award className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate max-w-[120px] sm:max-w-none">
+                  {t.prize_pool}
+                </span>
               </span>
             )}
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-4 w-4 shrink-0" />
+            <span className="inline-flex items-center gap-1 shrink-0">
+              <Users className="h-3.5 w-3.5 shrink-0" />
               {t.participants_count} players
             </span>
             {t.starts_at && (
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="h-4 w-4 shrink-0" />
+              <span className="inline-flex items-center gap-1 shrink-0">
+                <Calendar className="h-3.5 w-3.5 shrink-0" />
                 {new Date(t.starts_at).toLocaleDateString()}
               </span>
             )}
@@ -241,35 +255,39 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
         </div>
       </Link>
 
-      <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-0">
-        {joined === "approved" ? (
-          <div className="inline-flex items-center gap-1.5 text-sm text-emerald-300">
-            <CheckCircle2 className="h-4 w-4" /> You are registered
-          </div>
-        ) : joined === "pending" ? (
-          <div className="inline-flex items-center gap-1.5 text-sm text-amber-300">
-            <Loader2 className="h-4 w-4" /> Request pending — await admin
-          </div>
-        ) : joined === "rejected" ? (
-          <p className="text-xs text-destructive">Previous request was rejected</p>
-        ) : t.registration_open ? (
-          <Button
-            type="button"
-            className="w-full sm:w-auto bg-gradient-brand text-primary-foreground"
-            disabled={busy}
-            onClick={requestJoin}
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-            ) : (
-              <UserPlus className="h-4 w-4 mr-1.5" />
-            )}
-            Request to join
-          </Button>
-        ) : (
-          <p className="text-xs text-muted-foreground">Registration closed</p>
-        )}
+      <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 border-t border-border/30 mt-0">
+        <div className="pt-3">
+          {joined === "approved" ? (
+            <div className="inline-flex items-center gap-1.5 text-sm text-emerald-300">
+              <CheckCircle2 className="h-4 w-4 shrink-0" /> You are registered
+            </div>
+          ) : joined === "pending" ? (
+            <div className="inline-flex items-center gap-1.5 text-sm text-amber-300">
+              <Loader2 className="h-4 w-4 shrink-0" /> Request pending
+            </div>
+          ) : joined === "rejected" ? (
+            <p className="text-xs text-destructive">
+              Previous request was rejected
+            </p>
+          ) : t.registration_open ? (
+            <Button
+              type="button"
+              className="w-full sm:w-auto bg-gradient-brand text-primary-foreground"
+              disabled={busy}
+              onClick={requestJoin}
+            >
+              {busy ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4 mr-1.5" />
+              )}
+              Request to join
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">Registration closed</p>
+          )}
+        </div>
       </div>
     </div>
   );
-      }
+            }
