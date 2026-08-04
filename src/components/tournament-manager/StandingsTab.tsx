@@ -23,16 +23,13 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
     return p?.club_logo_url || p?.photo_url || null;
   };
 
-  // Admin ले राखेको Exact Tournament Name निकाल्ने Logic
+  // Exact Admin Tournament Name Extractor
   const getTournamentTitle = (): string => {
     const d = data as any;
     const t = tournament as any;
 
-    // Direct Check Admin Tournament Name
     if (t?.name) return t.name;
     if (t?.title) return t.title;
-
-    // Data wrapper check
     if (d?.tournament?.name) return d.tournament.name;
     if (d?.tournament?.title) return d.tournament.title;
     if (d?.name) return d.name;
@@ -41,7 +38,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
     return "";
   };
 
-  // Image Loader (CORS & Safari / Mobile safe)
+  // CORS Safe Image Fetcher
   const fetchImageSafe = (url: string): Promise<HTMLImageElement | null> => {
     return new Promise((resolve) => {
       if (!url) return resolve(null);
@@ -74,7 +71,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
     });
   };
 
-  // Canvas Standings Image Generator
+  // Save Image Handler
   const handleSaveImage = async () => {
     if (loading || rows.length === 0) return;
     setLoading(true);
@@ -90,7 +87,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       const tableHeaderHeight = 32;
       const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 20;
 
-      canvas.width = width * 2; // HD Quality Canvas
+      canvas.width = width * 2; // High Resolution Retina
       canvas.height = height * 2;
       ctx.scale(2, 2);
 
@@ -98,14 +95,14 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       ctx.fillStyle = "#0b1220";
       ctx.fillRect(0, 0, width, height);
 
-      // --- LOGO LOGIC ---
+      // --- LEFT SIDE: LOGO & eFootball Nepal BRAND ---
       const tournamentLogoUrl =
         (tournament as any)?.logo_url ||
         (tournament as any)?.banner_url ||
         (data as any)?.tournament?.logo_url ||
         "/pwa-512x512.png";
 
-      let textStartX = 20;
+      let brandStartX = 20;
 
       if (tournamentLogoUrl) {
         const logoImg = await fetchImageSafe(tournamentLogoUrl);
@@ -118,29 +115,34 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
           ctx.drawImage(logoImg, 24, 28, 60, 60);
           ctx.restore();
 
-          textStartX = 100; // Logo छ भने Text लाई Right shift गराउने
+          brandStartX = 96; // Logo पछि Text आउने दूरी
         }
       }
 
-      // --- HEADER TEXTS ---
-      // 1. eFootball Nepal (Main Brand - Bold & Highlighted)
+      // 1. Brand Title: eFootball Nepal (Left Aligned, Large & Highlighted)
       ctx.fillStyle = "#38bdf8";
-      ctx.font = "bold 20px sans-serif";
-      ctx.fillText("eFootball Nepal", textStartX, 42);
+      ctx.font = "bold 22px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("eFootball Nepal", brandStartX, 63);
 
-      // 2. Exact Tournament Name (Admin Dashboard बाट आउने name)
+      // --- RIGHT SIDE: TOURNAMENT NAME & SUB-INFO ---
       const tournamentTitle = getTournamentTitle();
+      const rightX = width - 20; // Right Margin
+
+      ctx.textAlign = "right";
+
+      // 2. Tournament Name (White, Bold & Larger Font Size 17px)
       if (tournamentTitle) {
         ctx.fillStyle = "#ffffff";
-        ctx.font = "600 15px sans-serif";
+        ctx.font = "bold 17px sans-serif";
         const truncatedTitle =
-          tournamentTitle.length > 38
-            ? tournamentTitle.substring(0, 35) + "..."
+          tournamentTitle.length > 30
+            ? tournamentTitle.substring(0, 27) + "..."
             : tournamentTitle;
-        ctx.fillText(truncatedTitle, textStartX, 66);
+        ctx.fillText(truncatedTitle, rightX, 50);
       }
 
-      // 3. Sub-title
+      // 3. Official Standings Info (Below Tournament Name)
       const currentDate = new Date().toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
@@ -148,9 +150,16 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       });
       ctx.fillStyle = "#94a3b8";
       ctx.font = "12px sans-serif";
-      ctx.fillText(`Official Standings • ${currentDate}`, textStartX, tournamentTitle ? 88 : 68);
+      ctx.fillText(
+        `Official Standings • ${currentDate}`, 
+        rightX, 
+        tournamentTitle ? 72 : 60
+      );
 
-      // Line Separator
+      // Alignment Reset for Table
+      ctx.textAlign = "left";
+
+      // Separator Line
       ctx.strokeStyle = "#1e293b";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -258,7 +267,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
         ctx.stroke();
       }
 
-      // --- SAVE IMAGE ---
+      // --- SAVE AND DOWNLOAD ---
       canvas.toBlob((blob) => {
         if (!blob) return;
         const safeFileName = tournamentTitle 
@@ -296,7 +305,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
 
   return (
     <div className="pt-4 space-y-3">
-      {/* Save Button Bar */}
+      {/* Top Action Bar */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           Tie-breakers: Points → Goal difference → Goals scored.
@@ -370,5 +379,5 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       </div>
     </div>
   );
-        }
-            
+    }
+        
