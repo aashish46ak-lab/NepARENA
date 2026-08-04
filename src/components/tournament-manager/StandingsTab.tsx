@@ -17,31 +17,41 @@ export function StandingsTab({ data }: { data: TournamentData }) {
     return p?.club_logo_url || p?.photo_url || null;
   };
 
-  // Safe Image Fetcher with CORS & Proxy Fallback
+  // Ultra Reliable Image Loader for Mobile & CORS
   const fetchImageSafe = (url: string): Promise<HTMLImageElement | null> => {
     return new Promise((resolve) => {
       if (!url) return resolve(null);
+
       const img = new Image();
       img.crossOrigin = "anonymous";
+
       img.onload = () => resolve(img);
       img.onerror = () => {
-        // Fallback using proxy if direct crossOrigin or local relative path needs URL resolution
-        const proxyImg = new Image();
-        proxyImg.crossOrigin = "anonymous";
-        proxyImg.onload = () => resolve(proxyImg);
-        proxyImg.onerror = () => resolve(null);
-        
-        if (url.startsWith("http")) {
+        // Fallback with full origin URL if relative path fails
+        if (url.startsWith("/")) {
+          const absImg = new Image();
+          absImg.crossOrigin = "anonymous";
+          absImg.onload = () => resolve(absImg);
+          absImg.onerror = () => resolve(null);
+          absImg.src = `${window.location.protocol}//${window.location.host}${url}`;
+        } else if (url.startsWith("http")) {
+          const proxyImg = new Image();
+          proxyImg.crossOrigin = "anonymous";
+          proxyImg.onload = () => resolve(proxyImg);
+          proxyImg.onerror = () => resolve(null);
           proxyImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
         } else {
           resolve(null);
         }
       };
-      img.src = url;
+
+      img.src = url.startsWith("/") 
+        ? `${window.location.origin}${url}` 
+        : url;
     });
   };
 
-  // Canvas Image Generator for Direct Save
+  // Canvas Image Generator
   const handleSaveImage = async () => {
     if (loading || rows.length === 0) return;
     setLoading(true);
@@ -51,13 +61,13 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      const width = 640;
-      const rowHeight = 38;
+      const width = 680;
+      const rowHeight = 36;
       const headerHeight = 125;
       const tableHeaderHeight = 32;
       const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 20;
 
-      canvas.width = width * 2; // Sharp Retina resolution
+      canvas.width = width * 2; // High Resolution
       canvas.height = height * 2;
       ctx.scale(2, 2);
 
@@ -66,45 +76,49 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       ctx.fillRect(0, 0, width, height);
 
       // --- TOURNAMENT LOGO SELECTION ---
-      // 1st Preference: Tournament Specific Logo/Banner from data
-      // 2nd Preference: Default App Logo (/android-chrome-512x512.png or /pwa-512x512.png)
       const tournamentLogoUrl =
         (data as any).logo_url ||
         (data as any).banner_url ||
         (data as any).logo ||
-        "/android-chrome-512x512.png"; // Fallback to app icon
+        (data as any).tournament?.logo_url ||
+        "/pwa-512x512.png"; // Public folder pwa logo fallback
 
       let textStartX = 20;
 
       if (tournamentLogoUrl) {
         const logoImg = await fetchImageSafe(tournamentLogoUrl);
         if (logoImg) {
-          // Circular clipped Tournament Logo
           ctx.save();
           ctx.beginPath();
-          ctx.arc(50, 55, 28, 0, Math.PI * 2);
+          ctx.arc(52, 55, 28, 0, Math.PI * 2);
           ctx.closePath();
           ctx.clip();
-          ctx.drawImage(logoImg, 22, 27, 56, 56);
+          ctx.drawImage(logoImg, 24, 27, 56, 56);
           ctx.restore();
 
-          textStartX = 92; // Shift text right when logo exists
+          textStartX = 96;
         }
       }
 
-      // 1. Brand Name ("eFootball Nepal")
+      // 1. Brand Title ("eFootball Nepal")
       ctx.fillStyle = "#38bdf8";
       ctx.font = "bold 13px sans-serif";
       ctx.fillText("eFootball Nepal", textStartX, 38);
 
       // 2. Tournament Name
       const tournamentTitle =
-        (data as any).name || data.title || "Tournament Standings";
+        (data as any).name ||
+        (data as any).title ||
+        (data as any).tournament_name ||
+        (data as any).tournament?.name ||
+        (data as any).tournament?.title ||
+        "Tournament Standings";
+
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 18px sans-serif";
       const truncatedTitle =
-        tournamentTitle.length > 30
-          ? tournamentTitle.substring(0, 27) + "..."
+        tournamentTitle.length > 32
+          ? tournamentTitle.substring(0, 29) + "..."
           : tournamentTitle;
       ctx.fillText(truncatedTitle, textStartX, 62);
 
@@ -133,12 +147,14 @@ export function StandingsTab({ data }: { data: TournamentData }) {
 
       ctx.fillText("#", 25, startY + 18);
       ctx.fillText("CLUB", 85, startY + 18);
-      ctx.fillText("PTS", 410, startY + 18);
-      ctx.fillText("P", 455, startY + 18);
-      ctx.fillText("W", 490, startY + 18);
-      ctx.fillText("D", 525, startY + 18);
-      ctx.fillText("L", 560, startY + 18);
-      ctx.fillText("GD", 595, startY + 18);
+      ctx.fillText("PTS", 370, startY + 18);
+      ctx.fillText("P", 415, startY + 18);
+      ctx.fillText("W", 450, startY + 18);
+      ctx.fillText("D", 485, startY + 18);
+      ctx.fillText("L", 520, startY + 18);
+      ctx.fillText("F", 555, startY + 18); // Goals For
+      ctx.fillText("A", 590, startY + 18); // Goals Against
+      ctx.fillText("GD", 630, startY + 18);
 
       // Line under header
       ctx.beginPath();
@@ -150,12 +166,12 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       startY += tableHeaderHeight;
 
       for (let i = 0; i < rows.length; i++) {
-        const s = rows[i];
+        const s = rows[i] as any;
         const y = startY + i * rowHeight;
         const name = displayName(s.club, s.player_name);
         const logoUrl = logoOf(s.participant_id);
 
-        // Top 3 Highlight Fill
+        // Top 3 Row Highlight Fill
         if (i === 0) {
           ctx.fillStyle = "rgba(234, 179, 8, 0.12)";
           ctx.fillRect(20, y + 2, width - 40, rowHeight - 4);
@@ -174,7 +190,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         ctx.fillStyle =
           i === 0 ? "#facc15" : i === 1 ? "#cbd5e1" : i === 2 ? "#fb923c" : "#64748b";
         ctx.font = i < 3 ? "bold 13px sans-serif" : "12px sans-serif";
-        ctx.fillText(`${i + 1}`, 25, y + 23);
+        ctx.fillText(`${i + 1}`, 25, y + 22);
 
         // Club Logo Handling
         if (logoUrl) {
@@ -182,15 +198,15 @@ export function StandingsTab({ data }: { data: TournamentData }) {
           if (clubImg) {
             ctx.save();
             ctx.beginPath();
-            ctx.arc(62, y + 19, 11, 0, Math.PI * 2);
+            ctx.arc(62, y + 18, 10, 0, Math.PI * 2);
             ctx.closePath();
             ctx.clip();
-            ctx.drawImage(clubImg, 51, y + 8, 22, 22);
+            ctx.drawImage(clubImg, 52, y + 8, 20, 20);
             ctx.restore();
           } else {
             ctx.fillStyle = "#1e293b";
             ctx.beginPath();
-            ctx.arc(62, y + 19, 11, 0, Math.PI * 2);
+            ctx.arc(62, y + 18, 10, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -200,24 +216,28 @@ export function StandingsTab({ data }: { data: TournamentData }) {
           i === 0 ? "#fef08a" : i === 1 ? "#f1f5f9" : i === 2 ? "#ffedd5" : "#ffffff";
         ctx.font = i < 3 ? "bold 12px sans-serif" : "500 12px sans-serif";
         const truncatedName =
-          name.length > 30 ? name.substring(0, 27) + "..." : name;
-        ctx.fillText(truncatedName, 85, y + 23);
+          name.length > 28 ? name.substring(0, 25) + "..." : name;
+        ctx.fillText(truncatedName, 85, y + 22);
 
         // Stats Values
         ctx.font = "12px sans-serif";
         ctx.fillStyle = i < 3 ? "#ffffff" : "#f8fafc";
-        ctx.fillText(`${s.points}`, 410, y + 23);
+        ctx.fillText(`${s.points}`, 370, y + 22);
 
         ctx.fillStyle = "#94a3b8";
-        ctx.fillText(`${s.played}`, 455, y + 23);
-        ctx.fillText(`${s.won}`, 490, y + 23);
-        ctx.fillText(`${s.drawn}`, 525, y + 23);
-        ctx.fillText(`${s.lost}`, 560, y + 23);
+        ctx.fillText(`${s.played}`, 415, y + 22);
+        ctx.fillText(`${s.won}`, 450, y + 22);
+        ctx.fillText(`${s.drawn}`, 485, y + 22);
+        ctx.fillText(`${s.lost}`, 520, y + 22);
+
+        // F & A Values
+        ctx.fillText(`${s.goals_for ?? s.gf ?? 0}`, 555, y + 22);
+        ctx.fillText(`${s.goals_against ?? s.ga ?? 0}`, 590, y + 22);
 
         const gdStr = s.goal_diff > 0 ? `+${s.goal_diff}` : `${s.goal_diff}`;
-        ctx.fillText(gdStr, 595, y + 23);
+        ctx.fillText(gdStr, 630, y + 22);
 
-        // Row Separator
+        // Row Separator Line
         ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
         ctx.beginPath();
         ctx.moveTo(20, y + rowHeight);
@@ -260,7 +280,7 @@ export function StandingsTab({ data }: { data: TournamentData }) {
 
   return (
     <div className="pt-4 space-y-3">
-      {/* Header & Save Button */}
+      {/* Header & Direct Save Button */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           Tie-breakers: Points → Goal difference → Goals scored.
@@ -281,9 +301,9 @@ export function StandingsTab({ data }: { data: TournamentData }) {
         </Button>
       </div>
 
-      {/* Table View */}
+      {/* Screen Table View */}
       <div className="glass rounded-2xl overflow-x-auto bg-background">
-        <table className="w-full text-sm min-w-[600px]">
+        <table className="w-full text-sm min-w-[650px]">
           <thead>
             <tr className="text-xs uppercase tracking-wider text-muted-foreground border-b border-border/60">
               <th className="p-2.5 text-left w-10">#</th>
@@ -293,11 +313,13 @@ export function StandingsTab({ data }: { data: TournamentData }) {
               <th className="p-2.5 text-center">W</th>
               <th className="p-2.5 text-center">D</th>
               <th className="p-2.5 text-center">L</th>
+              <th className="p-2.5 text-center">F</th>
+              <th className="p-2.5 text-center">A</th>
               <th className="p-2.5 text-center">GD</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((s, i) => {
+            {rows.map((s: any, i) => {
               const name = displayName(s.club, s.player_name);
               const logo = logoOf(s.participant_id);
               return (
@@ -319,6 +341,8 @@ export function StandingsTab({ data }: { data: TournamentData }) {
                   <td className="p-2.5 text-center text-xs text-emerald-400">{s.won}</td>
                   <td className="p-2.5 text-center text-xs">{s.drawn}</td>
                   <td className="p-2.5 text-center text-xs text-rose-400">{s.lost}</td>
+                  <td className="p-2.5 text-center text-xs">{s.goals_for ?? s.gf ?? 0}</td>
+                  <td className="p-2.5 text-center text-xs">{s.goals_against ?? s.ga ?? 0}</td>
                   <td className="p-2.5 text-center text-xs">
                     {s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}
                   </td>
@@ -330,4 +354,5 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       </div>
     </div>
   );
-}
+            }
+          
