@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { supabase, type Tournament, type TournamentStatus } from "@/lib/supabase";
+import {
+  supabase,
+  type Tournament,
+  type TournamentStatus,
+} from "@/lib/supabase";
 import { BRACKET_TYPES } from "@/lib/brackets";
 import { logActivity } from "@/lib/activity";
 import { useQueryClient } from "@tanstack/react-query";
@@ -8,11 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Save, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { archiveTournamentToHistory } from "./shared";
+import { notifyTournamentPlayers } from "@/lib/matches-pending";
 
 const STATUSES: { value: TournamentStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -22,7 +31,10 @@ const STATUSES: { value: TournamentStatus; label: string }[] = [
   { value: "check_in", label: "Check-in" },
   { value: "live", label: "Live" },
   { value: "ongoing", label: "Ongoing" },
-  { value: "completed", label: "Completed (saves History + Hall of Fame)" },
+  {
+    value: "completed",
+    label: "Completed (saves History + Hall of Fame)",
+  },
   { value: "archived", label: "Archived" },
 ];
 
@@ -65,12 +77,14 @@ export function SettingsTab({
         );
       }
 
+      const nextRegOpen =
+        status === "completed" || status === "archived"
+          ? false
+          : regOpen || status === "registration_open";
+
       const patch = {
         status,
-        registration_open:
-          status === "completed" || status === "archived"
-            ? false
-            : regOpen || status === "registration_open",
+        registration_open: nextRegOpen,
         is_published: published,
         is_featured:
           status === "completed" || status === "archived" ? false : featured,
@@ -97,6 +111,72 @@ export function SettingsTab({
       if (error) {
         toast.error(error.message);
         return;
+      }
+
+      // --- Notifications ---
+      const link = "/tournaments/" + tournament.id;
+
+      // Registration opened
+      if (nextRegOpen && !tournament.registration_open) {
+        try {
+          await notifyTournamentPlayers(
+            tournament.id,
+            "Registration open",
+            tournament.name +
+              " — registration is now open. Request to join!",
+            link,
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      // Registration closed
+      if (tournament.registration_open && !nextRegOpen) {
+        try {
+          await notifyTournamentPlayers(
+            tournament.id,
+            "Registration closed",
+            tournament.name + " — registration has been closed.",
+            link,
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      // Tournament went live / ongoing
+      if (
+        (status === "live" || status === "ongoing") &&
+        tournament.status !== "live" &&
+        tournament.status !== "ongoing"
+      ) {
+        try {
+          await notifyTournamentPlayers(
+            tournament.id,
+            "Tournament is live",
+            tournament.name +
+              " is now live. Check your fixtures and pending matches!",
+            link,
+          );
+        } catch {
+          // ignore
+        }
+      }
+
+      // Tournament completed
+      if (status === "completed" && tournament.status !== "completed") {
+        try {
+          await notifyTournamentPlayers(
+            tournament.id,
+            "Tournament ended",
+            tournament.name +
+              " has ended. Check standings, history and Hall of Fame.",
+            link,
+          );
+        } catch {
+          // ignore
+        }
       }
 
       if (status !== "completed" || tournament.status === "completed") {
