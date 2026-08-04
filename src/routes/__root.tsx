@@ -5,7 +5,7 @@ import {
   createRootRouteWithContext,
   useRouter,
   HeadContent, 
- Scripts,
+  Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -89,17 +89,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "eFootball Nepal" },
-      { property: "og:title", content: "eFootball Nepal" },
-      { property: "og:description", content: "The official home of competitive eFootball in Nepal." },
+      
+      // Facebook / Open Graph / Messenger Preview
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://efootballnepal.vercel.app/" },
       { property: "og:site_name", content: "eFootball Nepal" },
+      { property: "og:title", content: "eFootball Nepal — Tournaments & Community" },
+      { property: "og:description", content: "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community." },
       { property: "og:image", content: "https://efootballnepal.vercel.app/og-image.png" },
       { property: "og:image:secure_url", content: "https://efootballnepal.vercel.app/og-image.png" },
       { property: "og:image:type", content: "image/png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "eFootball Nepal" },
+      { property: "og:image:alt", content: "eFootball Nepal Banner" },
+
+      // Twitter Card Preview
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "eFootball Nepal — Tournaments & Community" },
+      { name: "twitter:description", content: "The official home of competitive eFootball in Nepal." },
       { name: "twitter:image", content: "https://efootballnepal.vercel.app/og-image.png" },
     ],
     links: [
@@ -108,9 +115,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       {
-  rel: "icon",
-  href: "/android-chrome-512x512.png",
-  type: "image/png",
+        rel: "icon",
+        href: "/android-chrome-512x512.png",
+        type: "image/png",
       },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
