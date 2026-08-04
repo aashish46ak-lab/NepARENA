@@ -160,6 +160,7 @@ export function ReportsPanel() {
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   {tournamentName(r.tournament_id)} · Reported by {reporterNames.get(r.reporter_id) ?? "…"}
+                  {tournamentName(r.tournament_id)} · Reported by {(r.reporter_id ? reporterNames.get(r.reporter_id) : null) ?? "…"}
                   {r.player_name ? ` · Player: ${r.player_name}` : ""} · {new Date(r.created_at).toLocaleString()}
                 </p>
               </div>
