@@ -6,6 +6,31 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { VitePWA } from "vite-plugin-pwa";
+import fs from "node:fs";
+import path from "node:path";
+import type { Plugin } from "vite";
+
+/**
+ * vite-plugin-pwa emits sw.js/workbox into dist/ (the nitro root), but only
+ * dist/client is served publicly. Copy the service worker files across so
+ * /sw.js resolves with root scope after deployment.
+ */
+function copyServiceWorkerToClient(): Plugin {
+  return {
+    name: "efn-copy-service-worker",
+    apply: "build",
+    closeBundle() {
+      const dist = path.resolve("dist");
+      const client = path.join(dist, "client");
+      if (!fs.existsSync(dist) || !fs.existsSync(client)) return;
+      for (const file of fs.readdirSync(dist)) {
+        if (file === "sw.js" || /^workbox-.*\.js$/.test(file)) {
+          fs.copyFileSync(path.join(dist, file), path.join(client, file));
+        }
+      }
+    },
+  };
+}
 
 export default defineConfig({
   tanstackStart: {
@@ -83,6 +108,7 @@ export default defineConfig({
           ],
         },
       }),
+      copyServiceWorkerToClient(),
     ],
   },
 });
