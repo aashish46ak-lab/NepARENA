@@ -1,125 +1,83 @@
-import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
-import { PageShell } from "@/components/PageShell";
-import { useTournaments } from "@/hooks/useContent";
-import { Badge } from "@/components/ui/badge";
-import { Trophy, Users, Award, Calendar, UserPlus } from "lucide-react";
-import { SmartImage } from "@/components/SmartImage";
+import { useState } from "react";
+import type { Tournament } from "@/lib/supabase";
+import { useTournamentData } from "./shared";
+import { OverviewTab } from "./OverviewTab";
+import { PlayersTab } from "./PlayersTab";
+import { FixturesTab } from "./FixturesTab";
+import { ResultsTab } from "./ResultsTab";
+import { StandingsTab } from "./StandingsTab";
+import { InvitationsTab } from "./InvitationsTab";
+import { SettingsTab } from "./SettingsTab";
+import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/tournaments")({
-  head: () => ({
-    meta: [
-      { title: "Tournaments — eFootball Nepal" },
-      {
-        name: "description",
-        content:
-          "Browse upcoming, ongoing, and completed eFootball tournaments in Nepal.",
-      },
-    ],
-  }),
-  component: TournamentsLayout,
-});
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "players", label: "Players" },
+  { id: "fixtures", label: "Fixtures" },
+  { id: "results", label: "Results" },
+  { id: "standings", label: "Standings" },
+  { id: "invitations", label: "Invitations" },
+  { id: "settings", label: "Settings" },
+] as const;
 
-function TournamentsLayout() {
-  const matchRoute = useMatchRoute();
-  const isDetail = matchRoute({ to: "/tournaments/$id", fuzzy: false });
-
-  if (isDetail) {
-    return <Outlet />;
-  }
-
-  return <TournamentsList />;
+interface Props {
+  tournament: Tournament;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 }
 
-function TournamentsList() {
-  const { data: all = [], isLoading } = useTournaments();
-  const list = all.filter((t) => t.status !== "completed");
+export function TournamentManager({ tournament: initial }: Props) {
+  const [tournament, setTournament] = useState(initial);
+  const [tab, setTab] = useState<string>("overview");
+  const data = useTournamentData(tournament.id, true);
 
   return (
-    <PageShell>
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <h1 className="text-3xl md:text-4xl font-bold">Tournaments</h1>
-        <p className="text-muted-foreground mt-2">
-          Every tournament run by eFootball Nepal.
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold">{tournament.name}</h1>
+        <p className="text-sm text-muted-foreground capitalize">
+          Manage · {tournament.status.replace(/_/g, " ")}
         </p>
-
-        {isLoading && (
-          <div className="mt-8 text-muted-foreground">Loading…</div>
-        )}
-
-        {!isLoading && list.length === 0 && (
-          <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">
-            No active tournaments right now — see the{" "}
-            <Link to="/history" className="text-brand-glow hover:underline">
-              tournament history
-            </Link>
-            .
-          </div>
-        )}
-
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          {list.map((t) => (
-            <Link
-              key={t.id}
-              to="/tournaments/$id"
-              params={{ id: t.id }}
-              className="glass rounded-2xl overflow-hidden cursor-pointer hover:scale-[1.02] transition block"
-            >
-              <SmartImage
-                src={t.banner_url}
-                alt={t.name}
-                ratio="aspect-video"
-                zoom={false}
-                fallback={
-                  <div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center">
-                    <Trophy className="h-16 w-16 text-brand" />
-                  </div>
-                }
-              />
-              <div className="p-5">
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <Badge className="bg-brand/25 text-brand-glow capitalize">
-                    {t.status.replace("_", " ")}
-                  </Badge>
-                  {t.registration_open && (
-                    <Badge className="bg-emerald-500/20 text-emerald-300">
-                      Registration open
-                    </Badge>
-                  )}
-                </div>
-                <h3 className="text-xl font-bold">{t.name}</h3>
-                {t.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t.description}
-                  </p>
-                )}
-                <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                  {t.prize_pool && (
-                    <span className="inline-flex items-center gap-1">
-                      <Award className="h-4 w-4" /> {t.prize_pool}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-4 w-4" /> {t.participants_count} players
-                  </span>
-                  {t.starts_at && (
-                    <span className="inline-flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />{" "}
-                      {new Date(t.starts_at).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-                {t.registration_open && (
-                  <div className="mt-4">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-brand px-4 py-2 text-sm font-medium text-primary-foreground">
-                      <UserPlus className="h-4 w-4" /> Request to join
-                    </span>
-                  </div>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
       </div>
-    </PageShell>
+
+      <div className="flex flex-wrap gap-2 glass rounded-2xl p-2">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-sm transition",
+              tab === t.id
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-muted-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {data.loading ? (
+        <div className="grid min-h-[30vh] place-items-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div>
+          {tab === "overview" && (
+            <OverviewTab tournament={tournament} data={data} goTab={setTab} />
+          )}
+          {tab === "players" && <PlayersTab tournament={tournament} data={data} />}
+          {tab === "fixtures" && <FixturesTab tournament={tournament} data={data} />}
+          {tab === "results" && <ResultsTab tournament={tournament} data={data} />}
+          {tab === "standings" && <StandingsTab tournament={tournament} data={data} />}
+          {tab === "invitations" && <InvitationsTab tournament={tournament} data={data} />}
+          {tab === "settings" && (
+            <SettingsTab tournament={tournament} onPatched={setTournament} />
+          )}
+        </div>
+      )}
+    </div>
   );
-        }
+          }
