@@ -1,15 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase, type Match, type Tournament, type TournamentParticipant } from "@/lib/supabase";
+import { useMemo, useRef, useState } from "react";
+import {
+  supabase,
+  type Match,
+  type Tournament,
+  type TournamentParticipant,
+} from "@/lib/supabase";
 import { generateFixtures, bracketLabel } from "@/lib/brackets";
 import { logActivity } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import { Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, type TournamentData } from "./shared";
+import { notifyMatchdayPlayers } from "@/lib/matches-pending";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +29,10 @@ interface Props {
   data: TournamentData;
 }
 
-function getPlayer(data: TournamentData, id: string | null): TournamentParticipant | undefined {
+function getPlayer(
+  data: TournamentData,
+  id: string | null,
+): TournamentParticipant | undefined {
   if (!id) return undefined;
   return data.players.find((p) => p.id === id);
 }
@@ -28,14 +42,16 @@ function sideLabel(p: TournamentParticipant | undefined): string {
   return p.club?.trim() || p.player_name;
 }
 
-function sidePhoto(data: TournamentData, p: TournamentParticipant | undefined): string | null {
+function sidePhoto(
+  data: TournamentData,
+  p: TournamentParticipant | undefined,
+): string | null {
   if (!p) return null;
   if (p.photo_url) return p.photo_url;
   if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
   return null;
 }
 
-/** Real score like "2-1". Empty string if not played. */
 function scoreText(m: Match): string {
   if (m.played && m.home_score != null && m.away_score != null) {
     return String(m.home_score) + "-" + String(m.away_score);
@@ -45,6 +61,7 @@ function scoreText(m: Match): string {
 
 export function FixturesTab({ tournament, data }: Props) {
   const [busy, setBusy] = useState(false);
+  const [notifying, setNotifying] = useState(false);
   const settings = useSiteSettings();
   const approved = data.players.filter((p) => p.status === "approved");
 
@@ -67,12 +84,19 @@ export function FixturesTab({ tournament, data }: Props) {
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const activeName =
-    selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
+    selected && groups.some(([n]) => n === selected)
+      ? selected
+      : groups[0]?.[0] ?? null;
   const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
+  const activeMatchdayId = activeMatches[0]?.matchday_id ?? null;
+  const notifyOn = !!data.matchdays.find((d) => d.id === activeMatchdayId)
+    ?.notify_enabled;
 
   const selectMatchday = (name: string) => {
     setSelected(name);
-    tabRefs.current.get(name)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    tabRefs.current
+      .get(name)
+      ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   };
 
   const generate = async () => {
@@ -126,7 +150,10 @@ export function FixturesTab({ tournament, data }: Props) {
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(
-      payload.length + " fixtures generated (" + bracketLabel(tournament.bracket_type) + ")",
+      payload.length +
+        " fixtures generated (" +
+        bracketLabel(tournament.bracket_type) +
+        ")",
     );
     void logActivity("fixtures.generate", {
       tournament: tournament.name,
@@ -136,7 +163,11 @@ export function FixturesTab({ tournament, data }: Props) {
     data.reload();
   };
 
-  const setSide = async (m: Match, side: "home_id" | "away_id", value: string) => {
+  const setSide = async (
+    m: Match,
+    side: "home_id" | "away_id",
+    value: string,
+  ) => {
     const { error } = await supabase
       .from("matches")
       .update({ [side]: value === "tbd" ? null : value })
@@ -156,7 +187,8 @@ export function FixturesTab({ tournament, data }: Props) {
     const { error } = await supabase.from("matches").insert({
       tournament_id: tournament.id,
       round: maxRound || 1,
-      position: data.matches.filter((m) => m.round === (maxRound || 1)).length + 1,
+      position:
+        data.matches.filter((m) => m.round === (maxRound || 1)).length + 1,
       home_id: null,
       away_id: null,
       played: false,
@@ -164,6 +196,25 @@ export function FixturesTab({ tournament, data }: Props) {
     });
     if (error) return toast.error(error.message);
     data.reload();
+  };
+
+  const sendNotify = async () => {
+    if (!activeMatchdayId || !activeName) return;
+    setNotifying(true);
+    try {
+      const n = await notifyMatchdayPlayers(
+        tournament.id,
+        activeMatchdayId,
+        activeName,
+        tournament.name,
+      );
+      toast.success("Notification sent to " + n + " player(s)");
+      data.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Notify failed");
+    } finally {
+      setNotifying(false);
+    }
   };
 
   const downloadMatchday = async (matchdayLabel: string, matches: Match[]) => {
@@ -204,7 +255,11 @@ export function FixturesTab({ tournament, data }: Props) {
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 28px system-ui, sans-serif";
-    ctx.fillText(tournament.name + " — " + matchdayLabel, padding + brandLogoSize + 16, 88);
+    ctx.fillText(
+      tournament.name + " — " + matchdayLabel,
+      padding + brandLogoSize + 16,
+      88,
+    );
 
     const matchWord = matches.length === 1 ? "match" : "matches";
     const dateStr = new Date().toLocaleDateString();
@@ -254,7 +309,14 @@ export function FixturesTab({ tournament, data }: Props) {
       const cy = y + (rowH - 8) / 2;
 
       const homeLogoX = midX - 70;
-      drawCircleAvatar(ctx, logoCache.get(homeUrl ?? ""), homeLogoX, cy, avatarR, home);
+      drawCircleAvatar(
+        ctx,
+        logoCache.get(homeUrl ?? ""),
+        homeLogoX,
+        cy,
+        avatarR,
+        home,
+      );
 
       ctx.fillStyle = "#f8fafc";
       ctx.font = "bold 18px system-ui, sans-serif";
@@ -267,7 +329,14 @@ export function FixturesTab({ tournament, data }: Props) {
       ctx.fillText(score || "–", midX, cy + 6);
 
       const awayLogoX = midX + 70;
-      drawCircleAvatar(ctx, logoCache.get(awayUrl ?? ""), awayLogoX, cy, avatarR, away);
+      drawCircleAvatar(
+        ctx,
+        logoCache.get(awayUrl ?? ""),
+        awayLogoX,
+        cy,
+        avatarR,
+        away,
+      );
 
       ctx.fillStyle = "#f8fafc";
       ctx.font = "bold 18px system-ui, sans-serif";
@@ -280,7 +349,11 @@ export function FixturesTab({ tournament, data }: Props) {
     ctx.textAlign = "center";
     ctx.fillStyle = "#64748b";
     ctx.font = "13px system-ui, sans-serif";
-    ctx.fillText(brandName + " · Official fixtures", width / 2, canvas.height - 20);
+    ctx.fillText(
+      brandName + " · Official fixtures",
+      width / 2,
+      canvas.height - 20,
+    );
 
     const fileSafe = (tournament.name + "-" + matchdayLabel)
       .toLowerCase()
@@ -296,15 +369,24 @@ export function FixturesTab({ tournament, data }: Props) {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={generate} disabled={busy} className="bg-gradient-brand text-primary-foreground">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4 mr-1.5" />}
+        <Button
+          onClick={generate}
+          disabled={busy}
+          className="bg-gradient-brand text-primary-foreground"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Shuffle className="h-4 w-4 mr-1.5" />
+          )}
           {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
         </Button>
         <Button variant="secondary" onClick={addMatch}>
           <Plus className="h-4 w-4 mr-1.5" /> Add match
         </Button>
         <span className="text-xs text-muted-foreground ml-auto">
-          Format: {bracketLabel(tournament.bracket_type)} · {approved.length} players
+          Format: {bracketLabel(tournament.bracket_type)} · {approved.length}{" "}
+          players
         </span>
       </div>
 
@@ -337,7 +419,12 @@ export function FixturesTab({ tournament, data }: Props) {
                       : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                   )}
                 >
-                  <div className={cn("text-sm font-semibold truncate w-full", isActive && "text-brand-glow")}>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold truncate w-full",
+                      isActive && "text-brand-glow",
+                    )}
+                  >
                     {name}
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -349,86 +436,102 @@ export function FixturesTab({ tournament, data }: Props) {
           </div>
 
           {activeName && (
-            <div className="glass inline-block w-full max-w-[340px] rounded-2xl p-4 space-y-2 overflow-hidden">
-              <div className="flex items-center justify-between gap-2">
+            <div className="glass inline-block w-full max-w-[420px] rounded-2xl p-4 space-y-2 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold truncate">{activeName}</h3>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 shrink-0"
-                  onClick={() => downloadMatchday(activeName, activeMatches)}
-                >
-                  <Download className="h-3.5 w-3.5 mr-1.5" />
-                  PNG
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {activeMatchdayId && (
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Switch
+                        checked={notifyOn}
+                        disabled={notifying}
+                        onCheckedChange={(on) => {
+                          if (on) void sendNotify();
+                        }}
+                      />
+                      Notify
+                    </label>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() =>
+                      downloadMatchday(activeName, activeMatches)
+                    }
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    PNG
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2 overflow-x-auto">
-              {activeMatches.map((m) => {
-                const homeP = getPlayer(data, m.home_id);
-                const awayP = getPlayer(data, m.away_id);
-                const homeLabel = sideLabel(homeP);
-                const awayLabel = sideLabel(awayP);
-                const homePhoto = sidePhoto(data, homeP);
-                const awayPhoto = sidePhoto(data, awayP);
-                const score = scoreText(m);
+                {activeMatches.map((m) => {
+                  const homeP = getPlayer(data, m.home_id);
+                  const awayP = getPlayer(data, m.away_id);
+                  const homeLabel = sideLabel(homeP);
+                  const awayLabel = sideLabel(awayP);
+                  const homePhoto = sidePhoto(data, homeP);
+                  const awayPhoto = sidePhoto(data, awayP);
+                  const score = scoreText(m);
 
-                return (
-                  <div
-                    key={m.id}
-                    className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                      <span className="text-sm font-semibold truncate max-w-[140px] text-right">
-                        {homeLabel}
-                      </span>
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={homePhoto ?? undefined} />
-                        <AvatarFallback className="bg-secondary text-[10px]">
-                          {homeLabel.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-
-                    <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
-                      {score || "\u00A0"}
-                    </div>
-
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={awayPhoto ?? undefined} />
-                        <AvatarFallback className="bg-secondary text-[10px]">
-                          {awayLabel.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-semibold truncate max-w-[140px]">
-                        {awayLabel}
-                      </span>
-                    </div>
-
-                    <SideSelect
-                      value={m.home_id}
-                      players={approved}
-                      onChange={(v) => setSide(m, "home_id", v)}
-                      className="hidden lg:flex w-[100px] shrink-0"
-                    />
-                    <SideSelect
-                      value={m.away_id}
-                      players={approved}
-                      onChange={(v) => setSide(m, "away_id", v)}
-                      className="hidden lg:flex w-[100px] shrink-0"
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0 text-muted-foreground"
-                      onClick={() => removeMatch(m)}
+                  return (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                );
-              })}
+                      <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                        <span className="text-sm font-semibold truncate max-w-[140px] text-right">
+                          {homeLabel}
+                        </span>
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarImage src={homePhoto ?? undefined} />
+                          <AvatarFallback className="bg-secondary text-[10px]">
+                            {homeLabel.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+
+                      <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
+                        {score || "\u00A0"}
+                      </div>
+
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarImage src={awayPhoto ?? undefined} />
+                          <AvatarFallback className="bg-secondary text-[10px]">
+                            {awayLabel.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-semibold truncate max-w-[140px]">
+                          {awayLabel}
+                        </span>
+                      </div>
+
+                      <SideSelect
+                        value={m.home_id}
+                        players={approved}
+                        onChange={(v) => setSide(m, "home_id", v)}
+                        className="hidden lg:flex w-[100px] shrink-0"
+                      />
+                      <SideSelect
+                        value={m.away_id}
+                        players={approved}
+                        onChange={(v) => setSide(m, "away_id", v)}
+                        className="hidden lg:flex w-[100px] shrink-0"
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0 text-muted-foreground"
+                        onClick={() => removeMatch(m)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -517,12 +620,11 @@ function drawCircleAvatar(
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(fallback.slice(0, 2).toUpperCase(), cx, cy);
-  }
-  ctx.restore();
+        }
+       ctx.restore();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(148,163,184,0.35)";
   ctx.lineWidth = 1;
   ctx.stroke();
-      }
-    
+}     
