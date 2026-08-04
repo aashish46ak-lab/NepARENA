@@ -1,9 +1,14 @@
-import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatchRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { useTournaments } from "@/hooks/useContent";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase, type Tournament } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Users, Award, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trophy, Users, Award, Calendar, UserPlus, Loader2, CheckCircle2 } from "lucide-react";
 import { SmartImage } from "@/components/SmartImage";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/tournaments")({
   head: () => ({
@@ -58,61 +63,166 @@ function TournamentsList() {
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           {list.map((t) => (
-            <Link
-              key={t.id}
-              to="/tournaments/$id"
-              params={{ id: t.id }}
-              className="glass rounded-2xl overflow-hidden cursor-pointer hover:scale-[1.02] transition block"
-            >
-              <SmartImage
-                src={t.banner_url}
-                alt={t.name}
-                ratio="aspect-video"
-                zoom={false}
-                fallback={
-                  <div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center">
-                    <Trophy className="h-16 w-16 text-brand" />
-                  </div>
-                }
-              />
-              <div className="p-5">
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <Badge className="bg-brand/25 text-brand-glow capitalize">
-                    {t.status.replace("_", " ")}
-                  </Badge>
-                  {t.registration_open && (
-                    <Badge className="bg-emerald-500/20 text-emerald-300">
-                      Registration open
-                    </Badge>
-                  )}
-                </div>
-                <h3 className="text-xl font-bold">{t.name}</h3>
-                {t.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t.description}
-                  </p>
-                )}
-                <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {t.prize_pool && (
-                    <span className="inline-flex items-center gap-1">
-                      <Award className="h-4 w-4" /> {t.prize_pool}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-4 w-4" /> {t.participants_count} players
-                  </span>
-                  {t.starts_at && (
-                    <span className="inline-flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />{" "}
-                      {new Date(t.starts_at).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </Link>
+            <TournamentCard key={t.id} tournament={t} />
           ))}
         </div>
       </div>
     </PageShell>
   );
 }
+
+function TournamentCard({ tournament: t }: { tournament: Tournament }) {
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [joined, setJoined] = useState<"pending" | "approved" | null>(null);
+
+  const requestJoin = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.message("Sign in to request joining a tournament");
+      navigate({ to: "/auth" });
+      return;
+    }
+
+    if (!t.registration_open) {
+      toast.error("Registration is closed for this tournament");
+      return;
+    }
+
+    setBusy(true);
+
+    // Already a participant?
+    const { data: existing } = await supabase
+      .from("tournament_participants")
+      .select("id, status")
+      .eq("tournament_id", t.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existing) {
+      setBusy(false);
+      setJoined(existing.status === "approved" ? "approved" : "pending");
+      toast.message(
+        existing.status === "approved"
+          ? "You are already in this tournament"
+          : "Your join request is already pending",
+      );
+      return;
+    }
+
+    const { error } = await supabase.from("tournament_participants").insert({
+      tournament_id: t.id,
+      user_id: user.id,
+      player_name:
+        profile?.full_name ||
+        profile?.username ||
+        user.email?.split("@")[0] ||
+        "Player",
+      club: profile?.favourite_club ?? null,
+      photo_url: profile?.avatar_url ?? null,
+      status: "pending",
+    });
+
+    setBusy(false);
+
+    if (error) {
+      toast.error(
+        error.message.includes("duplicate")
+          ? "You already requested to join"
+          : error.message,
+      );
+      return;
+    }
+
+    setJoined("pending");
+    toast.success("Join request sent — waiting for admin approval");
+  };
+
+  return (
+    <div className="glass rounded-2xl overflow-hidden hover:scale-[1.01] transition flex flex-col">
+      <Link
+        to="/tournaments/$id"
+        params={{ id: t.id }}
+        className="block cursor-pointer"
+      >
+        <SmartImage
+          src={t.banner_url}
+          alt={t.name}
+          ratio="aspect-video"
+          zoom={false}
+          fallback={
+            <div className="absolute inset-0 bg-gradient-brand opacity-15 grid place-items-center">
+              <Trophy className="h-16 w-16 text-brand" />
+            </div>
+          }
+        />
+        <div className="p-5 pb-3">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <Badge className="bg-brand/25 text-brand-glow capitalize">
+              {t.status.replace(/_/g, " ")}
+            </Badge>
+            {t.registration_open && (
+              <Badge className="bg-emerald-500/20 text-emerald-300">
+                Registration open
+              </Badge>
+            )}
+          </div>
+          <h3 className="text-xl font-bold">{t.name}</h3>
+          {t.description && (
+            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+              {t.description}
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+            {t.prize_pool && (
+              <span className="inline-flex items-center gap-1">
+                <Award className="h-4 w-4" /> {t.prize_pool}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-4 w-4" /> {t.participants_count} players
+            </span>
+            {t.starts_at && (
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-4 w-4" />{" "}
+                {new Date(t.starts_at).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+
+      {/* Request to join — public */}
+      <div className="px-5 pb-5 mt-auto">
+        {joined === "approved" ? (
+          <div className="inline-flex items-center gap-1.5 text-sm text-emerald-300">
+            <CheckCircle2 className="h-4 w-4" /> You are registered
+          </div>
+        ) : joined === "pending" ? (
+          <div className="inline-flex items-center gap-1.5 text-sm text-amber-300">
+            <Loader2 className="h-4 w-4" /> Request pending
+          </div>
+        ) : t.registration_open ? (
+          <Button
+            type="button"
+            className="w-full sm:w-auto bg-gradient-brand text-primary-foreground"
+            disabled={busy}
+            onClick={requestJoin}
+          >
+            {busy ? (
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            ) : (
+              <UserPlus className="h-4 w-4 mr-1.5" />
+            )}
+            Request to join
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground">Registration closed</p>
+        )}
+      </div>
+    </div>
+  );
+  }
