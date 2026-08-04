@@ -6,10 +6,17 @@ import type { Report, ReportStatus } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Flag, Eye, Trash2, User, Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -218,6 +225,7 @@ export function ReportsPanel() {
         </div>
       )}
 
+      {/* VIEW REPORT DETAILS DIALOG */}
       <Dialog open={!!viewing} onOpenChange={(open) => { if (!open) { setViewing(null); closeLightbox(); } }}>
         <DialogContent className="glass max-w-lg">
           <DialogHeader>
@@ -250,6 +258,7 @@ export function ReportsPanel() {
                 </p>
               </div>
 
+              {/* SCREENSHOT PREVIEW THUMBNAILS */}
               {viewingScreenshots.length > 0 && (
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-muted-foreground">Screenshots</p>
@@ -259,7 +268,7 @@ export function ReportsPanel() {
                         key={i}
                         type="button"
                         onClick={() => openLightbox(i)}
-                        className="overflow-hidden rounded-lg border border-border/60"
+                        className="overflow-hidden rounded-lg border border-border/60 hover:opacity-80 transition"
                       >
                         <img src={url} alt={`Screenshot ${i + 1}`} className="h-20 w-20 object-cover" />
                       </button>
@@ -281,6 +290,7 @@ export function ReportsPanel() {
         </DialogContent>
       </Dialog>
 
+      {/* SCREENSHOT LIGHTBOX / FULLSCREEN PREVIEW */}
       {lightboxIndex !== null && viewingScreenshots.length > 0 && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
@@ -290,7 +300,7 @@ export function ReportsPanel() {
           <button
             type="button"
             onClick={closeLightbox}
-            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -299,7 +309,7 @@ export function ReportsPanel() {
             <button
               type="button"
               onClick={prevPhoto}
-              className="absolute left-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-4"
+              className="absolute left-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-4 transition"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -315,7 +325,7 @@ export function ReportsPanel() {
             <button
               type="button"
               onClick={nextPhoto}
-              className="absolute right-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4"
+              className="absolute right-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4 transition"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -331,3 +341,6 @@ export function ReportsPanel() {
     </AdminSection>
   );
 }
+
+export default ReportsPanel;
+      
