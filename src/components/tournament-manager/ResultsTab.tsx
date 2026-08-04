@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase, type Match, type Tournament, type TournamentParticipant } from "@/lib/supabase";
+import {
+  supabase,
+  type Match,
+  type Tournament,
+  type TournamentParticipant,
+} from "@/lib/supabase";
 import { logActivity } from "@/lib/activity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +17,7 @@ import {
   recomputeStandings,
   type TournamentData,
 } from "./shared";
+import { notifyMatchResult } from "@/lib/matches-pending";
 import { cn } from "@/lib/utils";
 
 function getPlayer(
@@ -67,7 +73,11 @@ export function ResultsTab({
     setSelected(name);
     tabRefs.current
       .get(name)
-      ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      ?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
   };
 
   const activeIdx = groups.findIndex(([n]) => n === activeName);
@@ -77,7 +87,8 @@ export function ResultsTab({
   };
 
   const nextMatchday = () => {
-    if (activeIdx < groups.length - 1) selectMatchday(groups[activeIdx + 1][0]);
+    if (activeIdx < groups.length - 1)
+      selectMatchday(groups[activeIdx + 1][0]);
   };
 
   if (data.matches.length === 0) {
@@ -172,6 +183,7 @@ export function ResultsTab({
                   key={m.id}
                   match={m}
                   tournamentId={tournament.id}
+                  tournamentName={tournament.name}
                   homeLabel={sideLabel(homeP)}
                   awayLabel={sideLabel(awayP)}
                   homePhoto={sidePhoto(data, homeP)}
@@ -197,6 +209,7 @@ export function ResultsTab({
 function ResultRow({
   match,
   tournamentId,
+  tournamentName,
   homeLabel,
   awayLabel,
   homePhoto,
@@ -206,6 +219,7 @@ function ResultRow({
 }: {
   match: Match;
   tournamentId: string;
+  tournamentName: string;
   homeLabel: string;
   awayLabel: string;
   homePhoto: string | null;
@@ -250,6 +264,28 @@ function ResultRow({
 
     try {
       await recomputeStandings(tournamentId);
+
+      if (
+        played &&
+        homeNum != null &&
+        awayNum != null
+      ) {
+        try {
+          await notifyMatchResult(
+            tournamentId,
+            tournamentName,
+            match.home_id,
+            match.away_id,
+            homeNum,
+            awayNum,
+            homeLabel,
+            awayLabel,
+          );
+        } catch {
+          // non-blocking
+        }
+      }
+
       toast.success("Result saved — standings updated");
       onSaved();
     } catch (e) {
@@ -384,4 +420,4 @@ function ResultRow({
       </div>
     </div>
   );
-                               }
+          }
