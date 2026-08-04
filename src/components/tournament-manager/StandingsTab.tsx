@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Crown, Medal, Download } from "lucide-react";
+import { useRef, useState } from "react";
+import { Crown, Medal, Download, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { sortStandings, type TournamentData } from "./shared";
@@ -7,6 +7,7 @@ import { sortStandings, type TournamentData } from "./shared";
 export function StandingsTab({ data }: { data: TournamentData }) {
   const rows = sortStandings(data.standings);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
 
   const displayName = (club: string | null, playerName: string) =>
     club?.trim() || playerName;
@@ -16,55 +17,49 @@ export function StandingsTab({ data }: { data: TournamentData }) {
     return p?.club_logo_url || p?.photo_url || null;
   };
 
-  // Mobile-friendly SVG/Canvas Based Save Image
+  // Dynamic CDN Loader function (Mobile Phone friendly, No NPM Terminal needed)
   const handleSaveImage = async () => {
-    if (!cardRef.current) return;
+    if (!cardRef.current || loading) return;
 
     try {
-      const element = cardRef.current;
-      const clone = element.cloneNode(true) as HTMLElement;
-      
-      // Inline styling setup for clean image rendering
-      clone.style.width = `${element.offsetWidth}px`;
-      clone.style.backgroundColor = "#0b1220";
-      clone.style.color = "#ffffff";
-      clone.style.padding = "20px";
-      clone.style.borderRadius = "16px";
+      setLoading(true);
 
-      const svgString = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${element.offsetWidth + 40}" height="${element.offsetHeight + 40}">
-          <foreignObject width="100%" height="100%">
-            <div xmlns="http://www.w3.org/1999/xhtml">
-              ${new XMLSerializer().serializeToString(clone)}
-            </div>
-          </foreignObject>
-        </svg>
-      `;
+      // Load html-to-image dynamically from CDN
+      if (!(window as any).htmlToImage) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js";
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
 
-      const img = new Image();
-      const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
+      const htmlToImage = (window as any).htmlToImage;
+      if (!htmlToImage) throw new Error("Library not loaded");
 
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = element.offsetWidth + 40;
-        canvas.height = element.offsetHeight + 40;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const pngUrl = canvas.toDataURL("image/png");
-          const downloadLink = document.createElement("a");
-          downloadLink.href = pngUrl;
-          downloadLink.download = `standings-${data.id || "table"}.png`;
-          document.body.appendChild(downloadLink);
-          downloadLink.click();
-          document.body.removeChild(downloadLink);
-        }
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
+      // Generate PNG Data URL
+      const dataUrl = await htmlToImage.toPng(cardRef.current, {
+        cacheBust: true,
+        style: {
+          backgroundColor: "#0b1220",
+          borderRadius: "16px",
+          padding: "16px",
+        },
+      });
+
+      // Trigger download on phone
+      const downloadLink = document.createElement("a");
+      downloadLink.href = dataUrl;
+      downloadLink.download = `standings-${data.id || "table"}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
     } catch (err) {
-      console.error("Failed to save standings image", err);
+      console.error("Failed to save image:", err);
+      alert("Mobile preview error. Try again or take a screenshot.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,23 +75,28 @@ export function StandingsTab({ data }: { data: TournamentData }) {
 
   return (
     <div className="pt-4 space-y-3">
-      {/* Header & Sano Save Button */}
+      {/* Header with Save Button */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           Tie-breakers: Points → Goal difference → Goals scored.
         </p>
         <Button
           onClick={handleSaveImage}
+          disabled={loading}
           variant="outline"
           size="sm"
-          className="h-8 text-xs gap-1.5"
+          className="h-8 text-xs gap-1.5 cursor-pointer active:scale-95 transition-transform"
         >
-          <Download className="h-3.5 w-3.5" />
-          Save Image
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          {loading ? "Saving..." : "Save Image"}
         </Button>
       </div>
 
-      {/* Capture Area */}
+      {/* Target Container to Save */}
       <div ref={cardRef} className="glass rounded-2xl overflow-x-auto bg-background">
         <table className="w-full text-sm min-w-[640px]">
           <thead>
@@ -159,4 +159,4 @@ export function StandingsTab({ data }: { data: TournamentData }) {
       </div>
     </div>
   );
-}
+                        }
