@@ -47,6 +47,7 @@ export default defineConfig({
         devOptions: { enabled: false },
         includeAssets: ["favicon.ico", "apple-touch-icon.png"],
         manifest: {
+          id: "/",
           name: "eFootball Nepal",
           short_name: "eFootball Nepal",
           description:
@@ -54,12 +55,20 @@ export default defineConfig({
           theme_color: "#0b1220",
           background_color: "#0b1220",
           display: "standalone",
+          display_override: ["standalone", "browser"],
           orientation: "portrait",
+          categories: ["sports", "games", "entertainment"],
           scope: "/",
           start_url: "/",
           icons: [
             { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
             { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
+            {
+              src: "/pwa-192x192-maskable.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "maskable",
+            },
             {
               src: "/pwa-512x512-maskable.png",
               sizes: "512x512",

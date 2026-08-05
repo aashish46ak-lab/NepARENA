@@ -21,6 +21,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
+import { Route as MembersIdRouteImport } from './routes/members.$id'
 import { Route as AuthVerifyRouteImport } from './routes/auth/verify'
 import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
 
@@ -84,6 +85,11 @@ const TournamentsIdRoute = TournamentsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => TournamentsRoute,
 } as any)
+const MembersIdRoute = MembersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => MembersRoute,
+} as any)
 const AuthVerifyRoute = AuthVerifyRouteImport.update({
   id: '/auth/verify',
   path: '/auth/verify',
@@ -102,11 +108,12 @@ export interface FileRoutesByFullPath {
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
-  '/members': typeof MembersRoute
+  '/members': typeof MembersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRouteWithChildren
   '/auth/verify': typeof AuthVerifyRoute
+  '/members/$id': typeof MembersIdRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/auth/': typeof AuthIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
@@ -118,11 +125,12 @@ export interface FileRoutesByTo {
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
-  '/members': typeof MembersRoute
+  '/members': typeof MembersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRouteWithChildren
   '/auth/verify': typeof AuthVerifyRoute
+  '/members/$id': typeof MembersIdRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/auth': typeof AuthIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
@@ -135,11 +143,12 @@ export interface FileRoutesById {
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
   '/history': typeof HistoryRoute
-  '/members': typeof MembersRoute
+  '/members': typeof MembersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tournaments': typeof TournamentsRouteWithChildren
   '/auth/verify': typeof AuthVerifyRoute
+  '/members/$id': typeof MembersIdRoute
   '/tournaments/$id': typeof TournamentsIdRoute
   '/auth/': typeof AuthIndexRoute
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
+    | '/members/$id'
     | '/tournaments/$id'
     | '/auth/'
     | '/admin/tournaments/$id'
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
+    | '/members/$id'
     | '/tournaments/$id'
     | '/auth'
     | '/admin/tournaments/$id'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/tournaments'
     | '/auth/verify'
+    | '/members/$id'
     | '/tournaments/$id'
     | '/auth/'
     | '/admin/tournaments/$id'
@@ -202,7 +214,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRoute
   HallOfFameRoute: typeof HallOfFameRoute
   HistoryRoute: typeof HistoryRoute
-  MembersRoute: typeof MembersRoute
+  MembersRoute: typeof MembersRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TournamentsRoute: typeof TournamentsRouteWithChildren
@@ -297,6 +309,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TournamentsIdRouteImport
       parentRoute: typeof TournamentsRoute
     }
+    '/members/$id': {
+      id: '/members/$id'
+      path: '/$id'
+      fullPath: '/members/$id'
+      preLoaderRoute: typeof MembersIdRouteImport
+      parentRoute: typeof MembersRoute
+    }
     '/auth/verify': {
       id: '/auth/verify'
       path: '/auth/verify'
@@ -313,6 +332,17 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface MembersRouteChildren {
+  MembersIdRoute: typeof MembersIdRoute
+}
+
+const MembersRouteChildren: MembersRouteChildren = {
+  MembersIdRoute: MembersIdRoute,
+}
+
+const MembersRouteWithChildren =
+  MembersRoute._addFileChildren(MembersRouteChildren)
 
 interface TournamentsRouteChildren {
   TournamentsIdRoute: typeof TournamentsIdRoute
@@ -333,7 +363,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRoute,
   HallOfFameRoute: HallOfFameRoute,
   HistoryRoute: HistoryRoute,
-  MembersRoute: MembersRoute,
+  MembersRoute: MembersRouteWithChildren,
   ProfileRoute: ProfileRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TournamentsRoute: TournamentsRouteWithChildren,
@@ -344,13 +374,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

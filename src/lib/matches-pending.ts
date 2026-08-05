@@ -1,6 +1,7 @@
 import {
   supabase,
   type Match,
+  type MatchSubmission,
   type Matchday,
   type TournamentParticipant,
 } from "@/lib/supabase";
@@ -14,6 +15,9 @@ export type PendingMatch = {
   tournamentName: string;
   homeLabel: string;
   awayLabel: string;
+  homePhoto: string | null;
+  awayPhoto: string | null;
+  myParticipantId: string;
   isHome: boolean;
 };
 
@@ -58,7 +62,7 @@ export async function loadPendingMatches(
     .select("*")
     .eq("played", false)
     .in("tournament_id", [...liveIds])
-    .or(`home_id.in.(\( {partIds.join(",")}),away_id.in.( \){partIds.join(",")})`)
+    .or(`home_id.in.(${partIds.join(",")}),away_id.in.(${partIds.join(",")})`)
     .order("round")
     .order("position");
 
@@ -80,7 +84,7 @@ export async function loadPendingMatches(
       : Promise.resolve({ data: [] as Matchday[] }),
     supabase
       .from("tournament_participants")
-      .select("id, player_name, club")
+      .select("id, player_name, club, photo_url")
       .in(
         "id",
         [
@@ -102,20 +106,59 @@ export async function loadPendingMatches(
         id: string;
         player_name: string;
         club: string | null;
+        photo_url: string | null;
       }[]
     ).map((p) => [p.id, (p.club?.trim() || p.player_name) as string]),
   );
+  const photoMap = new Map(
+    (
+      (allParts ?? []) as {
+        id: string;
+        photo_url: string | null;
+      }[]
+    ).map((p) => [p.id, p.photo_url]),
+  );
 
-  return list.map((m) => ({
-    match: m,
-    matchdayName:
-      (m.matchday_id && mdMap.get(m.matchday_id)) || "Round " + m.round,
-    tournamentId: m.tournament_id,
-    tournamentName: tourMap.get(m.tournament_id) ?? "Tournament",
-    homeLabel: m.home_id ? (labelMap.get(m.home_id) ?? "TBD") : "TBD",
-    awayLabel: m.away_id ? (labelMap.get(m.away_id) ?? "TBD") : "TBD",
-    isHome: !!(m.home_id && byId.has(m.home_id)),
-  }));
+  return list.map((m) => {
+    const mine =
+      m.home_id && byId.has(m.home_id)
+        ? m.home_id
+        : m.away_id && byId.has(m.away_id)
+          ? m.away_id
+          : "";
+    return {
+      match: m,
+      matchdayName:
+        (m.matchday_id && mdMap.get(m.matchday_id)) || "Round " + m.round,
+      tournamentId: m.tournament_id,
+      tournamentName: tourMap.get(m.tournament_id) ?? "Tournament",
+      homeLabel: m.home_id ? (labelMap.get(m.home_id) ?? "TBD") : "TBD",
+      awayLabel: m.away_id ? (labelMap.get(m.away_id) ?? "TBD") : "TBD",
+      homePhoto: m.home_id ? (photoMap.get(m.home_id) ?? null) : null,
+      awayPhoto: m.away_id ? (photoMap.get(m.away_id) ?? null) : null,
+      myParticipantId: mine,
+      isHome: !!(m.home_id && byId.has(m.home_id)),
+    };
+  });
+}
+
+/** The user's submissions for a set of matches — latest per match (any status). */
+export async function loadMySubmissions(
+  userId: string,
+  matchIds: string[],
+): Promise<Map<string, MatchSubmission>> {
+  const map = new Map<string, MatchSubmission>();
+  if (matchIds.length === 0) return map;
+  const { data } = await supabase
+    .from("match_submissions")
+    .select("*")
+    .eq("user_id", userId)
+    .in("match_id", matchIds)
+    .order("created_at");
+  for (const s of (data ?? []) as MatchSubmission[]) {
+    map.set(s.match_id, s);
+  }
+  return map;
 }
 
 export async function notifyUsers(

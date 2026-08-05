@@ -4,6 +4,7 @@ import { AdminSection, EmptyState } from "./AdminUI";
 import { useCrud } from "./crud";
 import { RowEditor, Field } from "./RowEditor";
 import { archiveTournamentToHistory } from "@/components/tournament-manager/shared";
+import { BRACKET_TYPES } from "@/lib/brackets";
 import type { Tournament } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +36,9 @@ const empty: Partial<Tournament> = {
   status: "upcoming",
   registration_open: false,
   prize_pool: "",
+  bracket_type: "round_robin",
+  max_players: null,
+  registration_fee: 0,
   participants_count: 0,
   starts_at: null,
   ends_at: null,
@@ -218,6 +222,10 @@ export function TournamentsPanel() {
                     {t.prize_pool && (
                       <span className="break-all">Prize: {t.prize_pool}</span>
                     )}
+                    <span>
+                      Fee: {Number(t.registration_fee ?? 0) > 0 ? "NPR " + Number(t.registration_fee).toLocaleString() : "Free"}
+                    </span>
+                    {t.max_players ? <span>Max: {t.max_players}</span> : null}
                   </div>
                 </div>
               </div>
@@ -374,6 +382,47 @@ function TournamentFields({
             onChange={(e) =>
               set({ participants_count: Number(e.target.value) })
             }
+          />
+        </Field>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Format">
+          <Select
+            value={values.bracket_type ?? "round_robin"}
+            onValueChange={(v) => set({ bracket_type: v })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BRACKET_TYPES.map((b) => (
+                <SelectItem key={b.value} value={b.value}>
+                  {b.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Max Players">
+          <Input
+            type="number"
+            min={0}
+            placeholder="Unlimited"
+            value={values.max_players ?? ""}
+            onChange={(e) =>
+              set({
+                max_players: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+          />
+        </Field>
+        <Field label="Registration Fee (NPR)">
+          <Input
+            type="number"
+            min={0}
+            value={values.registration_fee ?? 0}
+            onChange={(e) => set({ registration_fee: Number(e.target.value) })}
           />
         </Field>
       </div>

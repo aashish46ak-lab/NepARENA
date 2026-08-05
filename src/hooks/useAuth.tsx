@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = session?.user ?? null;
   const email = user?.email?.toLowerCase() ?? "";
   const isOwner = email === OWNER_EMAIL.toLowerCase() || roles.includes("owner");
-  const isAdmin = isOwner || roles.includes("moderator");
+  const isAdmin = isOwner || roles.includes("admin") || roles.includes("moderator");
 
   const value: AuthContextValue = {
     session,

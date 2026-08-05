@@ -15,6 +15,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { SplashScreen } from "@/components/SplashScreen";
 import { registerPWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
@@ -161,6 +162,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RoleRedirect />
+        <SplashScreen />
         <Outlet />
         <InstallPrompt />
         <Toaster richColors position="top-right" />

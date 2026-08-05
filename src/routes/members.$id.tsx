@@ -3,13 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
 import {
   supabase,
+  type HallOfFameEntry,
   type Profile,
   type TournamentParticipant,
 } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trophy, ArrowLeft } from "lucide-react";
+import { PlatformIcon } from "@/lib/platforms";
+import { Loader2, Trophy, ArrowLeft, MapPin, CalendarDays, Award } from "lucide-react";
 
 export const Route = createFileRoute("/members/$id")({
   component: MemberProfilePage,
@@ -33,6 +35,19 @@ function MemberProfilePage() {
         .eq("user_id", id)
         .order("created_at", { ascending: false });
 
+      const { data: hof } = await supabase.from("hall_of_fame").select("*");
+
+      const names = new Set<string>();
+      if (profile?.full_name) names.add(profile.full_name.toLowerCase());
+      if (profile?.username) names.add(profile.username.toLowerCase());
+      for (const p of (parts ?? []) as TournamentParticipant[]) {
+        names.add(p.player_name.toLowerCase());
+        if (p.club) names.add(p.club.toLowerCase());
+      }
+      const achievements = ((hof ?? []) as HallOfFameEntry[]).filter((h) =>
+        names.has(h.player_name.toLowerCase()),
+      );
+
       const tournamentIds = [
         ...new Set(
           ((parts ?? []) as TournamentParticipant[]).map(
@@ -54,6 +69,7 @@ function MemberProfilePage() {
         profile: profile as Profile | null,
         parts: (parts ?? []) as TournamentParticipant[],
         tours,
+        achievements,
       };
     },
   });
@@ -83,7 +99,7 @@ function MemberProfilePage() {
     );
   }
 
-  const { profile, parts, tours } = data;
+  const { profile, parts, tours, achievements } = data;
   const tourMap = new Map(tours.map((t) => [t.id, t]));
 
   return (
@@ -118,11 +134,63 @@ function MemberProfilePage() {
                 {profile.favourite_club}
               </p>
             )}
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 pt-1 text-xs text-muted-foreground">
+              {profile.country && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {profile.country}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                Joined {new Date(profile.created_at).toLocaleDateString()}
+              </span>
+            </div>
             {profile.bio && (
               <p className="text-sm text-muted-foreground mt-2">{profile.bio}</p>
             )}
+            {profile.social_links &&
+              Object.values(profile.social_links).some(Boolean) && (
+                <div className="flex flex-wrap gap-2 pt-2 justify-center sm:justify-start">
+                  {Object.entries(profile.social_links)
+                    .filter(([, url]) => !!url)
+                    .map(([platform, url]) => (
+                      <a
+                        key={platform}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="grid h-8 w-8 place-items-center rounded-lg border border-border/60 text-muted-foreground transition hover:text-brand-glow hover:border-brand/50"
+                      >
+                        <PlatformIcon platform={platform} className="h-4 w-4" />
+                      </a>
+                    ))}
+                </div>
+              )}
           </div>
         </div>
+
+        {achievements.length > 0 && (
+          <div>
+            <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+              <Award className="h-5 w-5 text-amber-300" />
+              Achievements
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {achievements.map((a) => (
+                <Badge
+                  key={a.id}
+                  className="bg-amber-500/15 text-amber-300 border-amber-500/30"
+                >
+                  <Trophy className="h-3 w-3 mr-1" />
+                  {a.achievement}
+                  {a.tournament ? " · " + a.tournament : ""}
+                  {a.year ? " " + a.year : ""}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
