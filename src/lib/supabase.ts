@@ -17,7 +17,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
-export type Role = "owner" | "moderator" | "member";
+export type Role = "owner" | "admin" | "moderator" | "member";
 
 export interface Profile {
   id: string;
@@ -53,6 +53,7 @@ export interface Tournament {
   prize_image_url: string | null;
   bracket_type: string;
   prize_pool: string | null;
+  registration_fee: number;
   participants_count: number;
   max_players: number | null;
   registration_deadline: string | null;
@@ -208,6 +209,21 @@ export interface ActivityLog {
   actor_id: string | null;
   action: string;
   details: Record<string, unknown>;
+  created_at: string;
+}
+
+export type SubmissionStatus = "pending" | "approved" | "rejected";
+
+export interface MatchSubmission {
+  id: string;
+  match_id: string;
+  participant_id: string;
+  user_id: string;
+  home_score: number | null;
+  away_score: number | null;
+  screenshot_url: string | null;
+  note: string | null;
+  status: SubmissionStatus;
   created_at: string;
 }
 

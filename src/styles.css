@@ -95,14 +95,25 @@
 
 @layer base {
   * { border-color: var(--color-border); }
-  html { color-scheme: dark; }
+  html { color-scheme: dark; overflow-x: clip; }
   body {
     background: var(--gradient-hero);
     background-attachment: fixed;
     color: var(--color-foreground);
     min-height: 100vh;
+    overflow-x: clip;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
+}
+
+@keyframes splash-pop {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes splash-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
 }
 
 @utility glass {
