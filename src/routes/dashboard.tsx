@@ -56,8 +56,11 @@ const SECTIONS: Section[] = [
   { id: "settings", label: "Site Settings", icon: Settings },
 ];
 
+/** Moderators only get tournament management, reports and announcements. */
+const MOD_ALLOWED = new Set(["tournaments", "reports", "announcements"]);
+
 function DashboardPage() {
-  const { user, loading, isAdmin, isOwner } = useAuth();
+  const { user, loading, isAdmin, isOwner, roles } = useAuth();
   const router = useRouter();
   const navigate = useNavigate({ from: "/dashboard" });
   const { t } = Route.useSearch();
@@ -92,8 +95,20 @@ function DashboardPage() {
     );
   }
 
-  const visible = SECTIONS.filter((s) => !s.ownerOnly || isOwner);
-  const active = visible.some((s) => s.id === t) ? t : "dashboard";
+  const isModeratorOnly =
+    !isOwner && roles.includes("moderator") && !roles.includes("admin");
+  const roleLabel = isOwner
+    ? "Super Admin"
+    : roles.includes("admin")
+      ? "Admin"
+      : "Moderator";
+
+  const visible = SECTIONS.filter((s) =>
+    isModeratorOnly ? MOD_ALLOWED.has(s.id) : !s.ownerOnly || isOwner,
+  );
+  const active = visible.some((s) => s.id === t)
+    ? t
+    : (visible[0]?.id ?? "dashboard");
 
   return (
     <PageShell>
@@ -105,7 +120,7 @@ function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold md:text-3xl">Admin Dashboard</h1>
             <p className="text-sm text-muted-foreground">
-              {user.email} · {isOwner ? "Owner" : "Moderator"}
+              {user.email} · {roleLabel}
             </p>
           </div>
         </div>
