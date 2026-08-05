@@ -44,7 +44,6 @@ export function VerificationsTab({
       .in("match_id", matchIds)
       .eq("status", "pending")
       .order("created_at", { ascending: true });
-
     if (error) toast.error(error.message);
     setRows((subs ?? []) as Row[]);
     setLoading(false);
@@ -63,8 +62,8 @@ export function VerificationsTab({
   const approve = async (row: Row) => {
     const match = data.matches.find((m) => m.id === row.match_id);
     if (!match) return toast.error("Match not found");
-
     setBusyId(row.id);
+
     const { error: mErr } = await supabase
       .from("matches")
       .update({
@@ -83,19 +82,12 @@ export function VerificationsTab({
 
     await supabase
       .from("match_submissions")
-      .update({
-        status: "approved",
-        reviewed_at: new Date().toISOString(),
-      })
+      .update({ status: "approved", reviewed_at: new Date().toISOString() })
       .eq("id", row.id);
 
-    // Reject other pending for same match
     await supabase
       .from("match_submissions")
-      .update({
-        status: "rejected",
-        reviewed_at: new Date().toISOString(),
-      })
+      .update({ status: "rejected", reviewed_at: new Date().toISOString() })
       .eq("match_id", row.match_id)
       .eq("status", "pending")
       .neq("id", row.id);
@@ -113,10 +105,10 @@ export function VerificationsTab({
         labelOf(match.away_id),
       );
     } catch {
-      // non-blocking
+      /* ignore */
     }
 
-    toast.success("Result approved — standings updated");
+    toast.success("Approved — standings updated");
     setBusyId(null);
     data.reload();
     void load();
@@ -126,12 +118,9 @@ export function VerificationsTab({
     setBusyId(row.id);
     await supabase
       .from("match_submissions")
-      .update({
-        status: "rejected",
-        reviewed_at: new Date().toISOString(),
-      })
+      .update({ status: "rejected", reviewed_at: new Date().toISOString() })
       .eq("id", row.id);
-    toast.message("Submission rejected");
+    toast.message("Rejected");
     setBusyId(null);
     void load();
   };
@@ -218,4 +207,4 @@ export function VerificationsTab({
       })}
     </div>
   );
-    }
+  }
