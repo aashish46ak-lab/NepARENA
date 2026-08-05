@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
-  Users, UserCheck, Swords, Trophy, Shuffle, MailPlus, Calendar,
+  Users, UserCheck, Swords, Trophy, Shuffle, MailPlus, Calendar, Wallet,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ export function OverviewTab({ tournament, data, goTab }: Props) {
   const played = data.matches.filter((m) => m.played).length;
   const max = tournament.max_players ?? 0;
   const pct = max > 0 ? Math.min(100, Math.round((approved / max) * 100)) : 0;
+  const fee = Number(tournament.registration_fee ?? 0);
 
   const stats = [
     { icon: UserCheck, label: "Approved Players", value: approved, tint: "bg-emerald-500/15 text-emerald-300" },
