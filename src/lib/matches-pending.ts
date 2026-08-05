@@ -1,11 +1,29 @@
 import {
   supabase,
   type Match,
-  type Matchday,
   type TournamentParticipant,
 } from "@/lib/supabase";
 
-const LIVE_STATUSES = new Set(["live", "ongoing"]);
+/** Active tournaments where fixtures can be pending */
+const ACTIVE_STATUSES = new Set([
+  "live",
+  "ongoing",
+  "registration_closed",
+  "check_in",
+]);
+
+export type MatchSubmission = {
+  id: string;
+  match_id: string;
+  user_id: string;
+  home_score: number;
+  away_score: number;
+  proof_url: string | null;
+  note: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  reviewed_at: string | null;
+};
 
 export type PendingMatch = {
   match: Match;
@@ -14,13 +32,15 @@ export type PendingMatch = {
   tournamentName: string;
   homeLabel: string;
   awayLabel: string;
+  homePhoto: string | null;
+  awayPhoto: string | null;
   isHome: boolean;
 };
 
 export async function loadMyParticipants(userId: string) {
   const { data, error } = await supabase
     .from("tournament_participants")
-    .select("id, tournament_id, player_name, club, status, user_id")
+    .select("id, tournament_id, player_name, club, status, user_id, photo_url")
     .eq("user_id", userId)
     .eq("status", "approved");
   if (error) throw error;
@@ -28,11 +48,7 @@ export async function loadMyParticipants(userId: string) {
 }
 
 /**
- * Pending matches for a player:
- * - approved in tournament
- * - tournament status live/ongoing
- * - match not played
- * - matchday is_published === true  (admin Publish switch ON)
+ * Home pending = published matchday + unplayed + I am home/away + tournament active
  */
 export async function loadPendingMatches(
   userId: string,
@@ -51,40 +67,42 @@ export async function loadPendingMatches(
 
   if (tourErr) throw tourErr;
 
-  const liveTours = (
+  const activeTours = (
     (tours ?? []) as { id: string; name: string; status: string }[]
-  ).filter((t) => LIVE_STATUSES.has(t.status));
+  ).filter((t) => ACTIVE_STATUSES.has(t.status));
 
-  if (liveTours.length === 0) return [];
+  if (activeTours.length === 0) return [];
 
-  const liveIds = new Set(liveTours.map((t) => t.id));
-  const tourMap = new Map(liveTours.map((t) => [t.id, t.name]));
+  const activeIds = new Set(activeTours.map((t) => t.id));
+  const tourMap = new Map(activeTours.map((t) => [t.id, t.name]));
 
+  // FIXED or() filter
   const { data: matches, error } = await supabase
     .from("matches")
     .select("*")
     .eq("played", false)
-    .in("tournament_id", [...liveIds])
-    .or(`home_id.in.(\( {partIds.join(",")}),away_id.in.( \){partIds.join(",")})`)
+    .in("tournament_id", [...activeIds])
+    .or(
+      `home_id.in.(\( {partIds.join(",")}),away_id.in.( \){partIds.join(",")})`,
+    )
     .order("round")
     .order("position");
 
   if (error) throw error;
 
   let list = ((matches ?? []) as Match[]).filter((m) =>
-    liveIds.has(m.tournament_id),
+    activeIds.has(m.tournament_id),
   );
   if (list.length === 0) return [];
 
-  // Only PUBLISHED matchdays (admin Publish switch ON)
   const matchdayIds = [
     ...new Set(
       list.map((m) => m.matchday_id).filter(Boolean) as string[],
     ),
   ];
 
-  let publishedSet = new Set<string>();
-  let mdMap = new Map<string, string>();
+  const mdMap = new Map<string, string>();
+  const publishedSet = new Set<string>();
 
   if (matchdayIds.length > 0) {
     const { data: mds, error: mdErr } = await supabase
@@ -100,14 +118,14 @@ export async function loadPendingMatches(
       is_published?: boolean;
     }[]) {
       mdMap.set(d.id, d.name);
-      if (d.is_published) publishedSet.add(d.id);
+      if (d.is_published === true) publishedSet.add(d.id);
     }
 
+    // Only admin-published matchdays
     list = list.filter(
       (m) => m.matchday_id != null && publishedSet.has(m.matchday_id),
     );
   } else {
-    // No matchday linked → do not show as pending
     list = [];
   }
 
@@ -123,18 +141,20 @@ export async function loadPendingMatches(
 
   const { data: allParts } = await supabase
     .from("tournament_participants")
-    .select("id, player_name, club")
+    .select("id, player_name, club, photo_url")
     .in("id", allPartIds);
 
-  const labelMap = new Map(
-    (
-      (allParts ?? []) as {
-        id: string;
-        player_name: string;
-        club: string | null;
-      }[]
-    ).map((p) => [p.id, (p.club?.trim() || p.player_name) as string]),
-  );
+  const labelMap = new Map<string, string>();
+  const photoMap = new Map<string, string | null>();
+  for (const p of (allParts ?? []) as {
+    id: string;
+    player_name: string;
+    club: string | null;
+    photo_url: string | null;
+  }[]) {
+    labelMap.set(p.id, p.club?.trim() || p.player_name);
+    photoMap.set(p.id, p.photo_url);
+  }
 
   return list.map((m) => ({
     match: m,
@@ -144,8 +164,34 @@ export async function loadPendingMatches(
     tournamentName: tourMap.get(m.tournament_id) ?? "Tournament",
     homeLabel: m.home_id ? (labelMap.get(m.home_id) ?? "TBD") : "TBD",
     awayLabel: m.away_id ? (labelMap.get(m.away_id) ?? "TBD") : "TBD",
+    homePhoto: m.home_id ? (photoMap.get(m.home_id) ?? null) : null,
+    awayPhoto: m.away_id ? (photoMap.get(m.away_id) ?? null) : null,
     isHome: !!(m.home_id && byId.has(m.home_id)),
   }));
+}
+
+export async function loadMySubmissions(
+  userId: string,
+  matchIds: string[],
+): Promise<Map<string, MatchSubmission>> {
+  const map = new Map<string, MatchSubmission>();
+  if (matchIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("match_submissions")
+    .select("*")
+    .eq("user_id", userId)
+    .in("match_id", matchIds);
+
+  if (error) {
+    console.error("loadMySubmissions", error);
+    return map;
+  }
+
+  for (const row of (data ?? []) as MatchSubmission[]) {
+    map.set(row.match_id, row);
+  }
+  return map;
 }
 
 export async function notifyUsers(
@@ -170,7 +216,6 @@ export async function notifyUsers(
   return payload.length;
 }
 
-/** All approved players in a tournament */
 export async function notifyTournamentPlayers(
   tournamentId: string,
   title: string,
@@ -199,7 +244,6 @@ export async function notifyTournamentPlayers(
   );
 }
 
-/** Both sides of a finished match */
 export async function notifyMatchResult(
   tournamentId: string,
   tournamentName: string,
@@ -242,10 +286,6 @@ export async function notifyMatchResult(
   );
 }
 
-/**
- * Publish switch helper (optional if FixturesTab has its own).
- * Sets matchday is_published + notifies players with matches that day.
- */
 export async function notifyMatchdayPlayers(
   tournamentId: string,
   matchdayId: string,
@@ -299,4 +339,4 @@ export async function notifyMatchdayPlayers(
     .eq("id", matchdayId);
 
   return n;
-    }
+}
