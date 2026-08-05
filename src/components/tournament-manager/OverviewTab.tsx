@@ -78,6 +78,42 @@ export function OverviewTab({ tournament, data, goTab }: Props) {
         </div>
       </div>
 
+      <div className="glass rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Registration & revenue
+          </h3>
+          <Wallet className="h-4 w-4 text-brand-glow" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Entry fee</p>
+            <p className="text-lg font-bold">
+              {fee > 0 ? "NPR " + fee.toLocaleString() : "Free"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Expected revenue</p>
+            <p className="text-lg font-bold text-brand-glow">
+              NPR {(fee * approved).toLocaleString()}
+            </p>
+            <p className="text-[10px] text-muted-foreground">{approved} approved × fee</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Remaining slots</p>
+            <p className="text-lg font-bold">
+              {max > 0 ? Math.max(0, max - approved) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Potential revenue</p>
+            <p className="text-lg font-bold">
+              {max > 0 ? "NPR " + (fee * max).toLocaleString() : "—"}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="glass rounded-2xl p-5">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
           Quick actions
