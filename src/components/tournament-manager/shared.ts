@@ -228,8 +228,8 @@ export function useTournamentData(tournamentId: string, active: boolean) {
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [invitations, setInvitations] = useState<TournamentInvitation[]>([]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const [p, m, md, s, inv] = await Promise.all([
       supabase
         .from("tournament_participants")
@@ -298,7 +298,8 @@ export function useTournamentData(tournamentId: string, active: boolean) {
     matchdays,
     standings,
     invitations,
-    reload: load,
+    // Publish / save पछि tab नखोस्
+    reload: () => load({ silent: true }),
   };
 }
 
