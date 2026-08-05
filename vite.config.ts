@@ -39,6 +39,22 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    build: {
+      assetsInlineLimit: 4096, // ४KB भन्दा साना आइकनहरूलाई Base64 बनाउँछ (HTTP Requests घटाउन)
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("react")) return "vendor-react";
+              if (id.includes("@supabase")) return "vendor-supabase";
+              if (id.includes("@radix-ui") || id.includes("lucide-react")) return "vendor-ui";
+              if (id.includes("@tanstack")) return "vendor-tanstack";
+            }
+          },
+        },
+      },
+    },
     plugins: [
       VitePWA({
         registerType: "autoUpdate",
@@ -121,3 +137,4 @@ export default defineConfig({
     ],
   },
 });
+            
