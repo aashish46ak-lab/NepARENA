@@ -1,16 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useMemo, useRef, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  supabase,
+  type Match,
+  type Tournament,
+  type TournamentParticipant,
+} from "@/lib/supabase";
+import { generateFixtures, bracketLabel } from "@/lib/brackets";
+import { logActivity } from "@/lib/activity";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -18,709 +15,705 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import {
-  Loader2,
-  Bell,
-  Plus,
-  Trash2,
-  Edit2,
+  ChevronLeft,
+  ChevronRight,
   Download,
-  Calendar,
-  Clock,
-  CheckCircle2,
-  XCircle,
+  Loader2,
+  Plus,
+  Shuffle,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { matchdayName, type TournamentData } from "./shared";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { cn } from "@/lib/utils";
 
-export interface TournamentParticipant {
-  id: string;
-  player_name: string;
-  club?: string;
-  avatar_url?: string;
+interface Props {
+  tournament: Tournament;
+  data: TournamentData;
 }
 
-export interface Match {
-  id: string;
-  tournament_id: string;
-  matchday_name: string;
-  home_team: string;
-  away_team: string;
-  home_participant_id?: string | null;
-  away_participant_id?: string | null;
-  home_score?: number | null;
-  away_score?: number | null;
-  is_published?: boolean;
-  status?: string;
-  scheduled_at?: string | null;
-  created_at?: string;
+function getPlayer(
+  data: TournamentData,
+  id: string | null,
+): TournamentParticipant | undefined {
+  if (!id) return undefined;
+  return data.players.find((p) => p.id === id);
 }
 
-interface FixturesTabProps {
-  tournamentId: string;
-  participants?: TournamentParticipant[];
+function sideLabel(p: TournamentParticipant | undefined): string {
+  if (!p) return "TBD";
+  return p.club?.trim() || p.player_name;
 }
 
-export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProps) {
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [matchdays, setMatchdays] = useState<string[]>([]);
-  const [selectedMatchday, setSelectedMatchday] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [updating, setUpdating] = useState<boolean>(false);
+function sidePhoto(
+  data: TournamentData,
+  p: TournamentParticipant | undefined,
+): string | null {
+  if (!p) return null;
+  if (p.photo_url) return p.photo_url;
+  if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
+  return null;
+}
 
-  // Modal & Form States
-  const [isAddOpen, setIsAddOpen] = useState<boolean>(false);
-  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
-  
-  const [homeTeam, setHomeTeam] = useState<string>("");
-  const [awayTeam, setAwayTeam] = useState<string>("");
-  const [homeParticipantId, setHomeParticipantId] = useState<string>("tbd");
-  const [awayParticipantId, setAwayParticipantId] = useState<string>("tbd");
-  const [newMatchdayName, setNewMatchdayName] = useState<string>("");
-  const [scheduledAt, setScheduledAt] = useState<string>("");
-  const [submitting, setSubmitting] = useState<boolean>(false);
+function scoreText(m: Match): string {
+  if (m.played && m.home_score != null && m.away_score != null) {
+    return String(m.home_score) + "-" + String(m.away_score);
+  }
+  return "";
+}
 
-  // Canvas Ref for Bracket/Graphic Download
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [generatingCanvas, setGeneratingCanvas] = useState<boolean>(false);
+/** Notify approved players who have a match in this matchday */
+async function publishAndNotify(
+  tournament: Tournament,
+  matchdayId: string,
+  matchdayLabel: string,
+  published: boolean,
+  matches: Match[],
+) {
+  const { error } = await supabase
+    .from("matchdays")
+    .update({
+      is_published: published,
+      notify_enabled: published,
+    })
+    .eq("id", matchdayId);
+  if (error) throw error;
 
-  // 1. Safe Load Fixtures (Without unsafe column ordering)
-  // 1. Safe & Guaranteed Load Fixtures
-  useEffect(() => {
-    let isMounted = true;
+  if (!published) return 0;
 
-    async function loadData() {
-      if (!tournamentId) {
-        if (isMounted) setLoading(false);
-        return;
-      }
-      setLoading(true);
-
-      try {
-        const { data, error } = await supabase
-          .from("matches")
-          .select("*")
-          .eq("tournament_id", String(tournamentId));
-
-        if (error) {
-          console.error("Database Query Error:", error);
-          toast.error("Failed to load: " + error.message);
-        } else if (data && isMounted) {
-          const formattedData: Match[] = data.map((m: any) => ({
-            ...m,
-            is_published: m.is_published ?? false,
-          }));
-          setMatches(formattedData);
-
-          const uniqueMDs = Array.from(
-            new Set(formattedData.map((m: Match) => m.matchday_name || "Matchday 1"))
-          );
-
-          if (uniqueMDs.length === 0) {
-            uniqueMDs.push("Matchday 1");
-          }
-          setMatchdays(uniqueMDs);
-
-          setSelectedMatchday((prev) => {
-            if (prev && uniqueMDs.includes(prev)) return prev;
-            return uniqueMDs[0] || "Matchday 1";
-          });
-        }
-      } catch (err: any) {
-        console.error("Fetch Exception:", err);
-        toast.error("Error loading fixtures");
-      } finally {
-        // यो Always चल्छ, त्यसैले Loading मा कहिल्यै अड्किँदैन
-        if (isMounted) setLoading(false);
-      }
-    }
-
-    void loadData();
-    return () => {
-      isMounted = false;
-    };
-  }, [tournamentId]);
-  
-  // Current Active Matchday Matches
-  const filteredMatches = matches.filter(
-    (m) => (m.matchday_name || "Matchday 1") === selectedMatchday
+  const mdMatches = matches.filter(
+    (m) => m.matchday_id === matchdayId && !m.played,
   );
+  const partIds = [
+    ...new Set(
+      mdMatches.flatMap((m) =>
+        [m.home_id, m.away_id].filter(Boolean),
+      ) as string[],
+    ),
+  ];
+  if (partIds.length === 0) return 0;
 
-  const isCurrentMatchdayPublished =
-    filteredMatches.length > 0 && filteredMatches.every((m) => Boolean(m.is_published));
+  const { data: parts } = await supabase
+    .from("tournament_participants")
+    .select("id, user_id")
+    .in("id", partIds)
+    .eq("status", "approved");
 
-  // 2. Single Combined Switch Handler (Publish + Notification - Zero Refresh)
-  const handleTogglePublish = async (targetStatus: boolean) => {
-    if (!selectedMatchday || filteredMatches.length === 0) {
-      toast.error("No matches available in " + selectedMatchday);
-      return;
-    }
+  const userIds = [
+    ...new Set(
+      ((parts ?? []) as { user_id: string | null }[])
+        .map((p) => p.user_id)
+        .filter(Boolean) as string[],
+    ),
+  ];
+  if (userIds.length === 0) return 0;
 
-    setUpdating(true);
+  const rows = userIds.map((user_id) => ({
+    user_id,
+    title: "Fixtures published",
+    body:
+      tournament.name +
+      " — " +
+      matchdayLabel +
+      " is live. Check pending matches on your home page.",
+    type: "match",
+    link: "/#pending-matches",
+  }));
 
-    try {
-      // Step A: Update DB Status for selected matchday
-      const { error: matchError } = await supabase
-        .from("matches")
-        .update({ is_published: targetStatus })
-        .eq("tournament_id", String(tournamentId))
-        .eq("matchday_name", selectedMatchday);
+  const { error: nErr } = await supabase.from("notifications").insert(rows);
+  if (nErr) throw nErr;
+  return rows.length;
+}
 
-      if (matchError) throw matchError;
+export function FixturesTab({ tournament, data }: Props) {
+  const [busy, setBusy] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const settings = useSiteSettings();
+  const approved = data.players.filter((p) => p.status === "approved");
 
-      // Step B: Send Notification if Switched ON
-      if (targetStatus) {
-        await supabase.from("notifications").insert({
-          tournament_id: String(tournamentId),
-          title: `Matches Published! ⚽`,
-          message: `${selectedMatchday} fixtures are live now. Check your schedule!`,
-          type: "matchday_published",
-          created_at: new Date().toISOString(),
+  const logoUrl =
+    settings?.logo_url ||
+    "https://efootballnepal.vercel.app/android-chrome-512x512.png";
+  const brandName = settings?.site_name || "eFootball Nepal";
+
+  // Groups by matchday name, keep matchday id
+  const groups = useMemo(() => {
+    type G = { id: string | null; name: string; matches: Match[] };
+    const map = new Map<string, G>();
+    for (const m of data.matches) {
+      const name = matchdayName(data.matchdays, m);
+      const md = data.matchdays.find((d) => d.id === m.matchday_id);
+      const key = name;
+      const existing = map.get(key);
+      if (existing) {
+        existing.matches.push(m);
+      } else {
+        map.set(key, {
+          id: md?.id ?? m.matchday_id,
+          name,
+          matches: [m],
         });
       }
+    }
+    // Also include empty published matchdays from table
+    for (const md of data.matchdays) {
+      if (!map.has(md.name)) {
+        map.set(md.name, { id: md.id, name: md.name, matches: [] });
+      }
+    }
+    return [...map.values()].sort((a, b) => {
+      const oa =
+        data.matchdays.find((d) => d.id === a.id)?.sort_order ?? 999;
+      const ob =
+        data.matchdays.find((d) => d.id === b.id)?.sort_order ?? 999;
+      return oa - ob;
+    });
+  }, [data.matches, data.matchdays]);
 
-      // Step C: Update Local State without Page Reload
-      setMatches((prev) =>
-        prev.map((m) =>
-          (m.matchday_name || "Matchday 1") === selectedMatchday
-            ? { ...m, is_published: targetStatus }
-            : m
-        )
+  const [selected, setSelected] = useState<string | null>(null);
+  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  const activeName =
+    selected && groups.some((g) => g.name === selected)
+      ? selected
+      : groups[0]?.name ?? null;
+  const activeGroup = groups.find((g) => g.name === activeName);
+  const activeMatches = activeGroup?.matches ?? [];
+  const activeMdId = activeGroup?.id ?? null;
+  const activeMd = data.matchdays.find((d) => d.id === activeMdId);
+  const isPublished = !!activeMd?.is_published;
+
+  const activeIdx = groups.findIndex((g) => g.name === activeName);
+
+  const selectMatchday = (name: string) => {
+    setSelected(name);
+    tabRefs.current
+      .get(name)
+      ?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+  };
+
+  const prevMatchday = () => {
+    if (activeIdx > 0) selectMatchday(groups[activeIdx - 1].name);
+  };
+  const nextMatchday = () => {
+    if (activeIdx < groups.length - 1)
+      selectMatchday(groups[activeIdx + 1].name);
+  };
+
+  /** Generate round-robin / bracket fixtures — matchdays default unpublished */
+  const generate = async () => {
+    if (approved.length < 2)
+      return toast.error("Need at least 2 approved players");
+    if (
+      data.matches.length > 0 &&
+      !confirm(
+        "Regenerating clears all existing fixtures and results. Continue?",
+      )
+    )
+      return;
+
+    setBusy(true);
+    try {
+      await supabase.from("matches").delete().eq("tournament_id", tournament.id);
+      await supabase
+        .from("matchdays")
+        .delete()
+        .eq("tournament_id", tournament.id);
+
+      const specs = generateFixtures(
+        tournament.bracket_type ?? "round_robin",
+        approved.map((p) => p.id),
       );
+
+      const names = [...new Set(specs.map((s) => s.matchday))];
+      const { data: mdRows, error: mdErr } = await supabase
+        .from("matchdays")
+        .insert(
+          names.map((name, i) => ({
+            tournament_id: tournament.id,
+            name,
+            sort_order: i,
+            is_published: false, // DEFAULT OFF
+            notify_enabled: false,
+          })),
+        )
+        .select();
+
+      if (mdErr) throw mdErr;
+
+      const mdId = new Map(
+        (mdRows ?? []).map((r: { id: string; name: string }) => [
+          r.name,
+          r.id,
+        ]),
+      );
+
+      const payload = specs.map((s, i) => ({
+        tournament_id: tournament.id,
+        matchday_id: mdId.get(s.matchday) ?? null,
+        round: s.round,
+        position: s.position ?? i + 1,
+        home_id: s.home_id,
+        away_id: s.away_id,
+        played: false,
+        status: "scheduled",
+      }));
+
+      const { error } = await supabase.from("matches").insert(payload);
+      if (error) throw error;
 
       toast.success(
-        targetStatus
-          ? `${selectedMatchday} is LIVE & Notification Sent!`
-          : `${selectedMatchday} set to Draft`
+        payload.length +
+          " fixtures generated (" +
+          bracketLabel(tournament.bracket_type) +
+          "). All matchdays are unpublished until you toggle Publish.",
       );
-    } catch (err: any) {
-      console.error("Toggle Publish Error:", err);
-      toast.error(err.message || "Failed to update publish status");
+      void logActivity("fixtures.generate", {
+        tournament: tournament.name,
+        matches: payload.length,
+      });
+      setSelected(null);
+      data.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generate failed");
     } finally {
-      setUpdating(false);
+      setBusy(false);
     }
   };
 
-  // 3. Add New Match Logic
-  const handleAddMatch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const setSide = async (
+    m: Match,
+    side: "home_id" | "away_id",
+    value: string,
+  ) => {
+    const { error } = await supabase
+      .from("matches")
+      .update({ [side]: value === "tbd" ? null : value })
+      .eq("id", m.id);
+    if (error) return toast.error(error.message);
+    data.reload();
+  };
 
-    let finalHome = homeTeam.trim();
-    let finalAway = awayTeam.trim();
+  const removeMatch = async (m: Match) => {
+    const { error } = await supabase.from("matches").delete().eq("id", m.id);
+    if (error) return toast.error(error.message);
+    data.reload();
+  };
 
-    if (participants.length > 0) {
-      if (homeParticipantId !== "tbd") {
-        const p = participants.find((pt) => pt.id === homeParticipantId);
-        if (p) finalHome = p.club || p.player_name;
-      }
-      if (awayParticipantId !== "tbd") {
-        const p = participants.find((pt) => pt.id === awayParticipantId);
-        if (p) finalAway = p.club || p.player_name;
-      }
+  const addMatch = async () => {
+    const maxRound = Math.max(0, ...data.matches.map((m) => m.round));
+    const { error } = await supabase.from("matches").insert({
+      tournament_id: tournament.id,
+      matchday_id: activeMdId,
+      round: maxRound || 1,
+      position:
+        data.matches.filter((m) => m.round === (maxRound || 1)).length + 1,
+      home_id: null,
+      away_id: null,
+      played: false,
+      status: "scheduled",
+    });
+    if (error) return toast.error(error.message);
+    data.reload();
+  };
+
+  /** One switch: Publish to public + notify players + unlock home pending */
+  const onPublishToggle = async (on: boolean) => {
+    if (!activeMdId || !activeName) {
+      toast.error("Select a matchday first");
+      return;
     }
+    setToggling(true);
+    try {
+      const n = await publishAndNotify(
+        tournament,
+        activeMdId,
+        activeName,
+        on,
+        data.matches,
+      );
+      toast.success(
+        on
+          ? activeName +
+              " published to public & players notified" +
+              (n ? " (" + n + ")" : "")
+          : activeName + " unpublished — locked for public",
+      );
+      data.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setToggling(false);
+    }
+  };
 
-    if (!finalHome || !finalAway) {
-      toast.error("Please fill or select both Home and Away teams");
+  const downloadMatchday = async (
+    matchdayLabel: string,
+    matches: Match[],
+  ) => {
+    const width = 1080;
+    const rowH = 72;
+    const headerH = 150;
+    const padding = 40;
+    const height = headerH + Math.max(matches.length, 1) * rowH + 70;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = Math.max(height, 400);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      toast.error("Could not create image");
       return;
     }
 
-    setSubmitting(true);
-    const mdToUse = newMatchdayName.trim() || selectedMatchday || "Matchday 1";
+    ctx.fillStyle = "#0b1220";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#1d4ed8";
+    ctx.fillRect(0, 0, canvas.width, 6);
 
-    const newMatchPayload = {
-      tournament_id: String(tournamentId),
-      matchday_name: mdToUse,
-      home_team: finalHome,
-      away_team: finalAway,
-      home_participant_id: homeParticipantId !== "tbd" ? homeParticipantId : null,
-      away_participant_id: awayParticipantId !== "tbd" ? awayParticipantId : null,
-      scheduled_at: scheduledAt || null,
-      is_published: false,
-      status: "scheduled",
-    };
-
+    const brandLogoSize = 64;
     try {
-      const { data, error } = await supabase
-        .from("matches")
-        .insert([newMatchPayload])
-        .select();
+      const img = await loadImage(logoUrl);
+      ctx.fillStyle = "#111827";
+      roundRect(ctx, padding, 32, brandLogoSize, brandLogoSize, 12);
+      ctx.fill();
+      ctx.drawImage(img, padding, 32, brandLogoSize, brandLogoSize);
+    } catch {
+      // ignore
+    }
 
-      if (error) throw error;
+    ctx.fillStyle = "#60a5fa";
+    ctx.font = "bold 16px system-ui, sans-serif";
+    ctx.fillText(brandName.toUpperCase(), padding + brandLogoSize + 16, 52);
 
-      if (data && data.length > 0) {
-        const createdMatch = { ...data[0], is_published: false };
-        setMatches((prev) => [...prev, createdMatch]);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 28px system-ui, sans-serif";
+    ctx.fillText(
+      tournament.name + " — " + matchdayLabel,
+      padding + brandLogoSize + 16,
+      88,
+    );
 
-        if (!matchdays.includes(mdToUse)) {
-          setMatchdays((prev) => [...prev, mdToUse]);
+    const matchWord = matches.length === 1 ? "match" : "matches";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "15px system-ui, sans-serif";
+    ctx.fillText(
+      matches.length +
+        " " +
+        matchWord +
+        " · " +
+        new Date().toLocaleDateString(),
+      padding + brandLogoSize + 16,
+      114,
+    );
+
+    const logoCache = new Map<string, HTMLImageElement>();
+    await Promise.all(
+      matches.map(async (m) => {
+        for (const id of [m.home_id, m.away_id]) {
+          const p = getPlayer(data, id);
+          const url = sidePhoto(data, p);
+          if (url && !logoCache.has(url)) {
+            try {
+              logoCache.set(url, await loadImage(url));
+            } catch {
+              // skip
+            }
+          }
         }
-        setSelectedMatchday(mdToUse);
-        resetForm();
-        setIsAddOpen(false);
-        toast.success("New match created successfully");
-      }
-    } catch (err: any) {
-      console.error("Add Match Error:", err);
-      toast.error(err.message || "Failed to add match");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      }),
+    );
 
-  // 4. Edit Match Logic
-  const handleEditMatch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingMatch) return;
+    let y = headerH;
+    const avatarR = 22;
+    const midX = width / 2;
 
-    setSubmitting(true);
-    const mdName = newMatchdayName.trim() || selectedMatchday;
+    for (let i = 0; i < matches.length; i++) {
+      const m = matches[i];
+      const homeP = getPlayer(data, m.home_id);
+      const awayP = getPlayer(data, m.away_id);
+      const home = sideLabel(homeP);
+      const away = sideLabel(awayP);
+      const homeUrl = sidePhoto(data, homeP);
+      const awayUrl = sidePhoto(data, awayP);
+      const score = scoreText(m);
 
-    let finalHome = homeTeam.trim();
-    let finalAway = awayTeam.trim();
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.03)" : "transparent";
+      roundRect(ctx, padding - 4, y, width - padding * 2 + 8, rowH - 8, 12);
+      ctx.fill();
 
-    if (participants.length > 0) {
-      if (homeParticipantId !== "tbd") {
-        const p = participants.find((pt) => pt.id === homeParticipantId);
-        if (p) finalHome = p.club || p.player_name;
-      }
-      if (awayParticipantId !== "tbd") {
-        const p = participants.find((pt) => pt.id === awayParticipantId);
-        if (p) finalAway = p.club || p.player_name;
-      }
-    }
-
-    const updatedPayload = {
-      home_team: finalHome,
-      away_team: finalAway,
-      home_participant_id: homeParticipantId !== "tbd" ? homeParticipantId : null,
-      away_participant_id: awayParticipantId !== "tbd" ? awayParticipantId : null,
-      scheduled_at: scheduledAt || null,
-      matchday_name: mdName,
-    };
-
-    try {
-      const { error } = await supabase
-        .from("matches")
-        .update(updatedPayload)
-        .eq("id", editingMatch.id);
-
-      if (error) throw error;
-
-      setMatches((prev) =>
-        prev.map((m) => (m.id === editingMatch.id ? { ...m, ...updatedPayload } : m))
+      const cy = y + (rowH - 8) / 2;
+      const homeLogoX = midX - 70;
+      drawCircleAvatar(
+        ctx,
+        logoCache.get(homeUrl ?? ""),
+        homeLogoX,
+        cy,
+        avatarR,
+        home,
       );
 
-      resetForm();
-      setEditingMatch(null);
-      toast.success("Match updated successfully");
-    } catch (err: any) {
-      console.error("Edit Match Error:", err);
-      toast.error(err.message || "Failed to update match");
-    } finally {
-      setSubmitting(false);
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 18px system-ui, sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(home, homeLogoX - avatarR - 10, cy + 6);
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = score ? "#60a5fa" : "#64748b";
+      ctx.font = "bold 20px system-ui, sans-serif";
+      ctx.fillText(score || "–", midX, cy + 6);
+
+      const awayLogoX = midX + 70;
+      drawCircleAvatar(
+        ctx,
+        logoCache.get(awayUrl ?? ""),
+        awayLogoX,
+        cy,
+        avatarR,
+        away,
+      );
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 18px system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(away, awayLogoX + avatarR + 10, cy + 6);
+
+      y += rowH;
     }
-  };
 
-  // 5. Delete Match Logic
-  const handleDeleteMatch = async (matchId: string) => {
-    try {
-      const { error } = await supabase.from("matches").delete().eq("id", matchId);
-      if (error) throw error;
-
-      setMatches((prev) => prev.filter((m) => m.id !== matchId));
-      toast.success("Match deleted");
-    } catch (err: any) {
-      console.error("Delete Match Error:", err);
-      toast.error(err.message || "Failed to delete match");
-    }
-  };
-
-  const startEdit = (match: Match) => {
-    setEditingMatch(match);
-    setHomeTeam(match.home_team || "");
-    setAwayTeam(match.away_team || "");
-    setHomeParticipantId(match.home_participant_id || "tbd");
-    setAwayParticipantId(match.away_participant_id || "tbd");
-    setNewMatchdayName(match.matchday_name || "");
-    setScheduledAt(match.scheduled_at || "");
-  };
-
-  const resetForm = () => {
-    setHomeTeam("");
-    setAwayTeam("");
-    setHomeParticipantId("tbd");
-    setAwayParticipantId("tbd");
-    setNewMatchdayName("");
-    setScheduledAt("");
-  };
-
-  // 6. Canvas Bracket Image Generator
-  const generateBracketImage = async () => {
-    if (!canvasRef.current || filteredMatches.length === 0) return;
-    setGeneratingCanvas(true);
-
-    try {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      const width = 1080;
-      const cardHeight = 120;
-      const padding = 40;
-      const headerHeight = 180;
-      const totalHeight = headerHeight + filteredMatches.length * (cardHeight + 20) + padding;
-
-      canvas.width = width;
-      canvas.height = totalHeight;
-
-      // Background
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, totalHeight);
-      bgGradient.addColorStop(0, "#090d16");
-      bgGradient.addColorStop(1, "#111827");
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, width, totalHeight);
-
-      // Header Text
-      ctx.fillStyle = "#6366f1";
-      ctx.font = "bold 36px system-ui, sans-serif";
-      ctx.fillText((selectedMatchday || "MATCHDAY").toUpperCase(), padding, 70);
-
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "20px system-ui, sans-serif";
-      ctx.fillText("Official Tournament Fixtures", padding, 110);
-
-      let startY = headerHeight;
-      for (const m of filteredMatches) {
-        roundRect(ctx, padding, startY, width - padding * 2, cardHeight, 16);
-        ctx.fillStyle = "rgba(30, 41, 59, 0.7)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 24px system-ui, sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText(m.home_team, padding + 30, startY + 70);
-
-        ctx.fillStyle = "#818cf8";
-        ctx.font = "bold 20px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("VS", width / 2, startY + 70);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 24px system-ui, sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText(m.away_team, width - padding - 30, startY + 70);
-
-        startY += cardHeight + 20;
-      }
-
-      const dataUrl = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.download = `${selectedMatchday || "Fixtures"}.png`;
-      link.href = dataUrl;
-      link.click();
-      toast.success("Fixtures Image downloaded!");
-    } catch {
-      toast.error("Failed to generate image");
-    } finally {
-      setGeneratingCanvas(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-12 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2 text-indigo-500" /> Loading fixtures...
-      </div>
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#64748b";
+    ctx.font = "13px system-ui, sans-serif";
+    ctx.fillText(
+      brandName + " · Official fixtures",
+      width / 2,
+      canvas.height - 20,
     );
-  }
+
+    const fileSafe = (tournament.name + "-" + matchdayLabel)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const link = document.createElement("a");
+    link.download = fileSafe + "-fixtures.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    toast.success("Fixture image downloaded");
+  };
 
   return (
-    <div className="space-y-6">
-      <canvas ref={canvasRef} className="hidden" />
-
-      {/* Control Box Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 glass rounded-xl border border-border/40 bg-card/40">
-        <div>
-          <h3 className="text-base font-bold flex items-center gap-2 text-white">
-            <Bell className="h-4 w-4 text-indigo-400" />
-            Publish ({selectedMatchday || "Matchday 1"})
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Switch ON गर्दा यो Matchday पब्लिस हुनुका साथै नोटीफिकेसन पनि जान्छ।
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={generateBracketImage}
-            disabled={generatingCanvas || filteredMatches.length === 0}
-            className="gap-1.5 border-indigo-500/30"
-          >
-            {generatingCanvas ? (
-              <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
-            ) : (
-              <Download className="h-4 w-4 text-indigo-400" />
-            )}
-            Download Graphic
-          </Button>
-
-          {/* Add Match Modal */}
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1.5 border-indigo-500/30">
-                <Plus className="h-4 w-4 text-indigo-400" /> Add Match
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add New Match</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddMatch} className="space-y-4 pt-2">
-                <div>
-                  <label className="text-xs font-medium text-slate-300">Matchday Name (Optional)</label>
-                  <Input
-                    placeholder={selectedMatchday || "e.g. Matchday 1"}
-                    value={newMatchdayName}
-                    onChange={(e) => setNewMatchdayName(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-slate-300">Home Team / Player</label>
-                    {participants.length > 0 ? (
-                      <SideSelect
-                        value={homeParticipantId}
-                        players={participants}
-                        onChange={(v) => setHomeParticipantId(v)}
-                        className="mt-1"
-                      />
-                    ) : (
-                      <Input
-                        placeholder="Home Team Name"
-                        value={homeTeam}
-                        onChange={(e) => setHomeTeam(e.target.value)}
-                        className="mt-1"
-                        required
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-slate-300">Away Team / Player</label>
-                    {participants.length > 0 ? (
-                      <SideSelect
-                        value={awayParticipantId}
-                        players={participants}
-                        onChange={(v) => setAwayParticipantId(v)}
-                        className="mt-1"
-                      />
-                    ) : (
-                      <Input
-                        placeholder="Away Team Name"
-                        value={awayTeam}
-                        onChange={(e) => setAwayTeam(e.target.value)}
-                        className="mt-1"
-                        required
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-slate-300">Scheduled Time (Optional)</label>
-                  <Input
-                    type="datetime-local"
-                    value={scheduledAt}
-                    onChange={(e) => setScheduledAt(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-
-                <Button type="submit" disabled={submitting} className="w-full bg-indigo-600 hover:bg-indigo-500">
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Match"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          {/* Single Combined Switch (Publish + Notification) */}
-          <div className="flex items-center gap-3 pl-3 border-l border-border/50">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {isCurrentMatchdayPublished ? "PUBLISHED" : "DRAFT"}
-            </span>
-            {updating ? (
-              <Loader2 className="h-5 w-5 animate-spin text-indigo-400" />
-            ) : (
-              <Switch
-                checked={isCurrentMatchdayPublished}
-                onCheckedChange={(checked) => handleTogglePublish(checked)}
-                disabled={filteredMatches.length === 0}
-              />
-            )}
-          </div>
-        </div>
+    <div className="space-y-4 pt-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          onClick={generate}
+          disabled={busy}
+          className="bg-gradient-brand text-primary-foreground"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Shuffle className="h-4 w-4 mr-1.5" />
+          )}
+          {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
+        </Button>
+        <Button variant="secondary" onClick={addMatch} disabled={!activeMdId}>
+          <Plus className="h-4 w-4 mr-1.5" /> Add match
+        </Button>
+        <span className="text-xs text-muted-foreground ml-auto">
+          Format: {bracketLabel(tournament.bracket_type)} · {approved.length}{" "}
+          players · {groups.length} matchdays
+        </span>
       </div>
 
-      {/* Edit Match Dialog Modal */}
-      <Dialog open={!!editingMatch} onOpenChange={(open) => !open && setEditingMatch(null)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Match</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEditMatch} className="space-y-4 pt-2">
-            <div>
-              <label className="text-xs font-medium text-slate-300">Matchday Name</label>
-              <Input
-                value={newMatchdayName}
-                onChange={(e) => setNewMatchdayName(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-slate-300">Home Team</label>
-                {participants.length > 0 ? (
-                  <SideSelect
-                    value={homeParticipantId}
-                    players={participants}
-                    onChange={(v) => setHomeParticipantId(v)}
-                    className="mt-1"
-                  />
-                ) : (
-                  <Input
-                    value={homeTeam}
-                    onChange={(e) => setHomeTeam(e.target.value)}
-                    className="mt-1"
-                    required
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-300">Away Team</label>
-                {participants.length > 0 ? (
-                  <SideSelect
-                    value={awayParticipantId}
-                    players={participants}
-                    onChange={(v) => setAwayParticipantId(v)}
-                    className="mt-1"
-                  />
-                ) : (
-                  <Input
-                    value={awayTeam}
-                    onChange={(e) => setAwayTeam(e.target.value)}
-                    className="mt-1"
-                    required
-                  />
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-slate-300">Scheduled Time</label>
-              <Input
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-
-            <Button type="submit" disabled={submitting} className="w-full bg-indigo-600 hover:bg-indigo-500">
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Match"}
+      {data.matches.length === 0 && groups.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center text-sm text-muted-foreground">
+          No fixtures yet. Click <strong>Generate fixtures</strong>. Matchdays
+          stay unpublished until you turn Publish on.
+        </div>
+      ) : (
+        <>
+          {/* Matchday strip — same idea as Results tab */}
+          <div className="flex items-center gap-1.5 max-w-[420px] mx-auto">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0"
+              disabled={activeIdx <= 0}
+              onClick={prevMatchday}
+            >
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
-      {/* Matchday Selector Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-border/40 pb-3">
-        {matchdays.map((md) => {
-          const isActive = selectedMatchday === md;
-          return (
-            <button
-              key={md}
-              type="button"
-              onClick={() => setSelectedMatchday(md)}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                isActive
-                  ? "bg-indigo-600 text-white shadow-md font-semibold"
-                  : "bg-secondary/60 text-muted-foreground hover:bg-secondary"
-              }`}
+            <div className="flex flex-1 gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1">
+              {groups.map((g) => {
+                const played = g.matches.filter((m) => m.played).length;
+                const isActive = g.name === activeName;
+                const pub = !!data.matchdays.find((d) => d.id === g.id)
+                  ?.is_published;
+                return (
+                  <button
+                    key={g.name}
+                    ref={(el) => {
+                      if (el) tabRefs.current.set(g.name, el);
+                      else tabRefs.current.delete(g.name);
+                    }}
+                    type="button"
+                    onClick={() => selectMatchday(g.name)}
+                    className={cn(
+                      "flex shrink-0 min-w-[100px] snap-center flex-col items-center rounded-xl border px-3 py-2 text-center transition",
+                      isActive
+                        ? "border-brand bg-brand/15"
+                        : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "text-xs font-semibold truncate w-full",
+                        isActive && "text-brand-glow",
+                      )}
+                    >
+                      {g.name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {played}/{g.matches.length}
+                      {pub ? " · Live" : " · Draft"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0"
+              disabled={activeIdx >= groups.length - 1}
+              onClick={nextMatchday}
             >
-              {md}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Matches List */}
-      <div className="space-y-3">
-        {filteredMatches.length === 0 ? (
-          <div className="text-center py-8 border border-dashed rounded-xl border-border/60">
-            <p className="text-sm text-muted-foreground">
-              No matches found for {selectedMatchday || "this matchday"}.
-            </p>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        ) : (
-          filteredMatches.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between p-4 glass rounded-xl border border-border/40 hover:border-border/80 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-white">{m.home_team}</span>
-                  <span className="text-xs font-mono text-indigo-400 px-1.5 py-0.5 rounded bg-indigo-500/10">
-                    {m.home_score ?? "-"}
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground font-bold font-mono">VS</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-indigo-400 px-1.5 py-0.5 rounded bg-indigo-500/10">
-                    {m.away_score ?? "-"}
-                  </span>
-                  <span className="font-semibold text-sm text-white">{m.away_team}</span>
+
+          {activeName && (
+            <div className="glass w-full max-w-[420px] mx-auto rounded-2xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
+                <h3 className="text-sm font-semibold truncate">{activeName}</h3>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* ONE switch: publish + notify */}
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Switch
+                      checked={isPublished}
+                      disabled={toggling || !activeMdId}
+                      onCheckedChange={(on) => void onPublishToggle(on)}
+                    />
+                    {isPublished ? "Published" : "Publish"}
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() =>
+                      downloadMatchday(activeName, activeMatches)
+                    }
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    PNG
+                  </Button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Badge variant={m.is_published ? "default" : "outline"}>
-                  {m.is_published ? "Published" : "Draft"}
-                </Badge>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
-                  onClick={() => startEdit(m)}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                  onClick={() => handleDeleteMatch(m.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <p className="text-[11px] text-muted-foreground">
+                {isPublished
+                  ? "Visible on public tournament page + pending matches for players."
+                  : "Draft — public sees this matchday locked/blurred. Players do not get pending yet."}
+              </p>
+
+              <div className="space-y-2">
+                {activeMatches.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No matches in this matchday.
+                  </p>
+                ) : (
+                   activeMatches.map((m) => {
+                    const homeP = getPlayer(data, m.home_id);
+                    const awayP = getPlayer(data, m.away_id);
+                    const homeLabel = sideLabel(homeP);
+                    const awayLabel = sideLabel(awayP);
+                    const homePhoto = sidePhoto(data, homeP);
+                    const awayPhoto = sidePhoto(data, awayP);
+                    const score = scoreText(m);
+
+                    return (
+                      <div
+                        key={m.id}
+                        className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                          <span className="text-sm font-semibold truncate max-w-[120px] text-right">
+                            {homeLabel}
+                          </span>
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarImage src={homePhoto ?? undefined} />
+                            <AvatarFallback className="bg-secondary text-[10px]">
+                              {homeLabel.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
+                          {score || "\u00A0"}
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarImage src={awayPhoto ?? undefined} />
+                            <AvatarFallback className="bg-secondary text-[10px]">
+                              {awayLabel.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-semibold truncate max-w-[120px]">
+                            {awayLabel}
+                          </span>
+                        </div>
+                        <SideSelect
+                          value={m.home_id}
+                          players={approved}
+                          onChange={(v) => setSide(m, "home_id", v)}
+                          className="hidden lg:flex w-[90px] shrink-0"
+                        />
+                        <SideSelect
+                          value={m.away_id}
+                          players={approved}
+                          onChange={(v) => setSide(m, "away_id", v)}
+                          className="hidden lg:flex w-[90px] shrink-0"
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0 text-muted-foreground"
+                          onClick={() => removeMatch(m)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
-          ))
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
-      }
-// Participant Dropdown Select Component
+}
+
 function SideSelect({
   value,
   players,
@@ -734,11 +727,11 @@ function SideSelect({
 }) {
   return (
     <Select value={value ?? "tbd"} onValueChange={onChange}>
-      <SelectTrigger className={cn("h-9 text-xs", className)}>
-        <SelectValue placeholder="Select Player / Team" />
+      <SelectTrigger className={cn("h-8 text-xs", className)}>
+        <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="tbd">TBD (To Be Decided)</SelectItem>
+        <SelectItem value="tbd">TBD</SelectItem>
         {players.map((p) => (
           <SelectItem key={p.id} value={p.id}>
             {p.club?.trim() || p.player_name}
@@ -749,14 +742,23 @@ function SideSelect({
   );
 }
 
-// Canvas Rounded Box Helper Function
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
   h: number,
-  r: number
+  r: number,
 ) {
   const radius = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
@@ -767,3 +769,35 @@ function roundRect(
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
 }
+
+function drawCircleAvatar(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | undefined,
+  cx: number,
+  cy: number,
+  r: number,
+  fallback: string,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  if (img) {
+    ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+  } else {
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(fallback.slice(0, 2).toUpperCase(), cx, cy);
+  }
+  ctx.restore();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(148,163,184,0.35)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+                    }
