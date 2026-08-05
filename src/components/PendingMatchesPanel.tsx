@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase, type MatchSubmission } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import {
-  loadMySubmissions,
   loadPendingMatches,
+  loadMySubmissions,
   type PendingMatch,
+  type MatchSubmission,
 } from "@/lib/matches-pending";
 import { uploadPublicImage } from "@/lib/upload";
 import { Button } from "@/components/ui/button";
@@ -14,15 +15,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  CheckCircle2, ChevronDown, Clock, ImagePlus, Loader2, Send, XCircle,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  ImagePlus,
+  Loader2,
+  Send,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface Item {
-  pm: PendingMatch;
-  submission: MatchSubmission | null;
-}
+type Item = { pm: PendingMatch; submission: MatchSubmission | null };
 
 export function PendingMatchesPanel() {
   const { user } = useAuth();
@@ -38,9 +42,15 @@ export function PendingMatchesPanel() {
     setLoading(true);
     try {
       const pms = await loadPendingMatches(user.id);
-      const subs = await loadMySubmissions(user.id, pms.map((p) => p.match.id));
+      const subs = await loadMySubmissions(
+        user.id,
+        pms.map((p) => p.match.id),
+      );
       setItems(
-        pms.map((pm) => ({ pm, submission: subs.get(pm.match.id) ?? null })),
+        pms.map((pm) => ({
+          pm,
+          submission: subs.get(pm.match.id) ?? null,
+        })),
       );
     } catch (e) {
       console.error(e);
@@ -52,41 +62,31 @@ export function PendingMatchesPanel() {
 
   useEffect(() => {
     void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   if (!user || loading || items.length === 0) return null;
 
   return (
-    <section className="max-w-7xl mx-auto px-4 pt-8">
-      <div id="pending-matches" className="space-y-3">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-3 w-3 shrink-0">
+    <section className="max-w-7xl mx-auto px-4 pt-6">
+      <div id="pending-matches" className="space-y-2">
+        {/* Dynamic island style header */}
+        <div className="mx-auto w-fit max-w-full rounded-full bg-red-500/15 border border-red-500/30 px-4 py-1.5 flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
           </span>
-          <h2 className="text-lg font-bold text-red-400">
-            Pending matches ({items.length})
-          </h2>
+          <span className="text-sm font-semibold text-red-300">
+            Pending · {items.length} match{items.length > 1 ? "es" : ""}
+          </span>
         </div>
-        <div className="space-y-2">
+
+        <div className="space-y-2 max-w-lg mx-auto">
           {items.map((it) => (
             <PendingMatchCard key={it.pm.match.id} item={it} onDone={reload} />
           ))}
         </div>
       </div>
     </section>
-  );
-}
-
-function SideAvatar({ label, photo }: { label: string; photo: string | null }) {
-  return (
-    <Avatar className="h-8 w-8 shrink-0">
-      <AvatarImage src={photo ?? undefined} />
-      <AvatarFallback className="bg-secondary text-[10px]">
-        {label.slice(0, 2).toUpperCase()}
-      </AvatarFallback>
-    </Avatar>
   );
 }
 
@@ -99,215 +99,204 @@ function PendingMatchCard({
 }) {
   const { user } = useAuth();
   const { pm, submission } = item;
-  const [open, setOpen] = useState(false);
-  const [hs, setHs] = useState("");
-  const [ascore, setAscore] = useState("");
-  const [note, setNote] = useState("");
-  const [shot, setShot] = useState<string | null>(null);
+  const [open, setOpen] = useState(!submission || submission.status === "rejected");
+  const [hs, setHs] = useState(
+    submission ? String(submission.home_score) : "",
+  );
+  const [ascore, setAscore] = useState(
+    submission ? String(submission.away_score) : "",
+  );
+  const [note, setNote] = useState(submission?.note ?? "");
+  const [proofUrl, setProofUrl] = useState(submission?.proof_url ?? "");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const status = submission?.status ?? null;
-
-  const handleFile = async (file: File) => {
+  const onFile = async (file: File | null) => {
+    if (!file) return;
     setUploading(true);
     try {
-      const url = await uploadPublicImage(file, "proofs");
-      setShot(url);
-      toast.success("Screenshot uploaded successfully!");
+      const url = await uploadPublicImage(file, "match-proofs");
+      setProofUrl(url);
+      toast.success("Screenshot uploaded");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
   const submit = async () => {
     if (!user) return;
     if (hs === "" || ascore === "") {
-      toast.error("Enter the final score first");
+      toast.error("Enter both scores");
       return;
     }
-    if (!shot) {
-      toast.error("Attach a scoreboard screenshot as proof");
+    if (!proofUrl) {
+      toast.error("Upload result screenshot");
       return;
     }
+
     setBusy(true);
-    const { error } = await supabase.from("match_submissions").insert({
+    const payload = {
       match_id: pm.match.id,
-      participant_id: pm.myParticipantId,
       user_id: user.id,
-      home_team: pm.homeLabel, // <--- home_team थपियो
-      away_team: pm.awayLabel, // <--- away_team थपियो
       home_score: Number(hs),
       away_score: Number(ascore),
-      screenshot_url: shot,
+      proof_url: proofUrl,
       note: note.trim() || null,
+      status: "pending" as const,
+      reviewed_at: null,
+    };
+
+    const { error } = await supabase.from("match_submissions").upsert(payload, {
+      onConflict: "match_id,user_id",
     });
+
     setBusy(false);
-    if (error) {
-      const code = (error as { code?: string }).code;
-      if (code === "23505" || error.message.includes("match_submissions_active_uq")) {
-        toast.error("You already have a submission under review for this match.");
-      } else {
-        toast.error(error.message);
-      }
-      return;
-    }
-    toast.success("Result submitted — waiting for admin approval");
+    if (error) return toast.error(error.message);
+
+    toast.success("Submitted for admin verification");
     onDone();
   };
 
+  const status = submission?.status;
+
   return (
-    <div className="glass rounded-2xl border border-red-500/30 overflow-hidden">
-      {/* Compact header — tap to expand */}
+    <div className="glass rounded-2xl border border-red-500/20 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent/20 transition"
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-left"
       >
         <span className="relative flex h-2 w-2 shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
         </span>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <SideAvatar label={pm.homeLabel} photo={pm.homePhoto} />
-          <span className="truncate text-sm font-semibold">{pm.homeLabel}</span>
-          <span className="shrink-0 text-xs text-muted-foreground">vs</span>
-          <SideAvatar label={pm.awayLabel} photo={pm.awayPhoto} />
-          <span className="truncate text-sm font-semibold">{pm.awayLabel}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] text-muted-foreground truncate">
+            {pm.tournamentName} · {pm.matchdayName}
+          </div>
+          <div className="flex items-center justify-center gap-2 text-sm font-semibold">
+            <Avatar className="h-7 w-7 shrink-0">
+              <AvatarImage src={pm.homePhoto ?? undefined} />
+              <AvatarFallback className="text-[9px] bg-secondary">
+                {pm.homeLabel.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="truncate max-w-[28%] text-right">{pm.homeLabel}</span>
+            <span className="text-xs text-muted-foreground">vs</span>
+            <span className="truncate max-w-[28%]">{pm.awayLabel}</span>
+            <Avatar className="h-7 w-7 shrink-0">
+              <AvatarImage src={pm.awayPhoto ?? undefined} />
+              <AvatarFallback className="text-[9px] bg-secondary">
+                {pm.awayLabel.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </div>
         {status === "pending" && (
-          <Badge className="shrink-0 bg-amber-500/20 text-amber-300 border-amber-500/40">
-            <Clock className="h-3 w-3 mr-1" /> In review
+          <Badge className="bg-amber-500/20 text-amber-300 shrink-0 text-[10px]">
+            <Clock className="h-3 w-3 mr-0.5" /> Review
           </Badge>
         )}
         {status === "approved" && (
-          <Badge className="shrink-0 bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
-            <CheckCircle2 className="h-3 w-3 mr-1" /> Approved
+          <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0 text-[10px]">
+            <CheckCircle2 className="h-3 w-3 mr-0.5" /> OK
           </Badge>
         )}
         {status === "rejected" && (
-          <Badge className="shrink-0 bg-red-500/20 text-red-300 border-red-500/40">
-            <XCircle className="h-3 w-3 mr-1" /> Rejected
+          <Badge className="bg-red-500/20 text-red-300 shrink-0 text-[10px]">
+            <XCircle className="h-3 w-3 mr-0.5" /> Rejected
           </Badge>
         )}
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            "h-4 w-4 shrink-0 text-muted-foreground transition",
             open && "rotate-180",
           )}
         />
       </button>
 
       {open && (
-        <div className="space-y-3 border-t border-border/40 px-4 py-4 animate-fade-in">
-          <p className="text-xs text-muted-foreground">
-            {pm.tournamentName} · {pm.matchdayName}
-          </p>
-
-          {status === "pending" && submission ? (
-            <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
-              <p className="text-sm font-medium text-amber-300">
-                Submitted {submission.home_score} - {submission.away_score} — waiting for admin review.
-              </p>
-              {submission.screenshot_url && (
-                <a href={submission.screenshot_url} target="_blank" rel="noreferrer">
-                  <img
-                    src={submission.screenshot_url}
-                    alt="Submitted proof"
-                    className="max-h-32 rounded-lg border border-border/60"
-                  />
-                </a>
-              )}
-              <p className="text-xs text-muted-foreground">
-                You can submit again only if the admin rejects this submission.
-              </p>
-            </div>
+        <div className="px-3 pb-3 space-y-3 border-t border-border/40 pt-3">
+          {status === "pending" ? (
+            <p className="text-xs text-amber-300/90 text-center">
+              Waiting for admin verification. Scores are not live yet.
+            </p>
           ) : (
             <>
-              {status === "rejected" && (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-300">
-                  Your previous submission was rejected. Please submit the correct result with a clear screenshot.
-                </p>
-              )}
-
-              {/* Direct Screenshot Upload */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div>
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  hidden
-                  onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
                 />
                 <Button
                   type="button"
+                  variant="outline"
                   size="sm"
-                  variant="secondary"
+                  className="w-full"
                   disabled={uploading}
                   onClick={() => fileRef.current?.click()}
                 >
                   {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
                   ) : (
-                    <ImagePlus className="h-4 w-4 mr-1.5" />
+                    <ImagePlus className="h-4 w-4 mr-1" />
                   )}
-                  {uploading ? "Uploading..." : shot ? "Replace screenshot" : "Upload screenshot"}
+                  {proofUrl ? "Change screenshot" : "Upload result screenshot"}
                 </Button>
-                {shot && (
-                  <div className="flex items-center gap-2">
-                    <a href={shot} target="_blank" rel="noreferrer">
-                      <img
-                        src={shot}
-                        alt="Scoreboard proof"
-                        className="h-12 rounded-lg border border-border/60 object-cover"
-                      />
-                    </a>
-                    <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
-                    </span>
-                  </div>
+                {proofUrl && (
+                  <a
+                    href={proofUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 block text-xs text-emerald-400 truncate"
+                  >
+                    <CheckCircle2 className="inline h-3 w-3 mr-1" />
+                    Screenshot ready
+                  </a>
                 )}
               </div>
 
-              {/* Manual Scores Input */}
               <div className="flex items-center justify-center gap-2">
-                <div className="flex-1 text-right text-xs text-muted-foreground truncate font-medium">
-                  {pm.homeLabel}
-                </div>
                 <Input
-                  className="w-14 h-9 text-center shrink-0"
+                  className="w-14 h-9 text-center"
                   inputMode="numeric"
                   placeholder="H"
                   value={hs}
-                  onChange={(e) => setHs(e.target.value.replace(/[^0-9]/g, ""))}
+                  onChange={(e) =>
+                    setHs(e.target.value.replace(/[^0-9]/g, ""))
+                  }
                 />
                 <span className="text-muted-foreground font-bold">-</span>
                 <Input
-                  className="w-14 h-9 text-center shrink-0"
+                  className="w-14 h-9 text-center"
                   inputMode="numeric"
                   placeholder="A"
                   value={ascore}
-                  onChange={(e) => setAscore(e.target.value.replace(/[^0-9]/g, ""))}
+                  onChange={(e) =>
+                    setAscore(e.target.value.replace(/[^0-9]/g, ""))
+                  }
                 />
-                <div className="flex-1 text-xs text-muted-foreground truncate font-medium">
-                  {pm.awayLabel}
-                </div>
               </div>
 
               <Textarea
                 rows={2}
-                placeholder="Note for the admin (optional)"
+                placeholder="Note for admin (optional)"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
 
               <div className="flex flex-wrap gap-2 justify-end">
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/tournaments/$id" params={{ id: pm.tournamentId }}>
+                  <Link
+                    to="/tournaments/$id"
+                    params={{ id: pm.tournamentId }}
+                  >
                     Tournament
                   </Link>
                 </Button>
@@ -332,5 +321,4 @@ function PendingMatchCard({
       )}
     </div>
   );
-                  }
-        
+}
