@@ -8,14 +8,13 @@ import {
   type PendingMatch,
 } from "@/lib/matches-pending";
 import { uploadPublicImage } from "@/lib/upload";
-import { detectScoreFromImage } from "@/lib/ocr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  CheckCircle2, ChevronDown, Clock, ImagePlus, Loader2, ScanLine, Send, XCircle,
+  CheckCircle2, ChevronDown, Clock, ImagePlus, Loader2, Send, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -107,7 +106,6 @@ function PendingMatchCard({
   const [shot, setShot] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const status = submission?.status ?? null;
@@ -117,23 +115,7 @@ function PendingMatchCard({
     try {
       const url = await uploadPublicImage(file, "proofs");
       setShot(url);
-      setScanning(true);
-      try {
-        const ocr = await detectScoreFromImage(file);
-        if (ocr) {
-          setHs(String(ocr.home));
-          setAscore(String(ocr.away));
-          toast.success(
-            "Score detected: " + ocr.home + " - " + ocr.away + " — please verify before submitting",
-          );
-        } else {
-          toast.info("Couldn't detect a score — enter it manually");
-        }
-      } catch {
-        toast.info("OCR unavailable — enter the score manually");
-      } finally {
-        setScanning(false);
-      }
+      toast.success("Screenshot uploaded successfully!");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -250,7 +232,7 @@ function PendingMatchCard({
                 </p>
               )}
 
-              {/* Screenshot + OCR */}
+              {/* Direct Screenshot Upload */}
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   ref={fileRef}
@@ -263,32 +245,35 @@ function PendingMatchCard({
                   type="button"
                   size="sm"
                   variant="secondary"
-                  disabled={uploading || scanning}
+                  disabled={uploading}
                   onClick={() => fileRef.current?.click()}
                 >
                   {uploading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
-                  ) : scanning ? (
-                    <ScanLine className="h-4 w-4 mr-1.5 animate-pulse" />
                   ) : (
                     <ImagePlus className="h-4 w-4 mr-1.5" />
                   )}
-                  {scanning ? "Detecting score…" : shot ? "Replace screenshot" : "Upload screenshot"}
+                  {uploading ? "Uploading..." : shot ? "Replace screenshot" : "Upload screenshot"}
                 </Button>
                 {shot && (
-                  <a href={shot} target="_blank" rel="noreferrer">
-                    <img
-                      src={shot}
-                      alt="Scoreboard proof"
-                      className="h-12 rounded-lg border border-border/60"
-                    />
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <a href={shot} target="_blank" rel="noreferrer">
+                      <img
+                        src={shot}
+                        alt="Scoreboard proof"
+                        className="h-12 rounded-lg border border-border/60 object-cover"
+                      />
+                    </a>
+                    <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
+                    </span>
+                  </div>
                 )}
               </div>
 
-              {/* Scores */}
+              {/* Manual Scores Input */}
               <div className="flex items-center justify-center gap-2">
-                <div className="flex-1 text-right text-xs text-muted-foreground truncate">
+                <div className="flex-1 text-right text-xs text-muted-foreground truncate font-medium">
                   {pm.homeLabel}
                 </div>
                 <Input
@@ -298,7 +283,7 @@ function PendingMatchCard({
                   value={hs}
                   onChange={(e) => setHs(e.target.value.replace(/[^0-9]/g, ""))}
                 />
-                <span className="text-muted-foreground">-</span>
+                <span className="text-muted-foreground font-bold">-</span>
                 <Input
                   className="w-14 h-9 text-center shrink-0"
                   inputMode="numeric"
@@ -306,7 +291,7 @@ function PendingMatchCard({
                   value={ascore}
                   onChange={(e) => setAscore(e.target.value.replace(/[^0-9]/g, ""))}
                 />
-                <div className="flex-1 text-xs text-muted-foreground truncate">
+                <div className="flex-1 text-xs text-muted-foreground truncate font-medium">
                   {pm.awayLabel}
                 </div>
               </div>
@@ -327,7 +312,7 @@ function PendingMatchCard({
                 <Button
                   size="sm"
                   className="bg-gradient-brand text-primary-foreground"
-                  disabled={busy || uploading || scanning}
+                  disabled={busy || uploading}
                   onClick={submit}
                 >
                   {busy ? (
@@ -345,4 +330,4 @@ function PendingMatchCard({
       )}
     </div>
   );
-}
+        }
