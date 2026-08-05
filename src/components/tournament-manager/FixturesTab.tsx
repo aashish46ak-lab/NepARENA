@@ -57,13 +57,11 @@ interface FixturesTabProps {
 export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProps) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchdays, setMatchdays] = useState<string[]>([]);
-
-  // 🔒 Selected Matchday Lock (Reset हुनबाट रोक्न)
   const [selectedMatchday, setSelectedMatchday] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  // Modals / States
+  // Modal & Form States
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [homeTeam, setHomeTeam] = useState("");
@@ -72,11 +70,11 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
   const [scheduledAt, setScheduledAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Canvas
+  // Bracket Canvas Ref
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [generatingCanvas, setGeneratingCanvas] = useState(false);
 
-  // 1. Initial Load Only (Zero Reload Loop)
+  // 1. Load Data (Without unsafe database ordering)
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
@@ -84,13 +82,12 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       const { data, error } = await supabase
         .from("matches")
         .select("*")
-        .eq("tournament_id", tournamentId)
-        .order("created_at", { ascending: true });
+        .eq("tournament_id", tournamentId);
 
       if (error) {
+        console.error("Database query failed:", error);
         toast.error("Failed to load fixtures");
       } else if (data && isMounted) {
-        // Safe mapping with strict Default OFF logic
         const formattedData = data.map((m) => ({
           ...m,
           is_published: m.is_published ?? false,
@@ -100,9 +97,12 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         const uniqueMDs = Array.from(
           new Set(formattedData.map((m: Match) => m.matchday_name || "Matchday 1"))
         );
+
+        if (uniqueMDs.length === 0) {
+          uniqueMDs.push("Matchday 1");
+        }
         setMatchdays(uniqueMDs);
 
-        // Keep current selected matchday if valid
         setSelectedMatchday((prev) => {
           if (prev && uniqueMDs.includes(prev)) return prev;
           return uniqueMDs[0] || "Matchday 1";
@@ -117,22 +117,19 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
     };
   }, [tournamentId]);
 
-  // Current Matchday Filter
   const filteredMatches = matches.filter(
     (m) => (m.matchday_name || "Matchday 1") === selectedMatchday
   );
 
-  // Single Merged Switch Logic (All matches must be published to be ON)
   const isCurrentMatchdayPublished =
     filteredMatches.length > 0 && filteredMatches.every((m) => Boolean(m.is_published));
 
-  // 2. 🔔 Combined Single Switch (Publish + Notification + NO RELOAD)
+  // 2. Single Switch Logic (Publish + Notification)
   const handleTogglePublish = async (targetStatus: boolean) => {
     if (!selectedMatchday || filteredMatches.length === 0) return;
     setUpdating(true);
 
     try {
-      // Step A: Update Supabase DB
       const { error: matchError } = await supabase
         .from("matches")
         .update({ is_published: targetStatus })
@@ -141,7 +138,6 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 
       if (matchError) throw matchError;
 
-      // Step B: Send Notification when Turned ON
       if (targetStatus) {
         await supabase.from("notifications").insert({
           tournament_id: tournamentId,
@@ -152,7 +148,6 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         });
       }
 
-      // Step C: OPTIMISTIC STATE UPDATE (NO Page Reload / NO Matchday Reset)
       setMatches((prev) =>
         prev.map((m) =>
           (m.matchday_name || "Matchday 1") === selectedMatchday
@@ -163,17 +158,17 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 
       toast.success(
         targetStatus
-          ? `${selectedMatchday} is LIVE & Notification Sent! 🔔`
-          : `${selectedMatchday} set to Draft (Off)`
+          ? `${selectedMatchday} is LIVE & Notification Sent!`
+          : `${selectedMatchday} set to Draft`
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update switch");
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
     } finally {
       setUpdating(false);
     }
   };
 
-  // 3. Add Match (Guaranteed Default OFF)
+  // 3. Add Match
   const handleAddMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!homeTeam || !awayTeam) {
@@ -190,7 +185,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       home_team: homeTeam,
       away_team: awayTeam,
       scheduled_at: scheduledAt || null,
-      is_published: false, // 🔒 ALWAYS DEFAULT OFF
+      is_published: false,
       status: "scheduled",
     };
 
@@ -208,10 +203,10 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       if (!matchdays.includes(mdToUse)) {
         setMatchdays((prev) => [...prev, mdToUse]);
       }
-      setSelectedMatchday(mdToUse); // STAY ON CURRENT MATCHDAY
+      setSelectedMatchday(mdToUse);
       resetForm();
       setIsAddOpen(false);
-      toast.success("Match created (Default: Draft OFF)");
+      toast.success("Match created");
     }
     setSubmitting(false);
   };
@@ -242,7 +237,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       );
       resetForm();
       setEditingMatch(null);
-      toast.success("Match updated!");
+      toast.success("Match updated");
     }
     setSubmitting(false);
   };
@@ -273,7 +268,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
     setScheduledAt("");
   };
 
-  // Canvas Image Download
+  // Bracket Image Download Generator
   const generateBracketImage = async () => {
     if (!canvasRef.current || filteredMatches.length === 0) return;
     setGeneratingCanvas(true);
@@ -300,7 +295,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 
       ctx.fillStyle = "#6366f1";
       ctx.font = "bold 36px system-ui, sans-serif";
-      ctx.fillText(selectedMatchday.toUpperCase(), padding, 70);
+      ctx.fillText((selectedMatchday || "MATCHDAY").toUpperCase(), padding, 70);
 
       ctx.fillStyle = "#94a3b8";
       ctx.font = "20px system-ui, sans-serif";
@@ -335,7 +330,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.download = `${selectedMatchday}-Fixtures.png`;
+      link.download = `${selectedMatchday || "Fixtures"}.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Fixtures Image downloaded!");
@@ -358,20 +353,19 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
     <div className="space-y-6">
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* 🟢 TOP BAR: MERGED SINGLE SWITCH & ACTIONS */}
+      {/* Control Box */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-4 glass rounded-xl border border-border/40 bg-card/40">
         <div>
           <h3 className="text-base font-bold flex items-center gap-2">
             <Bell className="h-4 w-4 text-indigo-400" />
-            Publish & Notify ({selectedMatchday})
+            Publish ({selectedMatchday || "Matchday 1"})
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Default: OFF (Draft)। switch ON गरेपछि मात्र पब्लिस हुन्छ र नोटीफिकेसन जान्छ।
+            Switch ON गर्दा यो Matchday पब्लिस हुनुका साथै नोटीफिकेसन पनि जान्छ।
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Download Graphic */}
           <Button
             size="sm"
             variant="outline"
@@ -387,7 +381,6 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
             Download Graphic
           </Button>
 
-          {/* Add Match Dialog */}
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5 border-indigo-500/30">
@@ -457,16 +450,16 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
                   />
                 </div>
                 <Button type="submit" disabled={submitting} className="w-full bg-indigo-600 hover:bg-indigo-500">
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Match (Default: OFF)"}
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Match"}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
 
-          {/* ⚡ THE ONLY SINGLE MERGED SWITCH */}
+          {/* Single Combined Switch */}
           <div className="flex items-center gap-3 pl-3 border-l border-border/50">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {isCurrentMatchdayPublished ? "Live (ON)" : "Draft (OFF)"}
+              {isCurrentMatchdayPublished ? "PUBLISHED" : "DRAFT"}
             </span>
             {updating ? (
               <Loader2 className="h-5 w-5 animate-spin text-indigo-400" />
@@ -481,7 +474,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         </div>
       </div>
 
-      {/* Edit Match Modal */}
+      {/* Edit Match Dialog */}
       <Dialog open={!!editingMatch} onOpenChange={(open) => !open && setEditingMatch(null)}>
         <DialogContent>
           <DialogHeader>
@@ -520,7 +513,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         </DialogContent>
       </Dialog>
 
-      {/* MATCHDAY NAVIGATION TABS */}
+      {/* Matchday Selector Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-border/40 pb-3">
         {matchdays.map((md) => {
           const isActive = selectedMatchday === md;
@@ -541,11 +534,11 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         })}
       </div>
 
-      {/* FIXTURES LIST */}
+      {/* Matches List */}
       <div className="space-y-3">
         {filteredMatches.length === 0 ? (
           <div className="text-center py-8 border border-dashed rounded-xl border-border/60">
-            <p className="text-sm text-muted-foreground">No matches found for {selectedMatchday}.</p>
+            <p className="text-sm text-muted-foreground">No matches found for {selectedMatchday || "this matchday"}.</p>
           </div>
         ) : (
           filteredMatches.map((m) => (
@@ -568,9 +561,10 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
                   <span className="font-semibold text-sm">{m.away_team}</span>
                 </div>
               </div>
-<div className="flex items-center gap-3">
+
+              <div className="flex items-center gap-3">
                 <Badge variant={m.is_published ? "default" : "outline"}>
-                  {m.is_published ? "Published" : "Draft (OFF)"}
+                  {m.is_published ? "Published" : "Draft"}
                 </Badge>
                 <Button
                   size="icon"
@@ -597,10 +591,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
   );
 }
 
-// ==========================================
-// 🛠️ UTILS & HELPER COMPONENTS
-// ==========================================
-
+// Helper Select Component
 function SideSelect({
   value,
   players,
@@ -629,6 +620,7 @@ function SideSelect({
   );
 }
 
+// Canvas Helpers
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -645,5 +637,4 @@ function roundRect(
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
-}
-              
+            }
