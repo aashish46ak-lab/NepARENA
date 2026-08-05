@@ -7,7 +7,6 @@ import {
   ChevronLeft, ChevronRight, Banknote, Shuffle, Lock,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { SmartImage } from "@/components/SmartImage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,18 +102,24 @@ function TournamentDetailPage() {
 
   return (
     <PageShell>
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-10">
-        <div className="glass overflow-hidden rounded-3xl">
-          {tournament.banner_url && (
-            <SmartImage src={tournament.banner_url} alt={tournament.name} ratio="aspect-[21/9]" zoom={false} />
-          )}
-          <div className="flex flex-wrap items-center gap-4 p-6">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-brand">
-              <Trophy className="text-white" />
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 overflow-x-hidden">
+        {/* Mobile-safe header: fixed poster + text */}
+        <div className="glass overflow-hidden rounded-3xl min-w-0">
+          <div className="flex flex-col sm:flex-row gap-4 p-4 sm:p-6 min-w-0">
+            <div className="mx-auto sm:mx-0 h-[100px] w-[100px] sm:h-32 sm:w-32 shrink-0 rounded-2xl overflow-hidden bg-secondary ring-1 ring-border/40">
+              {tournament.banner_url ? (
+                <img src={tournament.banner_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full grid place-items-center bg-gradient-brand">
+                  <Trophy className="h-10 w-10 text-white" />
+                </div>
+              )}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold md:text-3xl">{tournament.name}</h1>
+            <div className="flex-1 min-w-0 space-y-2 text-center sm:text-left">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-snug line-clamp-2 break-words">
+                {tournament.name}
+              </h1>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
                 <Badge className="bg-brand/25 text-brand-glow capitalize">
                   {tournament.status.replace(/_/g, " ")}
                 </Badge>
@@ -128,10 +133,12 @@ function TournamentDetailPage() {
                 </Badge>
               </div>
               {tournament.description && (
-                <p className="mt-1 text-sm text-muted-foreground">{tournament.description}</p>
+                <p className="text-sm text-muted-foreground line-clamp-3">{tournament.description}</p>
               )}
+              <div className="pt-1 flex justify-center sm:justify-start">
+                <RegisterButton tournament={tournament} allParticipants={allParticipants} />
+              </div>
             </div>
-            {tournament.registration_open && <RegisterButton tournament={tournament} allParticipants={allParticipants} />}
           </div>
         </div>
 
@@ -152,9 +159,9 @@ function TournamentDetailPage() {
           ))}
         </div>
 
-        <div className="glass rounded-2xl p-6">
+        <div className="glass rounded-2xl p-4 sm:p-6 min-w-0">
           {tab === "overview" && (
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <Info icon={<Users className="h-5 w-5 text-brand-glow" />} title="Players" value={players.length} />
               <Info
                 icon={<Calendar className="h-5 w-5 text-brand-glow" />}
@@ -186,20 +193,18 @@ function TournamentDetailPage() {
 
           {tab === "standings" && (
             <div>
-              <h2 className="mb-5 text-xl font-bold">Standings</h2>
+              <h2 className="mb-4 text-xl font-bold">Standings</h2>
               {standings.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Standings appear once matches are played.
-                </p>
+                <p className="py-6 text-center text-sm text-muted-foreground">No standings yet.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="p-3">#</th>
-                        <th className="p-3">Club</th>
-                        <th className="p-3 text-center font-bold">Pts</th>
-                        <th className="p-3 text-center">MP</th>
+                      <tr className="border-b border-border/60 text-muted-foreground">
+                        <th className="p-3 text-left">#</th>
+                        <th className="p-3 text-left">Player</th>
+                        <th className="p-3 text-center">Pts</th>
+                        <th className="p-3 text-center">P</th>
                         <th className="p-3 text-center">W</th>
                         <th className="p-3 text-center">D</th>
                         <th className="p-3 text-center">L</th>
@@ -210,26 +215,20 @@ function TournamentDetailPage() {
                     </thead>
                     <tbody>
                       {standings.map((s, i) => {
-                        const displayName = s.club?.trim() || s.player_name || "Player";
-                        const participant = players.find((p) => p.id === s.participant_id);
-                        const logo = participant?.club_logo_url || participant?.photo_url || null;
+                        const p = players.find((x) => x.id === s.participant_id);
+                        const label = p ? p.club?.trim() || p.player_name : s.player_name;
                         return (
                           <tr key={s.participant_id} className="border-b border-border/40">
                             <td className="p-3 text-muted-foreground">{i + 1}</td>
                             <td className="p-3">
-                              <div className="flex items-center gap-2.5">
-                                <Avatar className="h-7 w-7 shrink-0">
-                                  <AvatarImage src={logo ?? undefined} />
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Avatar className="h-8 w-8 shrink-0">
+                                  <AvatarImage src={p?.photo_url ?? undefined} />
                                   <AvatarFallback className="bg-secondary text-[10px]">
-                                    {displayName.slice(0, 2).toUpperCase()}
+                                    {label.slice(0, 2).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div className="min-w-0">
-                                  <div className="truncate font-medium">{displayName}</div>
-                                  {s.club?.trim() && s.player_name !== s.club && (
-                                    <div className="truncate text-xs text-muted-foreground">{s.player_name}</div>
-                                  )}
-                                </div>
+                                <span className="font-medium truncate">{label}</span>
                               </div>
                             </td>
                             <td className="p-3 text-center font-bold text-brand-glow">{s.points}</td>
@@ -239,7 +238,9 @@ function TournamentDetailPage() {
                             <td className="p-3 text-center">{s.lost}</td>
                             <td className="p-3 text-center">{s.goals_for}</td>
                             <td className="p-3 text-center">{s.goals_against}</td>
-                            <td className="p-3 text-center">{s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}</td>
+                            <td className="p-3 text-center">
+                              {s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff}
+                            </td>
                           </tr>
                         );
                       })}
@@ -269,15 +270,8 @@ function TournamentDetailPage() {
                 </Button>
               ) : (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  Rules for this tournament haven't been published yet.
+                  Rules for this tournament haven&apos;t been published yet.
                 </p>
-              )}
-              {tournament.rules_text && tournament.rules_url && (
-                <Button asChild variant="outline" className="mt-4">
-                  <a href={tournament.rules_url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" /> Full rules document
-                  </a>
-                </Button>
               )}
             </div>
           )}
@@ -298,92 +292,117 @@ function PublicFixtures({
   matchdays: Matchday[];
   players: TournamentParticipant[];
 }) {
-  const publishedIds = useMemo(
-    () => new Set(matchdays.filter((d) => d.is_published).map((d) => d.id)),
-    [matchdays],
-  );
-  const visibleMatches = useMemo(
-    () => matches.filter((m) => !m.matchday_id || publishedIds.has(m.matchday_id)),
-    [matches, publishedIds],
-  );
-  const hiddenMatches = useMemo(
-    () => matches.filter((m) => m.matchday_id && !publishedIds.has(m.matchday_id)),
-    [matches, publishedIds],
-  );
-
   const groups = useMemo(() => {
-    const map = new Map<string, Match[]>();
-    for (const m of visibleMatches) {
-      const label =
-        matchdays.find((d) => d.id === m.matchday_id)?.name ?? `Round ${m.round}`;
-      map.set(label, [...(map.get(label) ?? []), m]);
+    type G = {
+      id: string | null;
+      name: string;
+      published: boolean;
+      matches: Match[];
+      sort: number;
+    };
+    const byId = new Map<string, G>();
+    const sortedMd = [...matchdays].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+    );
+    for (const md of sortedMd) {
+      byId.set(md.id, {
+        id: md.id,
+        name: md.name,
+        published: md.is_published === true,
+        matches: [],
+        sort: md.sort_order ?? 0,
+      });
     }
-    return [...map.entries()];
-  }, [visibleMatches, matchdays]);
+    for (const m of matches) {
+      if (m.matchday_id && byId.has(m.matchday_id)) {
+        byId.get(m.matchday_id)!.matches.push(m);
+      } else {
+        const name = "Round " + m.round;
+        const key = m.matchday_id ?? name;
+        if (!byId.has(key)) {
+          byId.set(key, {
+            id: m.matchday_id,
+            name,
+            published: false,
+            matches: [],
+            sort: 999 + m.round,
+          });
+        }
+        byId.get(key)!.matches.push(m);
+      }
+    }
+    return [...byId.values()].sort((a, b) => a.sort - b.sort);
+  }, [matches, matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
-  const tabRefs = useState(() => new Map<string, HTMLButtonElement>())[0];
+  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const activeName =
-    selected && groups.some(([n]) => n === selected) ? selected : groups[0]?.[0] ?? null;
-  const activeMatches = groups.find(([n]) => n === activeName)?.[1] ?? [];
+    selected && groups.some((g) => g.name === selected)
+      ? selected
+      : groups[0]?.name ?? null;
+  const active = groups.find((g) => g.name === activeName);
+  const activeMatches = active?.matches ?? [];
+  const isPublished = active?.published === true;
 
   const selectMatchday = (name: string) => {
     setSelected(name);
-    tabRefs.get(name)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    tabRefs.current
+      .get(name)
+      ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   };
 
   const labelOf = (id: string | null) => {
     if (!id) return "TBD";
     const p = players.find((x) => x.id === id);
-    if (!p) return "TBD";
-    return p.club?.trim() || p.player_name;
+    return p ? p.club?.trim() || p.player_name : "TBD";
   };
 
   const photoOf = (id: string | null) => {
     if (!id) return null;
-    const p = players.find((x) => x.id === id);
-    return p?.photo_url ?? null;
+    return players.find((x) => x.id === id)?.photo_url ?? null;
   };
 
-  if (visibleMatches.length === 0 && hiddenMatches.length === 0) {
+  if (groups.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        Fixtures haven't been generated yet.
+        Fixtures haven&apos;t been generated yet.
       </p>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="mx-auto flex w-full max-w-[340px] overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {groups.map(([name, list]) => {
-          const played = list.filter((m) => m.played).length;
-          const isActive = name === activeName;
+      <div className="mx-auto flex w-full max-w-[340px] gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        {groups.map((g) => {
+          const played = g.matches.filter((m) => m.played).length;
+          const isActive = g.name === activeName;
           return (
             <button
-              key={name}
+              key={g.name}
               ref={(el) => {
-                if (el) {
-                  tabRefs.set(name, el);
-                } else {
-                  tabRefs.delete(name);
-                }
+                if (el) tabRefs.current.set(g.name, el);
+                else tabRefs.current.delete(g.name);
               }}
               type="button"
-              onClick={() => selectMatchday(name)}
+              onClick={() => selectMatchday(g.name)}
               className={cn(
-                "flex shrink-0 basis-1/3 snap-start flex-col items-center rounded-xl border px-3 py-2.5 text-center transition",
+                "flex shrink-0 min-w-[100px] snap-center flex-col items-center rounded-xl border px-3 py-2 text-center transition",
                 isActive
                   ? "border-brand bg-brand/15"
                   : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
               )}
             >
-              <div className={cn("text-sm font-semibold truncate w-full", isActive && "text-brand-glow")}>
-                {name}
+              <div
+                className={cn(
+                  "text-xs font-semibold truncate w-full",
+                  isActive && "text-brand-glow",
+                )}
+              >
+                {g.name}
               </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">
-                {played}/{list.length} played
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {g.published ? `\( {played}/ \){g.matches.length}` : "Locked"}
               </div>
             </button>
           );
@@ -391,76 +410,74 @@ function PublicFixtures({
       </div>
 
       {activeName && (
-        <div className="glass inline-block w-full max-w-[340px] rounded-2xl p-4 space-y-2 overflow-hidden">
-          <div className="space-y-2 overflow-x-auto">
-          {activeMatches.map((m) => {
-            const home = labelOf(m.home_id);
-            const away = labelOf(m.away_id);
-            const homePhoto = photoOf(m.home_id);
-            const awayPhoto = photoOf(m.away_id);
-            const score =
-              m.played && m.home_score != null && m.away_score != null
-                ? `${m.home_score}-${m.away_score}`
-                : "";
-
-            return (
-              <div
-                key={m.id}
-                className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
-              >
-                <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                  <span className="text-sm font-semibold truncate max-w-[140px] text-right">{home}</span>
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarImage src={homePhoto ?? undefined} />
-                    <AvatarFallback className="bg-secondary text-[10px]">
-                      {home.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-
-                <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
-                  {score || "\u00A0"}
-                </div>
-
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarImage src={awayPhoto ?? undefined} />
-                    <AvatarFallback className="bg-secondary text-[10px]">
-                      {away.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-semibold truncate max-w-[140px]">{away}</span>
-                </div>
-              </div>
-            );
-          })}
+        <div className="relative glass mx-auto w-full max-w-[340px] min-h-[180px] overflow-hidden rounded-2xl p-4">
+          <div
+            className={cn(
+              "space-y-2",
+              !isPublished && "pointer-events-none select-none blur-sm",
+            )}
+            aria-hidden={!isPublished}
+          >
+            {activeMatches.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No matches</p>
+            ) : (
+              activeMatches.map((m) => {
+                const home = labelOf(m.home_id);
+                const away = labelOf(m.away_id);
+                const homePhoto = photoOf(m.home_id);
+                const awayPhoto = photoOf(m.away_id);
+                const score =
+                  isPublished &&
+                  m.played &&
+                  m.home_score != null &&
+                  m.away_score != null
+                    ? `\( {m.home_score}- \){m.away_score}`
+                    : "";
+                return (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
+                  >
+                    <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                      <span className="max-w-[120px] truncate text-right text-sm font-semibold">
+                        {home}
+                      </span>
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={homePhoto ?? undefined} />
+                        <AvatarFallback className="bg-secondary text-[10px]">
+                          {home.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
+                      {score || "\u00A0"}
+                    </div>
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarImage src={awayPhoto ?? undefined} />
+                        <AvatarFallback className="bg-secondary text-[10px]">
+                          {away.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="max-w-[120px] truncate text-sm font-semibold">{away}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-        </div>
-      )}
 
-      {hiddenMatches.length > 0 && (
-        <div className="relative glass mx-auto w-full max-w-[340px] overflow-hidden rounded-2xl p-4">
-          <div className="space-y-2 blur-sm select-none" aria-hidden>
-            {hiddenMatches.slice(0, 4).map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-border/60 px-3 py-2.5 text-sm"
-              >
-                <span className="truncate font-semibold">{labelOf(m.home_id)}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">vs</span>
-                <span className="truncate font-semibold">{labelOf(m.away_id)}</span>
+          {!isPublished && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-background/55 backdrop-blur-[2px]">
+              <div className="flex flex-col items-center gap-1.5 px-4 text-center">
+                <Lock className="h-6 w-6 text-brand-glow" />
+                <p className="text-sm font-semibold">Fixtures not published yet</p>
+                <p className="max-w-[220px] text-xs text-muted-foreground">
+                  This matchday will be revealed when the admin publishes it.
+                </p>
               </div>
-            ))}
-          </div>
-          <div className="absolute inset-0 grid place-items-center bg-background/50">
-            <div className="flex flex-col items-center gap-1.5 px-4 text-center">
-              <Lock className="h-5 w-5 text-brand-glow" />
-              <p className="text-sm font-semibold">Fixtures not published yet</p>
-              <p className="text-xs text-muted-foreground">
-                This matchday will be revealed when the admin publishes it.
-              </p>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
@@ -476,11 +493,18 @@ function Info({ icon, title, value }: { icon: React.ReactNode; title: string; va
     </div>
   );
 }
-
-function RegisterButton({ tournament, allParticipants }: { tournament: Tournament; allParticipants: TournamentParticipant[] }) {
+function RegisterButton({
+  tournament,
+  allParticipants,
+}: {
+  tournament: Tournament;
+  allParticipants: TournamentParticipant[];
+}) {
   const { user, profile } = useAuth();
   const [busy, setBusy] = useState(false);
-  const existing = user ? allParticipants.find((p) => p.user_id === user.id) : undefined;
+  const existing = user
+    ? allParticipants.find((p) => p.user_id === user.id)
+    : undefined;
 
   if (!user) {
     return (
@@ -495,7 +519,7 @@ function RegisterButton({ tournament, allParticipants }: { tournament: Tournamen
   if (existing?.status === "approved") {
     return (
       <Badge className="bg-emerald-500/20 px-4 py-2 text-emerald-300">
-        <CheckCircle2 className="mr-1.5 h-4 w-4" /> You're registered
+        <CheckCircle2 className="mr-1.5 h-4 w-4" /> You&apos;re registered
       </Badge>
     );
   }
@@ -510,7 +534,10 @@ function RegisterButton({ tournament, allParticipants }: { tournament: Tournamen
 
   if (existing?.status === "rejected") {
     return (
-      <Badge variant="outline" className="px-4 py-2 text-destructive border-destructive/40">
+      <Badge
+        variant="outline"
+        className="px-4 py-2 text-destructive border-destructive/40"
+      >
         Join request rejected
       </Badge>
     );
@@ -521,26 +548,48 @@ function RegisterButton({ tournament, allParticipants }: { tournament: Tournamen
     const { error } = await supabase.from("tournament_participants").insert({
       tournament_id: tournament.id,
       user_id: user.id,
-      player_name: profile?.full_name || profile?.username || user.email?.split("@")[0] || "Player",
+      player_name:
+        profile?.full_name ||
+        profile?.username ||
+        user.email?.split("@")[0] ||
+        "Player",
       club: profile?.favourite_club ?? null,
       photo_url: profile?.avatar_url ?? null,
       status: "pending",
     });
     setBusy(false);
     if (error) toast.error(error.message);
-    else toast.success("Join request sent — an admin will approve you shortly.");
+    else
+      toast.success(
+        "Join request sent — an admin will approve you shortly.",
+      );
   };
 
   return (
-    <Button onClick={requestToJoin} disabled={busy} className="bg-gradient-brand">
-      {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-      Request to join
+    <Button
+      onClick={requestToJoin}
+      disabled={busy || !tournament.registration_open}
+      className="bg-gradient-brand"
+    >
+      {busy ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      ) : (
+        <UserPlus className="mr-2 h-4 w-4" />
+      )}
+      {tournament.registration_open ? "Request to join" : "Registration closed"}
     </Button>
   );
 }
+
 const MAX_SCREENSHOTS = 5;
 
-function ReportForm({ tournament, players }: { tournament: Tournament; players: TournamentParticipant[] }) {
+function ReportForm({
+  tournament,
+  players,
+}: {
+  tournament: Tournament;
+  players: TournamentParticipant[];
+}) {
   const { user } = useAuth();
   const [player, setPlayer] = useState("");
   const [reason, setReason] = useState("");
@@ -557,20 +606,30 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
       status: string;
       created_at: string;
       resolved_at: string | null;
-      screenshot_url: string[] | null;
+      screenshot_url: string | string[] | null;
     }[]
   >([]);
   const [loadingReports, setLoadingReports] = useState(false);
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{
+    photos: string[];
+    index: number;
+  } | null>(null);
 
-  const openLightbox = (photos: string[], index: number) => setLightbox({ photos, index });
+  const openLightbox = (photos: string[], index: number) =>
+    setLightbox({ photos, index });
   const closeLightbox = () => setLightbox(null);
   const nextPhoto = () =>
-    setLightbox((l) => (l ? { ...l, index: (l.index + 1) % l.photos.length } : l));
+    setLightbox((l) =>
+      l ? { ...l, index: (l.index + 1) % l.photos.length } : l,
+    );
   const prevPhoto = () =>
-    setLightbox((l) => (l ? { ...l, index: (l.index - 1 + l.photos.length) % l.photos.length } : l));
+    setLightbox((l) =>
+      l
+        ? { ...l, index: (l.index - 1 + l.photos.length) % l.photos.length }
+        : l,
+    );
 
-  const touchStartXRef = useRef<number>(0);
+  const touchStartXRef = useRef(0);
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0].clientX;
   };
@@ -586,7 +645,9 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     setLoadingReports(true);
     const { data, error } = await supabase
       .from("reports")
-      .select("id, reason, description, player_name, status, created_at, resolved_at, screenshot_url")
+      .select(
+        "id, reason, description, player_name, status, created_at, resolved_at, screenshot_url",
+      )
       .eq("reporter_id", user.id)
       .eq("tournament_id", tournament.id)
       .order("created_at", { ascending: false });
@@ -612,7 +673,9 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     return (
       <div className="py-6 text-center">
         <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
-        <p className="mt-3 text-sm text-muted-foreground">Sign in to submit a report and track status.</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Sign in to submit a report and track status.
+        </p>
         <Button asChild className="mt-4 bg-gradient-brand">
           <Link to="/auth">Sign in</Link>
         </Button>
@@ -621,7 +684,6 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
   }
 
   const isParticipant = players.some((p) => p.user_id === user.id);
-
   if (!isParticipant) {
     return (
       <div className="py-6 text-center">
@@ -637,24 +699,22 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0) return;
-
     const validFiles: File[] = [];
     for (const file of files) {
       if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name} isn't an image, skipped.`);
+        toast.error(file.name + " isn't an image, skipped.");
         continue;
       }
       if (file.size > 5 * 1024 * 1024) {
-        toast.error(`${file.name} is over 5MB, skipped.`);
+        toast.error(file.name + " is over 5MB, skipped.");
         continue;
       }
       validFiles.push(file);
     }
-
     setScreenshots((prev) => {
       const next = [...prev, ...validFiles].slice(0, MAX_SCREENSHOTS);
       if (prev.length + validFiles.length > MAX_SCREENSHOTS) {
-        toast.error(`You can attach up to ${MAX_SCREENSHOTS} screenshots.`);
+        toast.error("You can attach up to " + MAX_SCREENSHOTS + " screenshots.");
       }
       return next;
     });
@@ -667,20 +727,17 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     const trimmedReason = reason.trim();
     if (trimmedReason.length < 4) {
       toast.error("Please describe the reason for the report.");
       return;
     }
-
     setBusy(true);
     try {
       const urls: string[] = [];
       for (const file of screenshots) {
         urls.push(await uploadPublicImage(file, "reports"));
       }
-
       const { error } = await supabase.from("reports").insert({
         reporter_id: user.id,
         type: "tournament",
@@ -692,7 +749,6 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
         status: "pending",
       });
       if (error) throw error;
-
       toast.success("Report submitted — the admins will review it.");
       setPlayer("");
       setReason("");
@@ -700,7 +756,9 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
       setScreenshots([]);
       await loadMyReports();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit report.");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to submit report.",
+      );
     } finally {
       setBusy(false);
     }
@@ -711,7 +769,9 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     if (Array.isArray(raw)) return raw;
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter((u) => typeof u === "string") : [raw];
+      return Array.isArray(parsed)
+        ? parsed.filter((u) => typeof u === "string")
+        : [raw];
     } catch {
       return [raw];
     }
@@ -730,9 +790,10 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
     <div className="grid gap-8 lg:grid-cols-2">
       <form onSubmit={submit} className="space-y-4">
         <h2 className="text-xl font-bold">Report an issue</h2>
-
         <div className="space-y-1.5">
-          <label className="text-sm text-muted-foreground">Player involved (optional)</label>
+          <label className="text-sm text-muted-foreground">
+            Player involved (optional)
+          </label>
           <Select value={player} onValueChange={setPlayer}>
             <SelectTrigger>
               <SelectValue placeholder="Select a player" />
@@ -746,36 +807,32 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
             </SelectContent>
           </Select>
         </div>
-
         <div className="space-y-1.5">
           <label className="text-sm text-muted-foreground">Reason</label>
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Match result dispute"
+            placeholder="e.g. Opponent inactive / toxic"
             maxLength={200}
-            required
           />
         </div>
-
         <div className="space-y-1.5">
-          <label className="text-sm text-muted-foreground">Details (optional)</label>
+          <label className="text-sm text-muted-foreground">Details</label>
           <Textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Describe what happened…"
             rows={4}
+            placeholder="Explain what happened..."
             maxLength={2000}
           />
         </div>
-
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <label className="text-sm text-muted-foreground">
-            Screenshots (up to {MAX_SCREENSHOTS})
+            Screenshots (optional, max {MAX_SCREENSHOTS})
           </label>
           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-6 text-sm text-muted-foreground transition hover:bg-accent/40">
-            <ImagePlus className="h-5 w-5" />
-            Add screenshots
+            <ImagePlus className="h-4 w-4" />
+            Add images
             <input
               type="file"
               accept="image/*"
@@ -786,14 +843,17 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
           </label>
           {previews.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {previews.map((src, i) => (
-                <div key={src} className="relative">
-                  <img src={src} alt={`Screenshot ${i + 1}`} className="h-20 w-20 rounded-lg object-cover" />
+              {previews.map((url, i) => (
+                <div key={url} className="relative">
+                  <img
+                    src={url}
+                    alt=""
+                    className="h-16 w-16 rounded-lg object-cover border border-border/60"
+                  />
                   <button
                     type="button"
                     onClick={() => removeScreenshot(i)}
-                    className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-destructive text-destructive-foreground"
-                    aria-label="Remove screenshot"
+                    className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-white"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -802,38 +862,39 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
             </div>
           )}
         </div>
-
         <Button type="submit" disabled={busy} className="bg-gradient-brand">
-          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {busy ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : null}
           Submit report
         </Button>
       </form>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold">Your reports</h2>
+      <div>
+        <h2 className="text-xl font-bold mb-4">Your reports</h2>
         {loadingReports ? (
-          <div className="grid place-items-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         ) : myReports.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            You haven't submitted any reports for this tournament.
-          </p>
+          <p className="text-sm text-muted-foreground">No reports yet.</p>
         ) : (
           <div className="space-y-3">
             {myReports.map((r) => (
-              <div key={r.id} className="rounded-xl border border-border/60 p-4">
+              <div key={r.id} className="rounded-xl border border-border/60 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{r.reason}</p>
+                  <span className="font-medium text-sm">{r.reason}</span>
                   <Badge className={cn("capitalize", statusColor(r.status))}>
                     {r.status.replace(/_/g, " ")}
                   </Badge>
                 </div>
                 {r.player_name && (
-                  <p className="mt-1 text-sm text-muted-foreground">Player: {r.player_name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    vs {r.player_name}
+                  </p>
                 )}
                 {r.description && (
-                  <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{r.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {r.description}
+                  </p>
                 )}
                 {screenshotList(r.screenshot_url).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -841,10 +902,16 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
                       <button
                         key={u}
                         type="button"
-                        onClick={() => openLightbox(screenshotList(r.screenshot_url), i)}
+                        onClick={() =>
+                          openLightbox(screenshotList(r.screenshot_url), i)
+                        }
                         className="overflow-hidden rounded-lg border border-border/60"
                       >
-                        <img src={u} alt="Report screenshot" className="h-14 w-14 object-cover" />
+                        <img
+                          src={u}
+                          alt="Report screenshot"
+                          className="h-14 w-14 object-cover"
+                        />
                       </button>
                     ))}
                   </div>
@@ -867,44 +934,35 @@ function ReportForm({ tournament, players }: { tournament: Tournament; players: 
           <button
             type="button"
             onClick={closeLightbox}
-            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white"
           >
             <X className="h-5 w-5" />
           </button>
-
           {lightbox.photos.length > 1 && (
             <button
               type="button"
               onClick={prevPhoto}
-              className="absolute left-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-4"
+              className="absolute left-2 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}
-
           <img
             src={lightbox.photos[lightbox.index]}
-            alt={`Screenshot ${lightbox.index + 1}`}
-            className="max-h-[85vh] max-w-full rounded-lg object-contain select-none"
+            alt=""
+            className="max-h-[85vh] max-w-full rounded-lg object-contain"
           />
-
           {lightbox.photos.length > 1 && (
             <button
               type="button"
               onClick={nextPhoto}
-              className="absolute right-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-4"
+              className="absolute right-2 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
-          )}
-
-          {lightbox.photos.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white">
-              {lightbox.index + 1} / {lightbox.photos.length}
-            </div>
           )}
         </div>
       )}
     </div>
   );
-}
+      }
