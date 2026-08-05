@@ -8,6 +8,7 @@ import { ResultsTab } from "./ResultsTab";
 import { StandingsTab } from "./StandingsTab";
 import { InvitationsTab } from "./InvitationsTab";
 import { SettingsTab } from "./SettingsTab";
+import { VerificationsTab } from "./VerificationsTab";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -16,6 +17,7 @@ const TABS = [
   { id: "players", label: "Players" },
   { id: "fixtures", label: "Fixtures" },
   { id: "results", label: "Results" },
+  { id: "verify", label: "Verify" },
   { id: "standings", label: "Standings" },
   { id: "invitations", label: "Invitations" },
   { id: "settings", label: "Settings" },
@@ -59,25 +61,40 @@ export function TournamentManager({ tournament: initial }: Props) {
         ))}
       </div>
 
-      {data.loading && data.matches.length === 0 && data.players.length === 0 ? (
-  <div className="grid min-h-[30vh] place-items-center">
-    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-  </div>
-) : (
-  <div>
-    {tab === "overview" && (
-      <OverviewTab tournament={tournament} data={data} goTab={setTab} />
-    )}
-    {tab === "players" && <PlayersTab tournament={tournament} data={data} />}
-    {tab === "fixtures" && <FixturesTab tournament={tournament} data={data} />}
-    {tab === "results" && <ResultsTab tournament={tournament} data={data} />}
-    {tab === "standings" && <StandingsTab tournament={tournament} data={data} />}
-    {tab === "invitations" && <InvitationsTab tournament={tournament} data={data} />}
-    {tab === "settings" && (
-      <SettingsTab tournament={tournament} onPatched={setTournament} />
-    )}
-  </div>
-)}
+      {data.loading &&
+      data.matches.length === 0 &&
+      data.players.length === 0 ? (
+        <div className="grid min-h-[30vh] place-items-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div>
+          {tab === "overview" && (
+            <OverviewTab tournament={tournament} data={data} goTab={setTab} />
+          )}
+          {tab === "players" && (
+            <PlayersTab tournament={tournament} data={data} />
+          )}
+          {tab === "fixtures" && (
+            <FixturesTab tournament={tournament} data={data} />
+          )}
+          {tab === "results" && (
+            <ResultsTab tournament={tournament} data={data} />
+          )}
+          {tab === "verify" && (
+            <VerificationsTab tournament={tournament} data={data} />
+          )}
+          {tab === "standings" && (
+            <StandingsTab tournament={tournament} data={data} />
+          )}
+          {tab === "invitations" && (
+            <InvitationsTab tournament={tournament} data={data} />
+          )}
+          {tab === "settings" && (
+            <SettingsTab tournament={tournament} onPatched={setTournament} />
+          )}
+        </div>
+      )}
     </div>
   );
-          }
+}
