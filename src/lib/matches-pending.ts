@@ -65,13 +65,11 @@ export async function loadPendingMatches(
   const activeTours = (
     (tours ?? []) as { id: string; name: string; status: string }[]
   ).filter((t) => ACTIVE_STATUSES.has(t.status));
-
   if (activeTours.length === 0) return [];
 
   const activeIds = new Set(activeTours.map((t) => t.id));
   const tourMap = new Map(activeTours.map((t) => [t.id, t.name]));
 
-  // ✅ CORRECT filter — no backslashes
   const { data: matches, error } = await supabase
     .from("matches")
     .select("*")
@@ -93,7 +91,6 @@ export async function loadPendingMatches(
   const matchdayIds = [
     ...new Set(list.map((m) => m.matchday_id).filter(Boolean) as string[]),
   ];
-
   const mdMap = new Map<string, string>();
   const publishedSet = new Set<string>();
 
@@ -103,7 +100,6 @@ export async function loadPendingMatches(
       .select("id, name, is_published")
       .in("id", matchdayIds);
     if (mdErr) throw mdErr;
-
     for (const d of (mds ?? []) as {
       id: string;
       name: string;
@@ -112,14 +108,12 @@ export async function loadPendingMatches(
       mdMap.set(d.id, d.name);
       if (d.is_published === true) publishedSet.add(d.id);
     }
-
     list = list.filter(
       (m) => m.matchday_id != null && publishedSet.has(m.matchday_id),
     );
   } else {
     list = [];
   }
-
   if (list.length === 0) return [];
 
   const allPartIds = [
@@ -129,7 +123,6 @@ export async function loadPendingMatches(
       ) as string[],
     ),
   ];
-
   const { data: allParts } = await supabase
     .from("tournament_participants")
     .select("id, player_name, club, photo_url")
@@ -172,10 +165,7 @@ export async function loadMySubmissions(
     .select("*")
     .eq("user_id", userId)
     .in("match_id", matchIds);
-  if (error) {
-    console.error(error);
-    return map;
-  }
+  if (error) return map;
   for (const row of (data ?? []) as MatchSubmission[]) {
     map.set(row.match_id, row);
   }
@@ -279,10 +269,9 @@ export async function notifyMatchdayPlayers(
     .eq("tournament_id", tournamentId)
     .eq("matchday_id", matchdayId)
     .eq("played", false);
-  const rows = matches ?? [];
   const partIds = [
     ...new Set(
-      rows.flatMap((m) =>
+      (matches ?? []).flatMap((m) =>
         [m.home_id, m.away_id].filter(Boolean),
       ) as string[],
     ),
@@ -306,7 +295,7 @@ export async function notifyMatchdayPlayers(
     tournamentName +
       " — " +
       matchdayName +
-      " is live. Check pending matches on your home page.",
+      " is live. Check pending matches.",
     "/#pending-matches",
   );
   await supabase
@@ -314,4 +303,4 @@ export async function notifyMatchdayPlayers(
     .update({ is_published: true, notify_enabled: true })
     .eq("id", matchdayId);
   return n;
-}
+    }
