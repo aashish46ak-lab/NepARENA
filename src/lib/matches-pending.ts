@@ -4,7 +4,6 @@ import {
   type TournamentParticipant,
 } from "@/lib/supabase";
 
-/** Active tournaments where fixtures can be pending */
 const ACTIVE_STATUSES = new Set([
   "live",
   "ongoing",
@@ -47,9 +46,6 @@ export async function loadMyParticipants(userId: string) {
   return (data ?? []) as TournamentParticipant[];
 }
 
-/**
- * Home pending = published matchday + unplayed + I am home/away + tournament active
- */
 export async function loadPendingMatches(
   userId: string,
 ): Promise<PendingMatch[]> {
@@ -64,7 +60,6 @@ export async function loadPendingMatches(
     .from("tournaments")
     .select("id, name, status")
     .in("id", myTourIds);
-
   if (tourErr) throw tourErr;
 
   const activeTours = (
@@ -76,7 +71,7 @@ export async function loadPendingMatches(
   const activeIds = new Set(activeTours.map((t) => t.id));
   const tourMap = new Map(activeTours.map((t) => [t.id, t.name]));
 
-  // FIXED or() filter
+  // ✅ CORRECT filter — no backslashes
   const { data: matches, error } = await supabase
     .from("matches")
     .select("*")
@@ -96,9 +91,7 @@ export async function loadPendingMatches(
   if (list.length === 0) return [];
 
   const matchdayIds = [
-    ...new Set(
-      list.map((m) => m.matchday_id).filter(Boolean) as string[],
-    ),
+    ...new Set(list.map((m) => m.matchday_id).filter(Boolean) as string[]),
   ];
 
   const mdMap = new Map<string, string>();
@@ -109,7 +102,6 @@ export async function loadPendingMatches(
       .from("matchdays")
       .select("id, name, is_published")
       .in("id", matchdayIds);
-
     if (mdErr) throw mdErr;
 
     for (const d of (mds ?? []) as {
@@ -121,7 +113,6 @@ export async function loadPendingMatches(
       if (d.is_published === true) publishedSet.add(d.id);
     }
 
-    // Only admin-published matchdays
     list = list.filter(
       (m) => m.matchday_id != null && publishedSet.has(m.matchday_id),
     );
@@ -176,18 +167,15 @@ export async function loadMySubmissions(
 ): Promise<Map<string, MatchSubmission>> {
   const map = new Map<string, MatchSubmission>();
   if (matchIds.length === 0) return map;
-
   const { data, error } = await supabase
     .from("match_submissions")
     .select("*")
     .eq("user_id", userId)
     .in("match_id", matchIds);
-
   if (error) {
-    console.error("loadMySubmissions", error);
+    console.error(error);
     return map;
   }
-
   for (const row of (data ?? []) as MatchSubmission[]) {
     map.set(row.match_id, row);
   }
@@ -202,7 +190,6 @@ export async function notifyUsers(
 ) {
   const unique = [...new Set(userIds.filter(Boolean))];
   if (unique.length === 0) return 0;
-
   const payload = unique.map((user_id) => ({
     user_id,
     title,
@@ -210,7 +197,6 @@ export async function notifyUsers(
     type: "match",
     link,
   }));
-
   const { error } = await supabase.from("notifications").insert(payload);
   if (error) throw error;
   return payload.length;
@@ -227,7 +213,6 @@ export async function notifyTournamentPlayers(
     .select("user_id")
     .eq("tournament_id", tournamentId)
     .eq("status", "approved");
-
   const ids = [
     ...new Set(
       ((parts ?? []) as { user_id: string | null }[])
@@ -235,7 +220,6 @@ export async function notifyTournamentPlayers(
         .filter(Boolean) as string[],
     ),
   ];
-
   return notifyUsers(
     ids,
     title,
@@ -256,12 +240,10 @@ export async function notifyMatchResult(
 ) {
   const ids = [homeId, awayId].filter(Boolean) as string[];
   if (ids.length === 0) return 0;
-
   const { data: parts } = await supabase
     .from("tournament_participants")
     .select("id, user_id")
     .in("id", ids);
-
   const userIds = [
     ...new Set(
       ((parts ?? []) as { user_id: string | null }[])
@@ -269,7 +251,6 @@ export async function notifyMatchResult(
         .filter(Boolean) as string[],
     ),
   ];
-
   return notifyUsers(
     userIds,
     "Result updated",
@@ -298,7 +279,6 @@ export async function notifyMatchdayPlayers(
     .eq("tournament_id", tournamentId)
     .eq("matchday_id", matchdayId)
     .eq("played", false);
-
   const rows = matches ?? [];
   const partIds = [
     ...new Set(
@@ -308,13 +288,11 @@ export async function notifyMatchdayPlayers(
     ),
   ];
   if (partIds.length === 0) return 0;
-
   const { data: parts } = await supabase
     .from("tournament_participants")
     .select("id, user_id")
     .in("id", partIds)
     .eq("status", "approved");
-
   const userIds = [
     ...new Set(
       ((parts ?? []) as { user_id: string | null }[])
@@ -322,7 +300,6 @@ export async function notifyMatchdayPlayers(
         .filter(Boolean) as string[],
     ),
   ];
-
   const n = await notifyUsers(
     userIds,
     "Fixtures published",
@@ -332,11 +309,9 @@ export async function notifyMatchdayPlayers(
       " is live. Check pending matches on your home page.",
     "/#pending-matches",
   );
-
   await supabase
     .from("matchdays")
     .update({ is_published: true, notify_enabled: true })
     .eq("id", matchdayId);
-
   return n;
 }
