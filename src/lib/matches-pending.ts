@@ -94,3 +94,44 @@ export async function loadMySubmissions(
 
   return submissionsMap;
 }
+
+// 🟢 FIX: Missing Notification Functions Added below
+export async function notifyMatchResult(matchId: string, message?: string) {
+  try {
+    const { data: match } = await supabase
+      .from("matches")
+      .select("tournament_id, home_team, away_team")
+      .eq("id", matchId)
+      .single();
+
+    if (match) {
+      await supabase.from("notifications").insert({
+        tournament_id: match.tournament_id,
+        title: "Match Result Updated ⚽",
+        message: message || `Match ${match.home_team || 'Home'} vs ${match.away_team || 'Away'} result updated!`,
+        type: "match_result",
+        created_at: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.error("Failed to send match result notification:", err);
+  }
+}
+
+export async function notifyTournamentPlayers(
+  tournamentId: string,
+  title: string,
+  message: string
+) {
+  try {
+    await supabase.from("notifications").insert({
+      tournament_id: tournamentId,
+      title: title,
+      message: message,
+      type: "tournament_update",
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to notify tournament players:", err);
+  }
+}
