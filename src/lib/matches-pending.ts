@@ -80,7 +80,7 @@ export async function loadPendingMatches(
 
   const [{ data: mds }, { data: allParts }] = await Promise.all([
     matchdayIds.length
-      ? supabase.from("matchdays").select("id, name").in("id", matchdayIds)
+      ? supabase.from("matchdays").select("id, name, is_published").in("id", matchdayIds)
       : Promise.resolve({ data: [] as Matchday[] }),
     supabase
       .from("tournament_participants")
@@ -99,6 +99,14 @@ export async function loadPendingMatches(
 
   const mdMap = new Map(
     ((mds ?? []) as { id: string; name: string }[]).map((d) => [d.id, d.name]),
+  );
+  const publishedMdIds = new Set(
+    ((mds ?? []) as { id: string; is_published: boolean }[])
+      .filter((d) => d.is_published)
+      .map((d) => d.id),
+  );
+  const visibleList = list.filter(
+    (m) => !m.matchday_id || publishedMdIds.has(m.matchday_id),
   );
   const labelMap = new Map(
     (
@@ -119,7 +127,7 @@ export async function loadPendingMatches(
     ).map((p) => [p.id, p.photo_url]),
   );
 
-  return list.map((m) => {
+  return visibleList.map((m) => {
     const mine =
       m.home_id && byId.has(m.home_id)
         ? m.home_id
@@ -304,4 +312,4 @@ export async function notifyMatchdayPlayers(
     .eq("id", matchdayId);
 
   return n;
-                         }
+                     }
