@@ -85,11 +85,15 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
   const [generatingCanvas, setGeneratingCanvas] = useState<boolean>(false);
 
   // 1. Safe Load Fixtures (Without unsafe column ordering)
+  // 1. Safe & Guaranteed Load Fixtures
   useEffect(() => {
     let isMounted = true;
 
     async function loadData() {
-      if (!tournamentId) return;
+      if (!tournamentId) {
+        if (isMounted) setLoading(false);
+        return;
+      }
       setLoading(true);
 
       try {
@@ -100,7 +104,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 
         if (error) {
           console.error("Database Query Error:", error);
-          toast.error("Failed to load fixtures: " + error.message);
+          toast.error("Failed to load: " + error.message);
         } else if (data && isMounted) {
           const formattedData: Match[] = data.map((m: any) => ({
             ...m,
@@ -126,6 +130,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         console.error("Fetch Exception:", err);
         toast.error("Error loading fixtures");
       } finally {
+        // यो Always चल्छ, त्यसैले Loading मा कहिल्यै अड्किँदैन
         if (isMounted) setLoading(false);
       }
     }
@@ -135,7 +140,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       isMounted = false;
     };
   }, [tournamentId]);
-
+  
   // Current Active Matchday Matches
   const filteredMatches = matches.filter(
     (m) => (m.matchday_name || "Matchday 1") === selectedMatchday
