@@ -381,49 +381,66 @@ function HomePage() {
         </section>
       )}
 
-      {/* MEMBERS */}
+      {/* MEMBERS — max 5: photo + name, click → read-only profile */}
       <section className="max-w-7xl mx-auto px-4 mb-16">
-        <SectionHeading title="Community" href="/members" cta="All members" />
-        <div className="glass rounded-2xl p-6 md:p-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-            <div>
-              <div className="text-5xl font-bold text-gradient-brand">
-                {memberCount}
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                registered members and counting
-              </div>
+        <SectionHeading title="Community" href="/members" cta="View more" />
+        <div className="glass rounded-2xl p-5 md:p-6 max-w-xl mx-auto">
+          <div className="mb-4">
+            <div className="text-3xl font-bold text-gradient-brand">
+              {memberCount}
             </div>
+            <div className="text-sm text-muted-foreground">
+              registered members and counting
+            </div>
+          </div>
+
+          <ol className="space-y-2">
+            {latestMembers.slice(0, 5).map((m, index) => {
+              const name =
+                m.full_name?.trim() || m.username?.trim() || "Player";
+              return (
+                <li key={m.id}>
+                  <Link
+                    to="/members/$id"
+                    params={{ id: m.id }}
+                    className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-accent/30 transition min-w-0"
+                  >
+                    <span className="w-6 shrink-0 text-sm font-bold text-muted-foreground tabular-nums text-right">
+                      {index + 1}.
+                    </span>
+                    <Avatar className="h-11 w-11 shrink-0 ring-1 ring-border/40">
+                      <AvatarImage
+                        src={m.avatar_url ?? undefined}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">
+                        {name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate">{name}</div>
+                      {m.favourite_club && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {m.favourite_club}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+
+          {latestMembers.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-4">
+              Be the first to join!
+            </p>
+          )}
+
+          <div className="mt-4 flex justify-center">
             <Button asChild variant="outline" className="border-brand/40">
               <Link to="/members">View more</Link>
             </Button>
-          </div>
-          <div className="divide-y divide-border/60">
-            {latestMembers.map((m) => (
-              <div
-                key={m.id}
-                className="flex flex-col items-center text-center gap-2 py-6 first:pt-0 last:pb-0"
-              >
-                <Avatar className="h-20 w-20 ring-2 ring-brand/30">
-                  <AvatarImage
-                    src={m.avatar_url ?? undefined}
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="bg-gradient-brand text-primary-foreground">
-                    {(m.username ?? "U").slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="font-semibold">{m.username ?? "Player"}</div>
-                <div className="text-sm text-brand-glow">
-                  {m.favourite_club ?? "Club not set"}
-                </div>
-              </div>
-            ))}
-            {latestMembers.length === 0 && (
-              <div className="text-center text-sm text-muted-foreground py-4">
-                Be the first to join!
-              </div>
-            )}
           </div>
         </div>
       </section>
