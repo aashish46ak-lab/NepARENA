@@ -14,6 +14,9 @@ import { Loader2, Trophy, ArrowLeft, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/members/$id")({
+  head: () => ({
+    meta: [{ title: "Member — eFootball Nepal" }],
+  }),
   component: MemberProfilePage,
 });
 
@@ -30,14 +33,17 @@ function statusBadgeClass(status: string) {
 function MemberProfilePage() {
   const { id } = Route.useParams();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["member_profile", id],
+    enabled: !!id,
     queryFn: async () => {
-      const { data: profile } = await supabase
+      const { data: profile, error: pErr } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", id)
         .maybeSingle();
+
+      if (pErr) throw pErr;
 
       const { data: parts } = await supabase
         .from("tournament_participants")
@@ -58,6 +64,7 @@ function MemberProfilePage() {
         names.add(p.player_name.toLowerCase());
         if (p.club) names.add(p.club.toLowerCase());
       }
+
       const achievements = ((hof ?? []) as HallOfFameEntry[]).filter((h) =>
         names.has(h.player_name.toLowerCase()),
       );
@@ -76,7 +83,7 @@ function MemberProfilePage() {
       }
 
       return {
-        profile: profile as Profile | null,
+        profile: (profile as Profile | null) ?? null,
         parts: partList,
         tours,
         achievements,
@@ -94,12 +101,17 @@ function MemberProfilePage() {
     );
   }
 
-  if (!data?.profile) {
+  if (error || !data?.profile) {
     return (
       <PageShell>
-        <div className="max-w-lg mx-auto py-20 text-center">
+        <div className="max-w-lg mx-auto py-20 text-center space-y-3">
           <p className="text-muted-foreground">Member not found</p>
-          <Button asChild className="mt-4" variant="outline">
+          <p className="text-xs text-muted-foreground">
+            {error instanceof Error
+              ? error.message
+              : "Profile may be private (check RLS) or invalid link."}
+          </p>
+          <Button asChild variant="outline">
             <Link to="/members">
               <ArrowLeft className="h-4 w-4 mr-1" /> Members
             </Link>
@@ -114,12 +126,10 @@ function MemberProfilePage() {
   const displayName =
     profile.full_name?.trim() || profile.username?.trim() || "Player";
 
-  // Unique tournaments for tags (prefer approved / any participation)
   const joinedTags = parts
     .map((p) => {
       const t = tourMap.get(p.tournament_id);
       return {
-        partId: p.id,
         tournamentId: p.tournament_id,
         name: t?.name ?? "Tournament",
         tourStatus: t?.status ?? "unknown",
@@ -163,10 +173,9 @@ function MemberProfilePage() {
               </p>
             )}
             {profile.bio && (
-              <p className="text-sm text-muted-foreground mt-1">{profile.bio}</p>
+              <p className="text-sm text-muted-foreground">{profile.bio}</p>
             )}
 
-            {/* Tournament tags — tournaments they joined / played */}
             {joinedTags.length > 0 && (
               <div className="pt-2">
                 <p className="text-xs text-muted-foreground mb-1.5">
@@ -186,11 +195,6 @@ function MemberProfilePage() {
                         )}
                       >
                         {tag.name}
-                        {tag.joinStatus !== "approved" && (
-                          <span className="opacity-70 ml-1">
-                            · {tag.joinStatus}
-                          </span>
-                        )}
                       </Badge>
                     </Link>
                   ))}
@@ -215,7 +219,6 @@ function MemberProfilePage() {
                   <Trophy className="h-3 w-3 mr-1" />
                   {a.achievement}
                   {a.tournament ? " · " + a.tournament : ""}
-                  {a.year ? " " + a.year : ""}
                 </Badge>
               ))}
             </div>
@@ -248,7 +251,6 @@ function MemberProfilePage() {
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {p.club || p.player_name}
-                        {t?.status ? " · " + t.status.replace(/_/g, " ") : ""}
                       </div>
                     </div>
                     <Badge variant="outline" className="capitalize shrink-0">
@@ -263,4 +265,4 @@ function MemberProfilePage() {
       </div>
     </PageShell>
   );
-                                    }
+        }
