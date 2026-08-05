@@ -25,13 +25,10 @@ import {
   Trash2,
   Edit2,
   Download,
-  Calendar,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Types Definition
 interface TournamentParticipant {
   id: string;
   player_name: string;
@@ -47,7 +44,7 @@ interface Match {
   away_team: string;
   home_score?: number | null;
   away_score?: number | null;
-  is_published: boolean;
+  is_published?: boolean;
   status?: string;
   scheduled_at?: string | null;
 }
@@ -61,12 +58,12 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchdays, setMatchdays] = useState<string[]>([]);
 
-  // 🔒 Selected Matchday Lock (Reset हुन नदिन)
+  // 🔒 Selected Matchday Lock (Reset हुनबाट रोक्न)
   const [selectedMatchday, setSelectedMatchday] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  // New Match / Edit Match States
+  // Modals / States
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [homeTeam, setHomeTeam] = useState("");
@@ -75,55 +72,67 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
   const [scheduledAt, setScheduledAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Canvas Bracket Generator Ref
+  // Canvas
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [generatingCanvas, setGeneratingCanvas] = useState(false);
 
-  // १. Data Fetching
-  const fetchFixtures = async () => {
-    const { data, error } = await supabase
-      .from("matches")
-      .select("*")
-      .eq("tournament_id", tournamentId)
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      toast.error("Failed to load fixtures");
-    } else if (data) {
-      setMatches(data);
-
-      const uniqueMDs = Array.from(
-        new Set(data.map((m: Match) => m.matchday_name || "Matchday 1"))
-      );
-      setMatchdays(uniqueMDs);
-
-      // ⚠️ Lock Selected Matchday (Matchday 1 मा Reset हुन नदिने)
-      setSelectedMatchday((prev) => {
-        if (prev && uniqueMDs.includes(prev)) return prev;
-        return uniqueMDs[0] || "Matchday 1";
-      });
-    }
-  };
-
+  // 1. Initial Load Only (Zero Reload Loop)
   useEffect(() => {
-    setLoading(true);
-    fetchFixtures().finally(() => setLoading(false));
+    let isMounted = true;
+    async function loadData() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("tournament_id", tournamentId)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        toast.error("Failed to load fixtures");
+      } else if (data && isMounted) {
+        // Safe mapping with strict Default OFF logic
+        const formattedData = data.map((m) => ({
+          ...m,
+          is_published: m.is_published ?? false,
+        }));
+        setMatches(formattedData);
+
+        const uniqueMDs = Array.from(
+          new Set(formattedData.map((m: Match) => m.matchday_name || "Matchday 1"))
+        );
+        setMatchdays(uniqueMDs);
+
+        // Keep current selected matchday if valid
+        setSelectedMatchday((prev) => {
+          if (prev && uniqueMDs.includes(prev)) return prev;
+          return uniqueMDs[0] || "Matchday 1";
+        });
+      }
+      if (isMounted) setLoading(false);
+    }
+
+    void loadData();
+    return () => {
+      isMounted = false;
+    };
   }, [tournamentId]);
 
+  // Current Matchday Filter
   const filteredMatches = matches.filter(
     (m) => (m.matchday_name || "Matchday 1") === selectedMatchday
   );
 
-  // Matchday Publish Status (Default: OFF)
+  // Single Merged Switch Logic (All matches must be published to be ON)
   const isCurrentMatchdayPublished =
-    filteredMatches.length > 0 && filteredMatches.every((m) => m.is_published);
+    filteredMatches.length > 0 && filteredMatches.every((m) => Boolean(m.is_published));
 
-  // २. 🔔 Single Switch Action (Publish Status + User Notification)
+  // 2. 🔔 Combined Single Switch (Publish + Notification + NO RELOAD)
   const handleTogglePublish = async (targetStatus: boolean) => {
     if (!selectedMatchday || filteredMatches.length === 0) return;
     setUpdating(true);
 
     try {
+      // Step A: Update Supabase DB
       const { error: matchError } = await supabase
         .from("matches")
         .update({ is_published: targetStatus })
@@ -132,17 +141,18 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 
       if (matchError) throw matchError;
 
+      // Step B: Send Notification when Turned ON
       if (targetStatus) {
         await supabase.from("notifications").insert({
           tournament_id: tournamentId,
           title: `Matches Published! ⚽`,
-          message: `${selectedMatchday} fixtures are live now. Check your match schedule!`,
+          message: `${selectedMatchday} fixtures are live now. Check your schedule!`,
           type: "matchday_published",
           created_at: new Date().toISOString(),
         });
       }
 
-      // Optimistic UI Update (No Refresh, Matchday Lock Intact)
+      // Step C: OPTIMISTIC STATE UPDATE (NO Page Reload / NO Matchday Reset)
       setMatches((prev) =>
         prev.map((m) =>
           (m.matchday_name || "Matchday 1") === selectedMatchday
@@ -157,17 +167,17 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
           : `${selectedMatchday} set to Draft (Off)`
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update status");
+      toast.error(err instanceof Error ? err.message : "Failed to update switch");
     } finally {
       setUpdating(false);
     }
   };
 
-  // ३. Add / Create Match
+  // 3. Add Match (Guaranteed Default OFF)
   const handleAddMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!homeTeam || !awayTeam) {
-      toast.error("Please fill both team/player names");
+      toast.error("Please fill both team names");
       return;
     }
     setSubmitting(true);
@@ -180,7 +190,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       home_team: homeTeam,
       away_team: awayTeam,
       scheduled_at: scheduledAt || null,
-      is_published: false, // Default ALWAYS OFF
+      is_published: false, // 🔒 ALWAYS DEFAULT OFF
       status: "scheduled",
     };
 
@@ -192,11 +202,13 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
     if (error) {
       toast.error(error.message);
     } else if (data) {
-      setMatches((prev) => [...prev, ...data]);
+      const createdMatch = { ...data[0], is_published: false };
+      setMatches((prev) => [...prev, createdMatch]);
+
       if (!matchdays.includes(mdToUse)) {
         setMatchdays((prev) => [...prev, mdToUse]);
       }
-      setSelectedMatchday(mdToUse);
+      setSelectedMatchday(mdToUse); // STAY ON CURRENT MATCHDAY
       resetForm();
       setIsAddOpen(false);
       toast.success("Match created (Default: Draft OFF)");
@@ -204,7 +216,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
     setSubmitting(false);
   };
 
-  // ४. Edit Existing Match
+  // 4. Edit Match
   const handleEditMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMatch) return;
@@ -230,12 +242,12 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       );
       resetForm();
       setEditingMatch(null);
-      toast.success("Match updated successfully");
+      toast.success("Match updated!");
     }
     setSubmitting(false);
   };
 
-  // ५. Delete Match
+  // 5. Delete Match
   const handleDeleteMatch = async (matchId: string) => {
     const { error } = await supabase.from("matches").delete().eq("id", matchId);
     if (error) {
@@ -261,7 +273,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
     setScheduledAt("");
   };
 
-  // ६. Canvas Card/Bracket Export Image Generator Function
+  // Canvas Image Download
   const generateBracketImage = async () => {
     if (!canvasRef.current || filteredMatches.length === 0) return;
     setGeneratingCanvas(true);
@@ -280,14 +292,12 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       canvas.width = width;
       canvas.height = totalHeight;
 
-      // Dark Gradient Background
       const bgGradient = ctx.createLinearGradient(0, 0, 0, totalHeight);
       bgGradient.addColorStop(0, "#090d16");
       bgGradient.addColorStop(1, "#111827");
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, width, totalHeight);
 
-      // Header Text
       ctx.fillStyle = "#6366f1";
       ctx.font = "bold 36px system-ui, sans-serif";
       ctx.fillText(selectedMatchday.toUpperCase(), padding, 70);
@@ -296,10 +306,8 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
       ctx.font = "20px system-ui, sans-serif";
       ctx.fillText("Official Tournament Fixtures", padding, 110);
 
-      // Draw Matches Cards
       let startY = headerHeight;
       for (const m of filteredMatches) {
-        // Card Background
         roundRect(ctx, padding, startY, width - padding * 2, cardHeight, 16);
         ctx.fillStyle = "rgba(30, 41, 59, 0.7)";
         ctx.fill();
@@ -307,19 +315,16 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Home Team
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 24px system-ui, sans-serif";
         ctx.textAlign = "left";
         ctx.fillText(m.home_team, padding + 30, startY + 70);
 
-        // VS Badge
         ctx.fillStyle = "#818cf8";
         ctx.font = "bold 20px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("VS", width / 2, startY + 70);
 
-        // Away Team
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 24px system-ui, sans-serif";
         ctx.textAlign = "right";
@@ -328,14 +333,13 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         startY += cardHeight + 20;
       }
 
-      // Download Trigger
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.download = `${selectedMatchday}-Fixtures.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Fixtures Image downloaded!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate image");
     } finally {
       setGeneratingCanvas(false);
@@ -352,23 +356,22 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 
   return (
     <div className="space-y-6">
-      {/* Hidden Canvas for Download */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Top Controls Header */}
+      {/* 🟢 TOP BAR: MERGED SINGLE SWITCH & ACTIONS */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-4 glass rounded-xl border border-border/40 bg-card/40">
         <div>
           <h3 className="text-base font-bold flex items-center gap-2">
             <Bell className="h-4 w-4 text-indigo-400" />
-            Publish & Notify {selectedMatchday}
+            Publish & Notify ({selectedMatchday})
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Default: OFF. switch ON गरेपछि म्याच Public हुनुका साथै Notification जान्छ।
+            Default: OFF (Draft)। switch ON गरेपछि मात्र पब्लिस हुन्छ र नोटीफिकेसन जान्छ।
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Download Image Button */}
+          {/* Download Graphic */}
           <Button
             size="sm"
             variant="outline"
@@ -384,7 +387,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
             Download Graphic
           </Button>
 
-          {/* Add Match Dialog Button */}
+          {/* Add Match Dialog */}
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5 border-indigo-500/30">
@@ -454,13 +457,13 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
                   />
                 </div>
                 <Button type="submit" disabled={submitting} className="w-full bg-indigo-600 hover:bg-indigo-500">
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Match (Default Draft)"}
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Match (Default: OFF)"}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
 
-          {/* Single Combined Switch */}
+          {/* ⚡ THE ONLY SINGLE MERGED SWITCH */}
           <div className="flex items-center gap-3 pl-3 border-l border-border/50">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {isCurrentMatchdayPublished ? "Live (ON)" : "Draft (OFF)"}
@@ -478,7 +481,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         </div>
       </div>
 
-      {/* Edit Match Dialog */}
+      {/* Edit Match Modal */}
       <Dialog open={!!editingMatch} onOpenChange={(open) => !open && setEditingMatch(null)}>
         <DialogContent>
           <DialogHeader>
@@ -517,7 +520,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         </DialogContent>
       </Dialog>
 
-      {/* Matchday Selector Tabs */}
+      {/* MATCHDAY NAVIGATION TABS */}
       <div className="flex flex-wrap gap-2 border-b border-border/40 pb-3">
         {matchdays.map((md) => {
           const isActive = selectedMatchday === md;
@@ -538,7 +541,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
         })}
       </div>
 
-      {/* Fixtures List */}
+      {/* FIXTURES LIST */}
       <div className="space-y-3">
         {filteredMatches.length === 0 ? (
           <div className="text-center py-8 border border-dashed rounded-xl border-border/60">
@@ -565,8 +568,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
                   <span className="font-semibold text-sm">{m.away_team}</span>
                 </div>
               </div>
-
-              <div className="flex items-center gap-3">
+<div className="flex items-center gap-3">
                 <Badge variant={m.is_published ? "default" : "outline"}>
                   {m.is_published ? "Published" : "Draft (OFF)"}
                 </Badge>
@@ -596,7 +598,7 @@ export function FixturesTab({ tournamentId, participants = [] }: FixturesTabProp
 }
 
 // ==========================================
-// 🛠️ HELPER COMPONENTS & UTILS (Required)
+// 🛠️ UTILS & HELPER COMPONENTS
 // ==========================================
 
 function SideSelect({
@@ -627,16 +629,6 @@ function SideSelect({
   );
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -654,35 +646,4 @@ function roundRect(
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
 }
-
-function drawCircleAvatar(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement | undefined,
-  cx: number,
-  cy: number,
-  r: number,
-  fallback: string
-) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-  if (img) {
-    ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
-  } else {
-    ctx.fillStyle = "#1e293b";
-    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "bold 12px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(fallback.slice(0, 2).toUpperCase(), cx, cy);
-  }
-  ctx.restore();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(148,163,184,0.35)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-                }
+              
