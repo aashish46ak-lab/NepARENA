@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   MoreVertical, Pencil, ImagePlus, Trash2, Settings2,
-  Trophy, Radio,
+  Trophy, Radio, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,6 +53,7 @@ export function TournamentsPanel() {
 
   const [editing, setEditing] = useState<Tournament | null>(null);
   const [banner, setBanner] = useState<Tournament | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const openManage = (t: Tournament) => {
     navigate({
@@ -61,37 +62,53 @@ export function TournamentsPanel() {
     });
   };
 
+  /**
+   * Optimistic Update Pattern: Status चेन्ज गर्दा Page Refresh नभई ठाउँको ठाउँ Status बदलिन
+   */
   const changeStatus = async (
     tournament: Tournament,
     status: Tournament["status"],
   ) => {
+    setUpdatingId(tournament.id);
+
     if (status === "completed") {
       try {
         const result = await archiveTournamentToHistory(tournament);
+        
+        // Optimistic State Update via crud.update
         const ok = await update(tournament.id, {
           status: "completed",
           registration_open: false,
           is_featured: false,
           ends_at: new Date().toISOString(),
         });
+
         if (ok) {
           toast.success(
-            "Ended. History + HoF saved. Winner: " + result.winner,
+            "Ended. History + HoF saved. Winner: " + (result?.winner || "N/A")
           );
         }
       } catch (e) {
         toast.error(
-          e instanceof Error ? e.message : "Failed to end tournament",
+          e instanceof Error ? e.message : "Failed to end tournament"
         );
+      } finally {
+        setUpdatingId(null);
       }
       return;
     }
 
-    const ok = await update(tournament.id, {
-      status,
-      registration_open: status === "registration_open",
-    });
-    if (ok) toast.success("Status updated");
+    try {
+      const ok = await update(tournament.id, {
+        status,
+        registration_open: status === "registration_open",
+      });
+      if (ok) toast.success("Status updated");
+    } catch (e) {
+      toast.error("Failed to update status");
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   return (
@@ -115,7 +132,9 @@ export function TournamentsPanel() {
       }
     >
       {loading ? (
-        <div className="text-muted-foreground">Loading tournaments...</div>
+        <div className="flex items-center gap-2 text-muted-foreground p-4">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading tournaments...
+        </div>
       ) : rows.length === 0 ? (
         <EmptyState message="No tournaments created yet." />
       ) : (
@@ -123,20 +142,25 @@ export function TournamentsPanel() {
           {rows.map((t) => (
             <div
               key={t.id}
-              className="rounded-xl border border-border/60 p-3 sm:p-4"
+              className="rounded-xl border border-border/60 p-3 sm:p-4 bg-card/50 hover:bg-card/80 transition-colors"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 {/* Banner */}
-                <div className="h-36 w-full sm:h-16 sm:w-28 rounded-lg overflow-hidden bg-secondary shrink-0">
+                <div className="h-36 w-full sm:h-16 sm:w-28 rounded-lg overflow-hidden bg-secondary shrink-0 relative">
                   {t.banner_url ? (
                     <img
                       src={t.banner_url}
-                      alt=""
+                      alt={t.name}
                       className="h-full w-full object-cover"
                     />
                   ) : (
                     <div className="h-full w-full grid place-items-center text-muted-foreground text-xs">
                       No banner
+                    </div>
+                  )}
+                  {updatingId === t.id && (
+                    <div className="absolute inset-0 bg-background/60 grid place-items-center">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     </div>
                   )}
                 </div>
@@ -158,7 +182,7 @@ export function TournamentsPanel() {
                             : t.status.replace(/_/g, " ")}
                         </Badge>
                         {t.registration_open && (
-                          <Badge className="bg-emerald-500/20 text-emerald-300 shrink-0">
+                          <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 shrink-0">
                             Reg open
                           </Badge>
                         )}
@@ -171,6 +195,7 @@ export function TournamentsPanel() {
                           variant="ghost"
                           size="icon"
                           className="h-9 w-9 shrink-0"
+                          disabled={updatingId === t.id}
                         >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
@@ -193,18 +218,18 @@ export function TournamentsPanel() {
                         <DropdownMenuItem
                           onClick={() => changeStatus(t, "ongoing")}
                         >
-                          <Radio className="h-4 w-4 mr-2" />
+                          <Radio className="h-4 w-4 mr-2 text-indigo-400" />
                           Set Ongoing
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => changeStatus(t, "completed")}
                         >
-                          <Trophy className="h-4 w-4 mr-2" />
+                          <Trophy className="h-4 w-4 mr-2 text-yellow-500" />
                           End Tournament
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          className="text-destructive"
+                          className="text-destructive focus:text-destructive"
                           onClick={() => {
                             if (confirm("Delete " + t.name + "?"))
                               remove(t.id);
@@ -234,14 +259,18 @@ export function TournamentsPanel() {
         </div>
       )}
 
+      {/* Edit Dialog */}
       {editing && (
         <EditDialog
           tournament={editing}
           onClose={() => setEditing(null)}
-          onSave={(v) => update(editing.id, v)}
+          onSave={async (v) => {
+            await update(editing.id, v);
+          }}
         />
       )}
 
+      {/* Banner Upload Dialog */}
       {banner && (
         <Dialog open onOpenChange={() => setBanner(null)}>
           <DialogContent>
@@ -276,6 +305,7 @@ function EditDialog({
   onSave: (v: Partial<Tournament>) => Promise<unknown>;
 }) {
   const [values, setValues] = useState<Tournament>(tournament);
+  const [saving, setSaving] = useState(false);
 
   const updateValue = (v: Partial<Tournament>) => {
     setValues((old) => ({ ...old, ...v }));
@@ -289,16 +319,20 @@ function EditDialog({
         </DialogHeader>
         <TournamentFields values={values} set={updateValue} />
         <div className="flex justify-end gap-3 mt-5">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
           <Button
+            disabled={saving}
             className="bg-gradient-brand"
             onClick={async () => {
+              setSaving(true);
               await onSave(values);
+              setSaving(false);
               onClose();
             }}
           >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Save Changes
           </Button>
         </div>
@@ -315,7 +349,7 @@ function TournamentFields({
   set: (v: Partial<Tournament>) => void;
 }) {
   return (
-    <>
+    <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Tournament Name">
           <Input
@@ -458,14 +492,14 @@ function TournamentFields({
         </Field>
       </div>
 
-      <label className="flex items-center gap-3 mt-4">
+      <label className="flex items-center gap-3 mt-4 cursor-pointer">
         <Switch
           checked={values.registration_open}
           onCheckedChange={(v) => set({ registration_open: v })}
         />
-        Registration Open
+        <span className="text-sm font-medium">Registration Open</span>
       </label>
-    </>
+    </div>
   );
 }
 
@@ -475,4 +509,5 @@ function slugify(text: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-          }
+      }
+          
