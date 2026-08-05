@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
   Award, Loader2, ExternalLink, UserPlus, CheckCircle2, ImagePlus, X,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Banknote, Shuffle, Lock,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { SmartImage } from "@/components/SmartImage";
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { uploadPublicImage } from "@/lib/upload";
 import { toast } from "sonner";
 import { sortStandings, type StandingRow } from "@/components/tournament-manager/shared";
+import { bracketLabel } from "@/lib/brackets";
 
 export const Route = createFileRoute("/tournaments/$id")({
   head: () => ({
@@ -120,6 +121,11 @@ function TournamentDetailPage() {
                 {tournament.registration_open && (
                   <Badge className="bg-emerald-500/20 text-emerald-300">Registration open</Badge>
                 )}
+                <Badge variant="outline">
+                  {Number(tournament.registration_fee ?? 0) > 0
+                    ? "Entry: NPR " + Number(tournament.registration_fee).toLocaleString()
+                    : "Free entry"}
+                </Badge>
               </div>
               {tournament.description && (
                 <p className="mt-1 text-sm text-muted-foreground">{tournament.description}</p>
@@ -160,6 +166,20 @@ function TournamentDetailPage() {
                 icon={<List className="h-5 w-5 text-brand-glow" />}
                 title="Matches"
                 value={`${matches.filter((m) => m.played).length} / ${matches.length}`}
+              />
+              <Info
+                icon={<Banknote className="h-5 w-5 text-brand-glow" />}
+                title="Entry Fee"
+                value={
+                  Number(tournament.registration_fee ?? 0) > 0
+                    ? "NPR " + Number(tournament.registration_fee).toLocaleString()
+                    : "Free"
+                }
+              />
+              <Info
+                icon={<Shuffle className="h-5 w-5 text-brand-glow" />}
+                title="Format"
+                value={bracketLabel(tournament.bracket_type)}
               />
             </div>
           )}
@@ -278,15 +298,28 @@ function PublicFixtures({
   matchdays: Matchday[];
   players: TournamentParticipant[];
 }) {
+  const publishedIds = useMemo(
+    () => new Set(matchdays.map((d) => d.id)),
+    [matchdays],
+  );
+  const visibleMatches = useMemo(
+    () => matches.filter((m) => !m.matchday_id || publishedIds.has(m.matchday_id)),
+    [matches, publishedIds],
+  );
+  const hiddenMatches = useMemo(
+    () => matches.filter((m) => m.matchday_id && !publishedIds.has(m.matchday_id)),
+    [matches, publishedIds],
+  );
+
   const groups = useMemo(() => {
     const map = new Map<string, Match[]>();
-    for (const m of matches) {
+    for (const m of visibleMatches) {
       const label =
         matchdays.find((d) => d.id === m.matchday_id)?.name ?? `Round ${m.round}`;
       map.set(label, [...(map.get(label) ?? []), m]);
     }
     return [...map.entries()];
-  }, [matches, matchdays]);
+  }, [visibleMatches, matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
   const tabRefs = useState(() => new Map<string, HTMLButtonElement>())[0];
@@ -313,7 +346,7 @@ function PublicFixtures({
     return p?.photo_url ?? null;
   };
 
-  if (matches.length === 0) {
+  if (visibleMatches.length === 0 && hiddenMatches.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
         Fixtures haven't been generated yet.
@@ -401,6 +434,32 @@ function PublicFixtures({
               </div>
             );
           })}
+          </div>
+        </div>
+      )}
+
+      {hiddenMatches.length > 0 && (
+        <div className="relative glass mx-auto w-full max-w-[340px] overflow-hidden rounded-2xl p-4">
+          <div className="space-y-2 blur-sm select-none" aria-hidden>
+            {hiddenMatches.slice(0, 4).map((m) => (
+              <div
+                key={m.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-border/60 px-3 py-2.5 text-sm"
+              >
+                <span className="truncate font-semibold">{labelOf(m.home_id)}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">vs</span>
+                <span className="truncate font-semibold">{labelOf(m.away_id)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="absolute inset-0 grid place-items-center bg-background/50">
+            <div className="flex flex-col items-center gap-1.5 px-4 text-center">
+              <Lock className="h-5 w-5 text-brand-glow" />
+              <p className="text-sm font-semibold">Fixtures not published yet</p>
+              <p className="text-xs text-muted-foreground">
+                This matchday will be revealed when the admin publishes it.
+              </p>
+            </div>
           </div>
         </div>
       )}

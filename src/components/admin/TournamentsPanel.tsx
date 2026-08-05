@@ -386,6 +386,47 @@ function TournamentFields({
         </Field>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Format">
+          <Select
+            value={values.bracket_type ?? "round_robin"}
+            onValueChange={(v) => set({ bracket_type: v })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BRACKET_TYPES.map((b) => (
+                <SelectItem key={b.value} value={b.value}>
+                  {b.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Max Players">
+          <Input
+            type="number"
+            min={0}
+            placeholder="Unlimited"
+            value={values.max_players ?? ""}
+            onChange={(e) =>
+              set({
+                max_players: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+          />
+        </Field>
+        <Field label="Registration Fee (NPR)">
+          <Input
+            type="number"
+            min={0}
+            value={values.registration_fee ?? 0}
+            onChange={(e) => set({ registration_fee: Number(e.target.value) })}
+          />
+        </Field>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Start Date">
           <Input

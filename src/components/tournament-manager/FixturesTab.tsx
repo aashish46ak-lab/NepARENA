@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Download, Loader2, Plus, Shuffle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { matchdayName, type TournamentData } from "./shared";
-import { notifyMatchdayPlayers } from "@/lib/matches-pending";
+import { notifyMatchdayPlayers, notifyTournamentPlayers } from "@/lib/matches-pending";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { cn } from "@/lib/utils";
 
@@ -91,6 +91,32 @@ export function FixturesTab({ tournament, data }: Props) {
   const activeMatchdayId = activeMatches[0]?.matchday_id ?? null;
   const notifyOn = !!data.matchdays.find((d) => d.id === activeMatchdayId)
     ?.notify_enabled;
+  const publishOn = !!data.matchdays.find((d) => d.id === activeMatchdayId)
+    ?.is_published;
+
+  const togglePublish = async (on: boolean) => {
+    if (!activeMatchdayId || !activeName) return;
+    const { error } = await supabase
+      .from("matchdays")
+      .update({ is_published: on })
+      .eq("id", activeMatchdayId);
+    if (error) return toast.error(error.message);
+    if (on) {
+      try {
+        await notifyTournamentPlayers(
+          tournament.id,
+          "Matchday published",
+          tournament.name + " — " + activeName + " fixtures are now live. Good luck!",
+        );
+      } catch {
+        // non-blocking
+      }
+    }
+    toast.success(
+      on ? "Matchday published — players notified" : "Matchday hidden from the public page",
+    );
+    data.reload();
+  };
 
   const selectMatchday = (name: string) => {
     setSelected(name);
@@ -440,6 +466,15 @@ export function FixturesTab({ tournament, data }: Props) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold truncate">{activeName}</h3>
                 <div className="flex items-center gap-2 shrink-0">
+                  {activeMatchdayId && (
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Switch
+                        checked={publishOn}
+                        onCheckedChange={(on) => void togglePublish(on)}
+                      />
+                      Publish
+                    </label>
+                  )}
                   {activeMatchdayId && (
                     <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                       <Switch
