@@ -139,6 +139,8 @@ function PendingMatchCard({
       match_id: pm.match.id,
       participant_id: pm.myParticipantId,
       user_id: user.id,
+      home_team: pm.homeLabel, // <--- home_team थपियो
+      away_team: pm.awayLabel, // <--- away_team थपियो
       home_score: Number(hs),
       away_score: Number(ascore),
       screenshot_url: shot,
@@ -330,4 +332,5 @@ function PendingMatchCard({
       )}
     </div>
   );
-        }
+                  }
+        
