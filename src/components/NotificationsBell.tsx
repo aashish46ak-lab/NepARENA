@@ -89,8 +89,8 @@ export function NotificationsBell() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
+      <DropdownMenuContent align="end" className="w-80 p-0">
+        <DropdownMenuLabel className="flex items-center justify-between px-3 py-2.5">
           <span>Notifications</span>
           {unread > 0 && (
             <button
@@ -102,43 +102,46 @@ export function NotificationsBell() {
             </button>
           )}
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="m-0" />
         {items.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
             No notifications
           </div>
         ) : (
-          items.map((n) => (
-            <DropdownMenuItem
-              key={n.id}
-              className="flex flex-col items-start gap-0.5 py-2 cursor-pointer"
-              onClick={() => markRead(n.id)}
-            >
-              <div className="flex w-full items-center gap-2">
-                <span className="font-medium text-sm truncate flex-1">
-                  {n.title}
-                </span>
-                {!n.read_at && (
-                  <span className="h-2 w-2 rounded-full bg-brand shrink-0" />
+          <div className="max-h-[168px] overflow-y-auto">
+            {items.map((n) => (
+              <DropdownMenuItem
+                key={n.id}
+                className="flex flex-col items-start gap-0.5 px-3 py-2 cursor-pointer"
+                onClick={() => markRead(n.id)}
+              >
+                <div className="flex w-full items-center gap-2">
+                  <span className="font-medium text-sm truncate flex-1">
+                    {n.title}
+                  </span>
+                  {!n.read_at && (
+                    <span className="h-2 w-2 rounded-full bg-brand shrink-0" />
+                  )}
+                </div>
+                {n.body && (
+                  <span className="text-xs text-muted-foreground line-clamp-2">
+                    {n.body}
+                  </span>
                 )}
-              </div>
-              {n.body && (
-                <span className="text-xs text-muted-foreground line-clamp-2">
-                  {n.body}
-                </span>
-              )}
-              {n.link && (
-                <Link
-                  to={n.link.startsWith("/") ? n.link : "/"}
-                  className="text-xs text-brand-glow mt-0.5"
-                >
-                  Open
-                </Link>
-              )}
-            </DropdownMenuItem>
-          ))
+                {n.link && (
+                  <Link
+                    to={n.link.startsWith("/") ? n.link : "/"}
+                    className="text-xs text-brand-glow mt-0.5"
+                  >
+                    Open
+                  </Link>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
-        }
+    }
+                
