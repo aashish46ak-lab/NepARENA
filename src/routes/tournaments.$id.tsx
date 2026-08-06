@@ -174,8 +174,36 @@ function TournamentDetailPage() {
           </div>
         </div>
 
+        <MyMatches
+          tournament={tournament}
+          matches={matches}
+          matchdays={matchdays}
+          allParticipants={allParticipants}
+          players={players}
+        />
+
         <div className="glass flex flex-wrap gap-2 rounded-2xl p-3">
-          {TABS.map((t) => (
+          {(() => {
+            const bt = tournament.bracket_type ?? "round_robin";
+            const knockout = isElimination(bt);
+            const hasGroups = bt === "groups_knockout";
+            const showStandings = !knockout || hasGroups;
+            return [
+              { id: "overview", label: "Overview", icon: Trophy },
+              ...(showStandings
+                ? [{ id: "standings", label: "Standings", icon: Table2 }]
+                : []),
+              { id: "fixtures", label: "Fixtures", icon: List },
+              ...(hasGroups
+                ? [{ id: "groups", label: "Group Stage", icon: Users }]
+                : []),
+              ...(knockout
+                ? [{ id: "bracket", label: "Bracket", icon: GitBranch }]
+                : []),
+              { id: "rules", label: "Rules", icon: FileText },
+              { id: "report", label: "Report", icon: ShieldAlert },
+            ];
+          })().map((t) => (
             <button
               key={t.id}
               type="button"
