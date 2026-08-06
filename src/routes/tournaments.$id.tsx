@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
   Award, Loader2, ExternalLink, UserPlus, CheckCircle2, ImagePlus, X,
-  ChevronLeft, ChevronRight, Banknote, Shuffle, Lock,
+  ChevronLeft, ChevronRight, Banknote, Shuffle, Lock, GitBranch, Swords,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,14 @@ import { cn } from "@/lib/utils";
 import { uploadPublicImage } from "@/lib/upload";
 import { toast } from "sonner";
 import { sortStandings, type StandingRow } from "@/components/tournament-manager/shared";
-import { bracketLabel } from "@/lib/brackets";
+import { bracketLabel, isElimination } from "@/lib/brackets";
+import { BracketTree } from "@/components/BracketTree";
+import { SubmitResultCard } from "@/components/SubmitResultCard";
+import {
+  loadMySubmissions,
+  notifyAdmins,
+  type MatchSubmission,
+} from "@/lib/matches-pending";
 
 export const Route = createFileRoute("/tournaments/$id")({
   head: () => ({
@@ -40,17 +47,10 @@ export const Route = createFileRoute("/tournaments/$id")({
   component: TournamentDetailPage,
 });
 
-const TABS = [
-  { id: "overview", label: "Overview", icon: Trophy },
-  { id: "standings", label: "Standings", icon: Table2 },
-  { id: "fixtures", label: "Fixtures", icon: List },
-  { id: "rules", label: "Rules", icon: FileText },
-  { id: "report", label: "Report", icon: ShieldAlert },
-] as const;
-
 function TournamentDetailPage() {
   const { id } = Route.useParams();
   const [tab, setTab] = useState<string>("overview");
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["public_tournament", id],
@@ -73,6 +73,38 @@ function TournamentDetailPage() {
       };
     },
   });
+
+  // Realtime: fixtures, publish state, players and standings update live
+  useEffect(() => {
+    const invalidate = () =>
+      qc.invalidateQueries({ queryKey: ["public_tournament", id] });
+    const channel = supabase
+      .channel("public-tour-" + id)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches", filter: "tournament_id=eq." + id },
+        invalidate,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matchdays", filter: "tournament_id=eq." + id },
+        invalidate,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tournament_participants", filter: "tournament_id=eq." + id },
+        invalidate,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tournament_standings", filter: "tournament_id=eq." + id },
+        invalidate,
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [id, qc]);
 
   if (isLoading || !data) {
     return (
