@@ -222,8 +222,10 @@ export interface MatchSubmission {
   home_score: number | null;
   away_score: number | null;
   screenshot_url: string | null;
+  proof_url: string | null;
   note: string | null;
   status: SubmissionStatus;
+  reviewed_at: string | null;
   created_at: string;
 }
 
