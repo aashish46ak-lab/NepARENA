@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { SplashScreen } from "@/components/SplashScreen";
 
 function NotFoundComponent() {
@@ -21,9 +22,7 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">
-          Page not found
-        </h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>
@@ -53,31 +52,25 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground break-words">
-          {error?.message ||
-            "Something went wrong. Try again or open in Chrome."}
+        <p className="mt-2 text-sm text-muted-foreground">
+          Something went wrong on our end. You can try refreshing or head back home.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              try {
-                sessionStorage.clear();
-              } catch {}
-              window.location.href = "/?nocache=" + Date.now();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Reload clean
-          </button>
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Try again
           </button>
+          <a
+            href="/"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Go home
+          </a>
         </div>
       </div>
     </div>
@@ -95,11 +88,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
       },
+      { name: "author", content: "eFootball Nepal" },
+      { name: "theme-color", content: "#0b1220" },
       {
         name: "google-adsense-account",
         content: "ca-pub-3033911443659343",
       },
-      { name: "theme-color", content: "#0b1220" },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://efootballnepal.vercel.app/" },
       { property: "og:site_name", content: "eFootball Nepal" },
@@ -108,7 +102,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "eFootball Nepal — Tournaments & Community",
       },
       {
+        property: "og:description",
+        content:
+          "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
+      },
+      {
         property: "og:image",
+        content: "https://efootballnepal.vercel.app/og-image.png",
+      },
+      { name: "twitter:card", content: "summary_large_image" },
+      {
+        name: "twitter:title",
+        content: "eFootball Nepal — Tournaments & Community",
+      },
+      {
+        name: "twitter:image",
         content: "https://efootballnepal.vercel.app/og-image.png",
       },
     ],
@@ -133,31 +141,14 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        {/* AdSense */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
           crossOrigin="anonymous"
         />
-        {/* Clear broken service workers only — never register */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-(function () {
-  try {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function (regs) {
-        regs.forEach(function (r) { r.unregister(); });
-      });
-    }
-    if ("caches" in window) {
-      caches.keys().then(function (keys) {
-        keys.forEach(function (k) { caches.delete(k); });
-      });
-    }
-  } catch (e) {}
-})();
-`,
+            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}}catch(e){}})();`,
           }}
         />
       </head>
@@ -172,20 +163,13 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !("serviceWorker" in navigator))
-      return;
-    void navigator.serviceWorker.getRegistrations().then((regs) => {
-      regs.forEach((r) => void r.unregister());
-    });
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RoleRedirect />
         <SplashScreen />
         <Outlet />
+        <InstallPrompt />
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </QueryClientProvider>
