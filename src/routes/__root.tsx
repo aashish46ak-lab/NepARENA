@@ -94,6 +94,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
       },
+      // Required for AdSense site verification
+      {
+        name: "google-adsense-account",
+        content: "ca-pub-3033911443659343",
+      },
       { name: "theme-color", content: "#0b1220" },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://efootballnepal.vercel.app/" },
@@ -128,7 +133,13 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        {/* ONLY unregister — never register SW (register caused reload loops) */}
+        {/* AdSense — required for verification + ads */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
+          crossOrigin="anonymous"
+        />
+        {/* ONLY unregister SW — never register (avoids reload loops) */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
