@@ -76,7 +76,7 @@ export async function loadPendingMatches(
     .eq("played", false)
     .in("tournament_id", [...activeIds])
     .or(
-      `home_id.in.(\( {partIds.join(",")}),away_id.in.( \){partIds.join(",")})`,
+      `home_id.in.(${partIds.join(",")}),away_id.in.(${partIds.join(",")})`,
     )
     .order("round")
     .order("position");
