@@ -1048,3 +1048,187 @@ function ReportForm({
     </div>
   );
       }
+
+function BracketTab({
+  matches,
+  matchdays,
+  players,
+  bracketType,
+}: {
+  matches: Match[];
+  matchdays: Matchday[];
+  players: TournamentParticipant[];
+  bracketType: string;
+}) {
+  const mdById = new Map(matchdays.map((d) => [d.id, d]));
+  const isGroupKo = bracketType === "groups_knockout";
+  const koMatches = matches.filter((m) => {
+    if (!isGroupKo) return true;
+    const name = m.matchday_id ? (mdById.get(m.matchday_id)?.name ?? "") : "";
+    return m.round >= 100 || name.startsWith("Knockout") || name.startsWith("Third Place");
+  });
+  const visible = koMatches.filter((m) =>
+    m.matchday_id ? mdById.get(m.matchday_id)?.is_published === true : false,
+  );
+  const locked = koMatches.length > 0 && visible.length === 0;
+  if (koMatches.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-muted-foreground">
+        No bracket matches yet.
+      </p>
+    );
+  }
+  return (
+    <div className="relative min-h-[180px]">
+      <BracketTree matches={locked ? koMatches : visible} players={players} locked={locked} />
+      {locked && (
+        <div className="absolute inset-0 z-10 grid place-items-center rounded-xl bg-background/55 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-2 px-4 text-center">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-glow/15 ring-1 ring-brand-glow/40">
+              <Lock className="h-4 w-4 text-brand-glow" />
+            </span>
+            <p className="text-sm font-semibold">Bracket not published yet</p>
+            <p className="text-xs text-muted-foreground">
+              The bracket will appear here once the admin publishes it.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MyMatches({
+  tournament,
+  matches,
+  matchdays,
+  allParticipants,
+  players,
+}: {
+  tournament: Tournament;
+  matches: Match[];
+  matchdays: Matchday[];
+  allParticipants: TournamentParticipant[];
+  players: TournamentParticipant[];
+}) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const mine = user
+    ? allParticipants.find((p) => p.user_id === user.id && p.status === "approved")
+    : undefined;
+
+  const myMatches = useMemo(() => {
+    if (!mine) return [] as Match[];
+    return matches.filter((m) => m.home_id === mine.id || m.away_id === mine.id);
+  }, [matches, mine]);
+
+  const { data: subs } = useQuery({
+    queryKey: ["my_match_subs", user?.id, tournament.id],
+    enabled: !!user && !!mine && myMatches.length > 0,
+    queryFn: async () => loadMySubmissions(user!.id, myMatches.map((m) => m.id)),
+  });
+
+  useEffect(() => {
+    if (!user || !mine) return;
+    const ch = supabase
+      .channel("my-matches-" + tournament.id)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "match_submissions", filter: "user_id=eq." + user.id },
+        () => qc.invalidateQueries({ queryKey: ["my_match_subs"] }),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(ch);
+    };
+  }, [user?.id, mine?.id, tournament.id, qc]);
+
+  if (!mine || myMatches.length === 0) return null;
+
+  const mdPublished = new Map(matchdays.map((d) => [d.id, d.is_published === true]));
+  const isPending = (m: Match) =>
+    !m.played && !!m.home_id && !!m.away_id && !!m.matchday_id && mdPublished.get(m.matchday_id) === true;
+  const pending = myMatches.filter(isPending);
+  const upcoming = myMatches.filter((m) => !m.played && !isPending(m));
+  const played = myMatches.filter((m) => m.played);
+
+  const labelOf = (pid: string | null) => {
+    if (!pid) return "TBD";
+    const p = players.find((x) => x.id === pid);
+    return p?.club?.trim() || p?.player_name || "TBD";
+  };
+  const photoOf = (pid: string | null) =>
+    pid ? (players.find((x) => x.id === pid)?.photo_url ?? null) : null;
+
+  return (
+    <div className="glass rounded-2xl p-4 sm:p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Swords className="h-4 w-4 text-brand-glow" />
+        <h2 className="text-base font-bold">My Matches</h2>
+      </div>
+
+      {pending.length > 0 && (
+        <div className="space-y-2 max-w-lg">
+          <p className="text-xs font-semibold text-red-400 flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+            </span>
+            Pending — submit your result
+          </p>
+          {pending.map((m) => (
+            <SubmitResultCard
+              key={m.id}
+              matchId={m.id}
+              homeLabel={labelOf(m.home_id)}
+              awayLabel={labelOf(m.away_id)}
+              homePhoto={photoOf(m.home_id)}
+              awayPhoto={photoOf(m.away_id)}
+              meta={
+                tournament.name +
+                (m.matchday_id ? " · " + (matchdays.find((d) => d.id === m.matchday_id)?.name ?? "") : "")
+              }
+              participantId={mine.id}
+              submission={subs?.get(m.id) ?? null}
+              onDone={() => qc.invalidateQueries({ queryKey: ["my_match_subs"] })}
+            />
+          ))}
+        </div>
+      )}
+
+      {upcoming.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground">Upcoming</p>
+          {upcoming.map((m) => (
+            <div
+              key={m.id}
+              className="flex items-center justify-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-sm"
+            >
+              <span className="truncate font-medium">{labelOf(m.home_id)}</span>
+              <span className="text-xs text-muted-foreground">vs</span>
+              <span className="truncate font-medium">{labelOf(m.away_id)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {played.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground">Played</p>
+          {played.map((m) => (
+            <div
+              key={m.id}
+              className="flex items-center justify-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-sm"
+            >
+              <span className="truncate font-medium">{labelOf(m.home_id)}</span>
+              <span className="font-bold text-brand-glow">
+                {m.home_score ?? "-"} - {m.away_score ?? "-"}
+              </span>
+              <span className="truncate font-medium">{labelOf(m.away_id)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
