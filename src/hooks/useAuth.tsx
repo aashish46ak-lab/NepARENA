@@ -34,27 +34,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Never leave the app stuck on a blank screen if auth hangs
-    const safety = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 8000);
-
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (!mounted) return;
-        setSession(data.session);
-        if (data.session?.user) {
-          loadProfileAndRoles(data.session.user.id).finally(() => {
-            if (mounted) setLoading(false);
-          });
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (mounted) setLoading(false);
-      });
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session);
+      if (data.session?.user) {
+        loadProfileAndRoles(data.session.user.id).finally(() => {
+          if (mounted) setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -68,7 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
-      clearTimeout(safety);
       sub.subscription.unsubscribe();
     };
   }, []);
