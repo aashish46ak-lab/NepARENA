@@ -28,6 +28,8 @@ import {
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
 
 export const Route = createFileRoute("/")({
+  // Client-only: avoids SSR/hydration mismatch that caused flash → blank blue
+  ssr: false,
   head: () => ({
     meta: [
       { title: "eFootball Nepal — Tournaments & Community" },
@@ -47,28 +49,7 @@ export const Route = createFileRoute("/")({
         property: "og:image",
         content: "https://efootballnepal.vercel.app/og-image.png",
       },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      {
-        property: "og:url",
-        content: "https://efootballnepal.vercel.app",
-      },
-      {
-        property: "og:image:secure_url",
-        content: "https://efootballnepal.vercel.app/og-image.png",
-      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "eFootball Nepal" },
-      {
-        name: "twitter:description",
-        content:
-          "Official eFootball Nepal platform for tournaments, rankings, community, Hall of Fame, and esports updates.",
-      },
-      {
-        name: "twitter:image",
-        content: "https://efootballnepal.vercel.app/og-image.png",
-      },
     ],
   }),
   component: HomePage,
@@ -89,7 +70,6 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function HomePage() {
-  // Public home for everyone (including admins). Admin panel is /dashboard.
   const settings = useSiteSettings();
   const { data: tournaments = [] } = useTournaments(3);
   const { data: announcement } = useLatestAnnouncement();
@@ -104,10 +84,8 @@ function HomePage() {
 
   return (
     <PageShell>
-      {/* Only renders when user is approved in a LIVE/ONGOING tournament with unplayed matches */}
       <PendingMatchesPanel />
 
-      {/* HERO */}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-40 pointer-events-none"
@@ -165,7 +143,6 @@ function HomePage() {
         </div>
       </section>
 
-      {/* ANNOUNCEMENT */}
       {announcement && (
         <section className="max-w-7xl mx-auto px-4 mb-12">
           <div className="glass rounded-2xl p-5 md:p-6 flex items-start gap-4">
@@ -197,7 +174,6 @@ function HomePage() {
         </section>
       )}
 
-      {/* FEATURED TOURNAMENT */}
       {featured && (
         <section className="max-w-7xl mx-auto px-4 mb-16">
           <SectionHeading
@@ -267,7 +243,6 @@ function HomePage() {
         </section>
       )}
 
-      {/* OWNER */}
       {owner && (
         <section className="max-w-7xl mx-auto px-4 mb-16">
           <SectionHeading title="Ownership" />
@@ -292,7 +267,6 @@ function HomePage() {
         </section>
       )}
 
-      {/* HALL OF FAME */}
       {hof.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 mb-16">
           <SectionHeading
@@ -325,7 +299,6 @@ function HomePage() {
         </section>
       )}
 
-      {/* HISTORY */}
       {history.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 mb-16">
           <SectionHeading
@@ -350,12 +323,11 @@ function HomePage() {
                   <div className="text-xs text-brand-glow">{h.year}</div>
                   <h4 className="font-semibold mt-1">{h.tournament_name}</h4>
                   <div className="text-sm text-muted-foreground mt-1">
-                    🏆 Winner:{" "}
-                    <span className="text-foreground">{h.winner}</span>
+                    Winner: {h.winner}
                   </div>
                   {h.runner_up && (
                     <div className="text-xs text-muted-foreground">
-                      🥈 Runner-up: {h.runner_up}
+                      Runner-up: {h.runner_up}
                     </div>
                   )}
                 </div>
@@ -365,7 +337,6 @@ function HomePage() {
         </section>
       )}
 
-      {/* MEMBERS — max 5: photo + name, click → read-only profile */}
       <section className="max-w-7xl mx-auto px-4 mb-16">
         <SectionHeading title="Community" href="/members" cta="View more" />
         <div className="glass rounded-2xl p-5 md:p-6 max-w-xl mx-auto">
@@ -429,7 +400,6 @@ function HomePage() {
         </div>
       </section>
 
-      {/* GALLERY */}
       {gallery.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 mb-16">
           <SectionHeading title="Gallery" href="/gallery" cta="View gallery" />
@@ -447,7 +417,6 @@ function HomePage() {
         </section>
       )}
 
-      {/* SPONSORS */}
       {sponsors.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 mb-16">
           <SectionHeading title="Sponsors & Partners" />
