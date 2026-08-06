@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
+import { SplashScreen } from "@/components/SplashScreen";
 
 function NotFoundComponent() {
   return (
@@ -61,7 +62,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             onClick={() => {
               try {
                 sessionStorage.clear();
-                localStorage.clear();
               } catch {}
               window.location.href = "/?nocache=" + Date.now();
             }}
@@ -133,16 +133,13 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `html,body{margin:0;min-height:100%;background:#0b1220;color:#e8eefc}#efn-boot{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#0b1220;color:#e8eefc;font-family:system-ui,sans-serif;text-align:center;padding:24px}#efn-boot h1{margin:0;font-size:1.5rem}#efn-boot p{margin:0;opacity:.75;font-size:.9rem}#efn-err{position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#b91c1c;color:#fff;padding:10px 14px;font:13px/1.4 system-ui,sans-serif;display:none;max-height:40vh;overflow:auto}`,
-          }}
-        />
+        {/* AdSense */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
           crossOrigin="anonymous"
         />
+        {/* Clear broken service workers only — never register */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -159,60 +156,13 @@ function RootShell({ children }: { children: ReactNode }) {
       });
     }
   } catch (e) {}
-
-  function showErr(msg) {
-    try {
-      var el = document.getElementById("efn-err");
-      if (!el) {
-        el = document.createElement("div");
-        el.id = "efn-err";
-        document.body.appendChild(el);
-      }
-      el.style.display = "block";
-      el.textContent = "Error: " + msg;
-    } catch (e) {}
-  }
-
-  window.addEventListener("error", function (e) {
-    showErr(e && e.message ? e.message : String(e));
-  });
-  window.addEventListener("unhandledrejection", function (e) {
-    var r = e && e.reason;
-    showErr(r && r.message ? r.message : String(r));
-  });
-
-  // If React never paints a header, show recovery UI instead of infinite blue
-  window.setTimeout(function () {
-    try {
-      if (document.querySelector("header")) {
-        var boot = document.getElementById("efn-boot");
-        if (boot) boot.remove();
-        return;
-      }
-      var boot = document.getElementById("efn-boot");
-      if (boot) {
-        boot.innerHTML =
-          "<h1>eFootball Nepal</h1>" +
-          "<p>App could not start on this browser.</p>" +
-          "<p><a href=\"/?nocache=" +
-          Date.now() +
-          "\" style=\"color:#7dd3fc\">Tap to reload</a></p>" +
-          "<p style=\"font-size:12px;opacity:.6\">Try Chrome · clear site data · disable Shields</p>";
-      }
-    } catch (e) {}
-  }, 4000);
 })();
 `,
           }}
         />
       </head>
       <body>
-        <div id="efn-boot">
-          <h1>eFootball Nepal</h1>
-          <p>Loading…</p>
-        </div>
         {children}
-        <div id="efn-err" />
         <Scripts />
       </body>
     </html>
@@ -223,10 +173,6 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    // Remove boot splash once app mounted
-    const boot = document.getElementById("efn-boot");
-    if (boot) boot.remove();
-
     if (typeof window === "undefined" || !("serviceWorker" in navigator))
       return;
     void navigator.serviceWorker.getRegistrations().then((regs) => {
@@ -238,6 +184,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RoleRedirect />
+        <SplashScreen />
         <Outlet />
         <Toaster richColors position="top-right" />
       </AuthProvider>
