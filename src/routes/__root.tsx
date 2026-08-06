@@ -90,8 +90,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "eFootball Nepal" },
-      
-      // Correct Domain & Image Meta Tags for Messenger/Facebook
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://efootballnepal.vercel.app/" },
       { property: "og:site_name", content: "eFootball Nepal" },
@@ -103,23 +101,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { property: "og:image:alt", content: "eFootball Nepal Logo" },
-
-      // Twitter Cards
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "eFootball Nepal — Tournaments & Community" },
       { name: "twitter:description", content: "The official home of competitive eFootball in Nepal." },
       { name: "twitter:image", content: "https://efootballnepal.vercel.app/og-image.png" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      {
-        rel: "icon",
-        href: "/android-chrome-512x512.png",
-        type: "image/png",
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/android-chrome-512x512.png", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
@@ -134,15 +123,18 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-  <HeadContent />
-
-  <script
-    async
-    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
-    crossOrigin="anonymous"
-  />
-</head>
-
+        <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()});});if('caches'in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)});});}}catch(e){}})();`,
+          }}
+        />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body>
         {children}
         <script
@@ -166,7 +158,6 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  // Kill stale service workers that cause: flash content → blank blue screen
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
     void (async () => {
