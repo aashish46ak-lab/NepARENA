@@ -365,10 +365,12 @@ function PublicFixtures({
   matches,
   matchdays,
   players,
+  nameFilter,
 }: {
   matches: Match[];
   matchdays: Matchday[];
   players: TournamentParticipant[];
+  nameFilter?: (name: string) => boolean;
 }) {
   const groups = useMemo(() => {
     type G = {
@@ -409,8 +411,10 @@ function PublicFixtures({
         byId.get(key)!.matches.push(m);
       }
     }
-    return [...byId.values()].sort((a, b) => a.sort - b.sort);
-  }, [matches, matchdays]);
+    return [...byId.values()]
+      .filter((g) => !nameFilter || nameFilter(g.name))
+      .sort((a, b) => a.sort - b.sort);
+  }, [matches, matchdays, nameFilter]);
 
   const [selected, setSelected] = useState<string | null>(null);
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
