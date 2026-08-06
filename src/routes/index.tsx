@@ -28,8 +28,9 @@ import {
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
 
 export const Route = createFileRoute("/")({
-  // Client-only: avoids SSR/hydration mismatch that caused flash → blank blue
-  ssr: false,
+  // SSR ON — ssr:false left empty HTML (blue screen + no_div).
+  // SW register already removed, so reload loop should stay fixed.
+  pendingComponent: HomePending,
   head: () => ({
     meta: [
       { title: "eFootball Nepal — Tournaments & Community" },
@@ -54,6 +55,19 @@ export const Route = createFileRoute("/")({
   }),
   component: HomePage,
 });
+
+function HomePending() {
+  return (
+    <PageShell>
+      <div className="min-h-[50vh] grid place-items-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading eFootball Nepal…</p>
+        </div>
+      </div>
+    </PageShell>
+  );
+}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
