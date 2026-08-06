@@ -28,9 +28,6 @@ import {
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
 
 export const Route = createFileRoute("/")({
-  // SSR ON — ssr:false left empty HTML (blue screen + no_div).
-  // SW register already removed, so reload loop should stay fixed.
-  pendingComponent: HomePending,
   head: () => ({
     meta: [
       { title: "eFootball Nepal — Tournaments & Community" },
@@ -50,24 +47,32 @@ export const Route = createFileRoute("/")({
         property: "og:image",
         content: "https://efootballnepal.vercel.app/og-image.png",
       },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:url",
+        content: "https://efootballnepal.vercel.app",
+      },
+      {
+        property: "og:image:secure_url",
+        content: "https://efootballnepal.vercel.app/og-image.png",
+      },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "eFootball Nepal" },
+      {
+        name: "twitter:description",
+        content:
+          "Official eFootball Nepal platform for tournaments, rankings, community, Hall of Fame, and esports updates.",
+      },
+      {
+        name: "twitter:image",
+        content: "https://efootballnepal.vercel.app/og-image.png",
+      },
     ],
   }),
   component: HomePage,
 });
-
-function HomePending() {
-  return (
-    <PageShell>
-      <div className="min-h-[50vh] grid place-items-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading eFootball Nepal…</p>
-        </div>
-      </div>
-    </PageShell>
-  );
-}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -84,6 +89,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function HomePage() {
+  // Public home for everyone (admins use /dashboard from menu)
   const settings = useSiteSettings();
   const { data: tournaments = [] } = useTournaments(3);
   const { data: announcement } = useLatestAnnouncement();
@@ -98,8 +104,10 @@ function HomePage() {
 
   return (
     <PageShell>
+      {/* Only renders when user is approved in a LIVE/ONGOING tournament with unplayed matches */}
       <PendingMatchesPanel />
 
+      {/* HERO */}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-40 pointer-events-none"
