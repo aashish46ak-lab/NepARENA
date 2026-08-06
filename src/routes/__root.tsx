@@ -20,7 +20,9 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">
+          Page not found
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>
@@ -50,25 +52,31 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="mt-2 text-sm text-muted-foreground break-words">
+          {error?.message ||
+            "Something went wrong. Try again or open in Chrome."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <button
+            onClick={() => {
+              try {
+                sessionStorage.clear();
+              } catch {}
+              window.location.href = "/";
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Reload clean
+          </button>
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium"
           >
             Try again
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
         </div>
       </div>
     </div>
@@ -86,11 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
       },
-      { name: "author", content: "eFootball Nepal" },
       { name: "theme-color", content: "#0b1220" },
-      { name: "mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-title", content: "eFootball Nepal" },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://efootballnepal.vercel.app/" },
       { property: "og:site_name", content: "eFootball Nepal" },
@@ -99,33 +103,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "eFootball Nepal — Tournaments & Community",
       },
       {
-        property: "og:description",
-        content:
-          "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
-      },
-      {
         property: "og:image",
-        content: "https://efootballnepal.vercel.app/og-image.png",
-      },
-      {
-        property: "og:image:secure_url",
-        content: "https://efootballnepal.vercel.app/og-image.png",
-      },
-      { property: "og:image:type", content: "image/png" },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "eFootball Nepal Logo" },
-      { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "twitter:title",
-        content: "eFootball Nepal — Tournaments & Community",
-      },
-      {
-        name: "twitter:description",
-        content: "The official home of competitive eFootball in Nepal.",
-      },
-      {
-        name: "twitter:image",
         content: "https://efootballnepal.vercel.app/og-image.png",
       },
     ],
@@ -137,7 +115,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "image/png",
       },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      // manifest temporarily omitted — can re-enable after SW fully cleared
     ],
   }),
   shellComponent: RootShell,
@@ -151,19 +128,16 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        {/* ONLY unregister — never register SW (register caused reload loops) */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
 (function () {
   try {
     if (!("serviceWorker" in navigator)) return;
-    // 1) Install kill-switch SW so any controlling SW gets replaced
-    navigator.serviceWorker.register("/sw.js").catch(function () {});
-    // 2) Unregister every registration
     navigator.serviceWorker.getRegistrations().then(function (regs) {
       regs.forEach(function (r) { r.unregister(); });
     });
-    // 3) Drop all caches
     if ("caches" in window) {
       caches.keys().then(function (keys) {
         keys.forEach(function (k) { caches.delete(k); });
@@ -174,26 +148,9 @@ function RootShell({ children }: { children: ReactNode }) {
 `,
           }}
         />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
-          crossOrigin="anonymous"
-        />
       </head>
       <body>
         {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (new URLSearchParams(window.location.search).get("debug") === "1") {
-                var s = document.createElement("script");
-                s.src = "https://cdn.jsdelivr.net/npm/eruda";
-                s.onload = function () { window.eruda.init(); };
-                document.body.appendChild(s);
-              }
-            `,
-          }}
-        />
         <Scripts />
       </body>
     </html>
@@ -206,19 +163,9 @@ function RootComponent() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator))
       return;
-    void (async () => {
-      try {
-        await navigator.serviceWorker.register("/sw.js").catch(() => null);
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((r) => r.unregister()));
-        if ("caches" in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        }
-      } catch (e) {
-        console.warn("SW cleanup failed", e);
-      }
-    })();
+    void navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => void r.unregister());
+    });
   }, []);
 
   return (
