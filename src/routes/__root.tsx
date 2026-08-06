@@ -52,25 +52,35 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           This page didn't load
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="mt-2 text-sm text-muted-foreground break-words">
+          {error?.message || "Something went wrong."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <button
+            onClick={() => {
+              try {
+                const keys = Object.keys(sessionStorage);
+                for (const k of keys) {
+                  if (k.startsWith("tanstack_router_reload")) {
+                    sessionStorage.removeItem(k);
+                  }
+                }
+              } catch {}
+              window.location.href = "/";
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Go home
+          </button>
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium"
           >
             Try again
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
         </div>
       </div>
     </div>
@@ -110,15 +120,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         property: "og:image",
         content: "https://efootballnepal.vercel.app/og-image.png",
       },
-      { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "twitter:title",
-        content: "eFootball Nepal — Tournaments & Community",
-      },
-      {
-        name: "twitter:image",
-        content: "https://efootballnepal.vercel.app/og-image.png",
-      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -141,16 +142,38 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        {/* AdSense — do not remove */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
           crossOrigin="anonymous"
         />
-        {/* Clear any old service workers that caused reload loops */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}}catch(e){}})();`,
+            __html: `
+(function () {
+  try {
+    // Stop TanStack "reload once on error" from looping forever on mobile
+    if (typeof sessionStorage !== "undefined") {
+      var keys = Object.keys(sessionStorage);
+      for (var i = 0; i < keys.length; i++) {
+        if (keys[i].indexOf("tanstack_router_reload") === 0) {
+          sessionStorage.removeItem(keys[i]);
+        }
+      }
+    }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (r) { r.unregister(); });
+      });
+    }
+    if ("caches" in window) {
+      caches.keys().then(function (names) {
+        names.forEach(function (n) { caches.delete(n); });
+      });
+    }
+  } catch (e) {}
+})();
+`,
           }}
         />
       </head>
@@ -169,8 +192,6 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RoleRedirect />
-        {/* SplashScreen removed: it used fixed inset-0 + bg-background and
-            covered the whole home after the first paint (flash then blue). */}
         <Outlet />
         <Toaster richColors position="top-right" />
       </AuthProvider>
