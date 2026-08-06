@@ -40,7 +40,7 @@ export default defineConfig({
   },
   vite: {
     build: {
-      assetsInlineLimit: 4096, // ४KB भन्दा साना आइकनहरूलाई Base64 बनाउँछ (HTTP Requests घटाउन)
+      assetsInlineLimit: 4096,
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
@@ -48,7 +48,8 @@ export default defineConfig({
             if (id.includes("node_modules")) {
               if (id.includes("react")) return "vendor-react";
               if (id.includes("@supabase")) return "vendor-supabase";
-              if (id.includes("@radix-ui") || id.includes("lucide-react")) return "vendor-ui";
+              if (id.includes("@radix-ui") || id.includes("lucide-react"))
+                return "vendor-ui";
               if (id.includes("@tanstack")) return "vendor-tanstack";
             }
           },
@@ -57,6 +58,8 @@ export default defineConfig({
     },
     plugins: [
       VitePWA({
+        // Emergency: uninstall any existing SW to stop reload loops (flash ↔ blank)
+        selfDestroying: true,
         registerType: "autoUpdate",
         injectRegister: null,
         filename: "sw.js",
@@ -99,9 +102,9 @@ export default defineConfig({
           globPatterns: ["**/*.{js,css,woff,woff2,png,svg,ico,webmanifest}"],
           runtimeCaching: [
             {
-              // HTML navigations: fresh first, cached copy only when offline.
               urlPattern: ({ request, url }) =>
-                request.mode === "navigate" && !url.pathname.startsWith("/~oauth"),
+                request.mode === "navigate" &&
+                !url.pathname.startsWith("/~oauth"),
               handler: "NetworkFirst",
               options: {
                 cacheName: "efn-pages",
@@ -110,24 +113,18 @@ export default defineConfig({
               },
             },
             {
-              // Same-origin static assets: cache-first (hashed build output).
               urlPattern: ({ request, url }) =>
-                url.origin === location.origin &&
-                ["style", "script", "font", "image"].includes(request.destination),
+                url.origin === self.location.origin &&
+                ["style", "script", "font", "image"].includes(
+                  request.destination,
+                ),
               handler: "CacheFirst",
               options: {
                 cacheName: "efn-assets",
-                expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              },
-            },
-            {
-              // Supabase API/storage: fresh first, short-lived offline fallback.
-              urlPattern: ({ url }) => url.hostname.endsWith(".supabase.co"),
-              handler: "NetworkFirst",
-              options: {
-                cacheName: "efn-api",
-                networkTimeoutSeconds: 10,
-                expiration: { maxEntries: 100, maxAgeSeconds: 60 * 5 },
+                expiration: {
+                  maxEntries: 200,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
               },
             },
           ],
@@ -137,4 +134,3 @@ export default defineConfig({
     ],
   },
 });
-            
