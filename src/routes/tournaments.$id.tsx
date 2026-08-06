@@ -251,6 +251,24 @@ function TournamentDetailPage() {
             </div>
           )}
 
+          {tab === "groups" && (
+            <PublicFixtures
+              matches={matches}
+              matchdays={matchdays}
+              players={players}
+              nameFilter={(n) => n.startsWith("Group ")}
+            />
+          )}
+
+          {tab === "bracket" && (
+            <BracketTab
+              matches={matches}
+              matchdays={matchdays}
+              players={players}
+              bracketType={tournament.bracket_type ?? "single_elim"}
+            />
+          )}
+
           {tab === "standings" && (
             <div>
               <h2 className="mb-4 text-xl font-bold">Standings</h2>
