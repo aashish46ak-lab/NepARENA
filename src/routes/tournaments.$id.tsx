@@ -402,7 +402,7 @@ function PublicFixtures({
                 {g.name}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">
-                {g.published ? `\( {played}/ \){g.matches.length}` : "Locked"}
+                {g.published ? `${played}/${g.matches.length} Completed` : "Locked"}
               </div>
             </button>
           );
@@ -431,7 +431,7 @@ function PublicFixtures({
                   m.played &&
                   m.home_score != null &&
                   m.away_score != null
-                    ? `\( {m.home_score}- \){m.away_score}`
+                    ? `${m.home_score} - ${m.away_score}`
                     : "";
                 return (
                   <div
