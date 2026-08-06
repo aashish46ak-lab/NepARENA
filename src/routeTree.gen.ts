@@ -9,60 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TournamentsRouteImport } from './routes/tournaments'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as MembersRouteImport } from './routes/members'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
-import { Route as GalleryRouteImport } from './routes/gallery'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as MembersRouteImport } from './routes/members'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TournamentsRouteImport } from './routes/tournaments'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
-import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
-import { Route as MembersIdRouteImport } from './routes/members.$id'
 import { Route as AuthVerifyRouteImport } from './routes/auth/verify'
+import { Route as MembersIdRouteImport } from './routes/members.$id'
+import { Route as TournamentsIdRouteImport } from './routes/tournaments.$id'
 import { Route as AdminTournamentsIdRouteImport } from './routes/admin.tournaments.$id'
 
-const TournamentsRoute = TournamentsRouteImport.update({
-  id: '/tournaments',
-  path: '/tournaments',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MembersRoute = MembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HallOfFameRoute = HallOfFameRouteImport.update({
-  id: '/hall-of-fame',
-  path: '/hall-of-fame',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GalleryRoute = GalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -70,9 +35,44 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HallOfFameRoute = HallOfFameRouteImport.update({
+  id: '/hall-of-fame',
+  path: '/hall-of-fame',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MembersRoute = MembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TournamentsRoute = TournamentsRouteImport.update({
+  id: '/tournaments',
+  path: '/tournaments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthIndexRoute = AuthIndexRouteImport.update({
@@ -80,20 +80,20 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   path: '/auth/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TournamentsIdRoute = TournamentsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => TournamentsRoute,
+const AuthVerifyRoute = AuthVerifyRouteImport.update({
+  id: '/auth/verify',
+  path: '/auth/verify',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MembersIdRoute = MembersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => MembersRoute,
 } as any)
-const AuthVerifyRoute = AuthVerifyRouteImport.update({
-  id: '/auth/verify',
-  path: '/auth/verify',
-  getParentRoute: () => rootRouteImport,
+const TournamentsIdRoute = TournamentsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TournamentsRoute,
 } as any)
 const AdminTournamentsIdRoute = AdminTournamentsIdRouteImport.update({
   id: '/admin/tournaments/$id',
@@ -225,60 +225,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tournaments': {
-      id: '/tournaments'
-      path: '/tournaments'
-      fullPath: '/tournaments'
-      preLoaderRoute: typeof TournamentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/members': {
-      id: '/members'
-      path: '/members'
-      fullPath: '/members'
-      preLoaderRoute: typeof MembersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hall-of-fame': {
-      id: '/hall-of-fame'
-      path: '/hall-of-fame'
-      fullPath: '/hall-of-fame'
-      preLoaderRoute: typeof HallOfFameRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gallery': {
-      id: '/gallery'
-      path: '/gallery'
-      fullPath: '/gallery'
-      preLoaderRoute: typeof GalleryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -288,11 +239,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hall-of-fame': {
+      id: '/hall-of-fame'
+      path: '/hall-of-fame'
+      fullPath: '/hall-of-fame'
+      preLoaderRoute: typeof HallOfFameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/members': {
+      id: '/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof MembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tournaments': {
+      id: '/tournaments'
+      path: '/tournaments'
+      fullPath: '/tournaments'
+      preLoaderRoute: typeof TournamentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/': {
@@ -302,12 +302,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tournaments/$id': {
-      id: '/tournaments/$id'
-      path: '/$id'
-      fullPath: '/tournaments/$id'
-      preLoaderRoute: typeof TournamentsIdRouteImport
-      parentRoute: typeof TournamentsRoute
+    '/auth/verify': {
+      id: '/auth/verify'
+      path: '/auth/verify'
+      fullPath: '/auth/verify'
+      preLoaderRoute: typeof AuthVerifyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/members/$id': {
       id: '/members/$id'
@@ -316,12 +316,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MembersIdRouteImport
       parentRoute: typeof MembersRoute
     }
-    '/auth/verify': {
-      id: '/auth/verify'
-      path: '/auth/verify'
-      fullPath: '/auth/verify'
-      preLoaderRoute: typeof AuthVerifyRouteImport
-      parentRoute: typeof rootRouteImport
+    '/tournaments/$id': {
+      id: '/tournaments/$id'
+      path: '/$id'
+      fullPath: '/tournaments/$id'
+      preLoaderRoute: typeof TournamentsIdRouteImport
+      parentRoute: typeof TournamentsRoute
     }
     '/admin/tournaments/$id': {
       id: '/admin/tournaments/$id'
@@ -374,3 +374,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
