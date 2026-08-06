@@ -166,9 +166,22 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-//  useEffect(() => {
- //   void registerPWA();
-//  }, []);
+  // Kill stale service workers that cause: flash content → blank blue screen
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    void (async () => {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch (e) {
+        console.warn("SW cleanup failed", e);
+      }
+    })();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
