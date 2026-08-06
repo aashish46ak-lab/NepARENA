@@ -4,7 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  HeadContent, 
+  HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
@@ -14,9 +14,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
-import { InstallPrompt } from "@/components/InstallPrompt";
-import { SplashScreen } from "@/components/SplashScreen";
-import { registerPWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
   return (
@@ -84,7 +81,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "eFootball Nepal — Tournaments, Community & Hall of Fame" },
-      { name: "description", content: "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community." },
+      {
+        name: "description",
+        content:
+          "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
+      },
       { name: "author", content: "eFootball Nepal" },
       { name: "theme-color", content: "#0b1220" },
       { name: "mobile-web-app-capable", content: "yes" },
@@ -93,24 +94,50 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://efootballnepal.vercel.app/" },
       { property: "og:site_name", content: "eFootball Nepal" },
-      { property: "og:title", content: "eFootball Nepal — Tournaments & Community" },
-      { property: "og:description", content: "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community." },
-      { property: "og:image", content: "https://efootballnepal.vercel.app/og-image.png" },
-      { property: "og:image:secure_url", content: "https://efootballnepal.vercel.app/og-image.png" },
+      {
+        property: "og:title",
+        content: "eFootball Nepal — Tournaments & Community",
+      },
+      {
+        property: "og:description",
+        content:
+          "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
+      },
+      {
+        property: "og:image",
+        content: "https://efootballnepal.vercel.app/og-image.png",
+      },
+      {
+        property: "og:image:secure_url",
+        content: "https://efootballnepal.vercel.app/og-image.png",
+      },
       { property: "og:image:type", content: "image/png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { property: "og:image:alt", content: "eFootball Nepal Logo" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "eFootball Nepal — Tournaments & Community" },
-      { name: "twitter:description", content: "The official home of competitive eFootball in Nepal." },
-      { name: "twitter:image", content: "https://efootballnepal.vercel.app/og-image.png" },
+      {
+        name: "twitter:title",
+        content: "eFootball Nepal — Tournaments & Community",
+      },
+      {
+        name: "twitter:description",
+        content: "The official home of competitive eFootball in Nepal.",
+      },
+      {
+        name: "twitter:image",
+        content: "https://efootballnepal.vercel.app/og-image.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/android-chrome-512x512.png", type: "image/png" },
-      { rel: "manifest", href: "/manifest.webmanifest" },
+      {
+        rel: "icon",
+        href: "/android-chrome-512x512.png",
+        type: "image/png",
+      },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      // manifest temporarily omitted — can re-enable after SW fully cleared
     ],
   }),
   shellComponent: RootShell,
@@ -126,7 +153,25 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()});});if('caches'in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)});});}}catch(e){}})();`,
+            __html: `
+(function () {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    // 1) Install kill-switch SW so any controlling SW gets replaced
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+    // 2) Unregister every registration
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (r) { r.unregister(); });
+    });
+    // 3) Drop all caches
+    if ("caches" in window) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { caches.delete(k); });
+      });
+    }
+  } catch (e) {}
+})();
+`,
           }}
         />
         <script
@@ -159,9 +204,11 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    if (typeof window === "undefined" || !("serviceWorker" in navigator))
+      return;
     void (async () => {
       try {
+        await navigator.serviceWorker.register("/sw.js").catch(() => null);
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map((r) => r.unregister()));
         if ("caches" in window) {
@@ -178,9 +225,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RoleRedirect />
-        <SplashScreen />
         <Outlet />
-        <InstallPrompt />
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </QueryClientProvider>
