@@ -154,6 +154,9 @@ function swissRound(ids: string[], roundNumber: number): FixtureSpec[] {
 }
 
 export function generateFixtures(type: string, ids: string[]): FixtureSpec[] {
+  // Every (re)generation starts from a fresh random order so regenerated
+  // schedules are fully randomized, not the same seeding again.
+  ids = shuffle(ids);
   switch (type) {
     case "league": {
       const roundsPerLeg = ids.length % 2 === 0 ? ids.length - 1 : ids.length;

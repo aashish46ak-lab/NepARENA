@@ -34,6 +34,7 @@ export type PendingMatch = {
   homePhoto: string | null;
   awayPhoto: string | null;
   isHome: boolean;
+  myParticipantId: string | null;
 };
 
 export async function loadMyParticipants(userId: string) {
@@ -151,6 +152,8 @@ export async function loadPendingMatches(
     homePhoto: m.home_id ? (photoMap.get(m.home_id) ?? null) : null,
     awayPhoto: m.away_id ? (photoMap.get(m.away_id) ?? null) : null,
     isHome: !!(m.home_id && byId.has(m.home_id)),
+    myParticipantId:
+      [m.home_id, m.away_id].find((x) => x != null && byId.has(x)) ?? null,
   }));
 }
 
@@ -190,6 +193,20 @@ export async function notifyUsers(
   const { error } = await supabase.from("notifications").insert(payload);
   if (error) throw error;
   return payload.length;
+}
+
+/** Alert every owner/admin/moderator (uses the notify_admins SQL function). */
+export async function notifyAdmins(
+  title: string,
+  body: string,
+  link: string | null = null,
+) {
+  const { error } = await supabase.rpc("notify_admins", {
+    _title: title,
+    _body: body,
+    _link: link,
+  });
+  if (error) throw error;
 }
 
 export async function notifyTournamentPlayers(
