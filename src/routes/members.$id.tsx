@@ -82,11 +82,45 @@ function MemberProfilePage() {
         tours = (t ?? []) as typeof tours;
       }
 
+      const partIds = partList.map((p) => p.id);
+      let wins = 0,
+        draws = 0,
+        losses = 0,
+        goalsFor = 0,
+        goalsAgainst = 0;
+      if (partIds.length) {
+        const orFilter =
+          partIds.map((pid) => "home_id.eq." + pid).join(",") +
+          "," +
+          partIds.map((pid) => "away_id.eq." + pid).join(",");
+        const { data: matchRows } = await supabase
+          .from("matches")
+          .select("home_id, away_id, home_score, away_score, played")
+          .eq("played", true)
+          .or(orFilter);
+        for (const m of matchRows ?? []) {
+          const hs = Number(m.home_score);
+          const ascore = Number(m.away_score);
+          if (!Number.isFinite(hs) || !Number.isFinite(ascore)) continue;
+          const isHome = partIds.includes(m.home_id as string);
+          const isAway = partIds.includes(m.away_id as string);
+          if (!isHome && !isAway) continue;
+          const my = isHome ? hs : ascore;
+          const opp = isHome ? ascore : hs;
+          goalsFor += my;
+          goalsAgainst += opp;
+          if (my > opp) wins += 1;
+          else if (my < opp) losses += 1;
+          else draws += 1;
+        }
+      }
+
       return {
         profile: (profile as Profile | null) ?? null,
         parts: partList,
         tours,
         achievements,
+        stats: { wins, draws, losses, goalsFor, goalsAgainst },
       };
     },
   });
@@ -124,7 +158,15 @@ function MemberProfilePage() {
   const { profile, parts, tours, achievements } = data;
   const tourMap = new Map(tours.map((t) => [t.id, t]));
   const displayName =
-    profile.full_name?.trim() || profile.username?.trim() || "Player";
+    profile.username?.trim() || profile.full_name?.trim() || "Player";
+  const realName = profile.full_name?.trim() || null;
+  const stats = data.stats ?? {
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+  };
 
   const joinedTags = parts
     .map((p) => {
@@ -162,15 +204,11 @@ function MemberProfilePage() {
           </Avatar>
           <div className="text-center sm:text-left space-y-2 min-w-0 flex-1">
             <h1 className="text-2xl font-bold truncate">{displayName}</h1>
-            {profile.username && (
-              <p className="text-sm text-muted-foreground">
-                @{profile.username}
-              </p>
+            {realName && realName !== displayName && (
+              <p className="text-sm text-muted-foreground truncate">{realName}</p>
             )}
             {profile.favourite_club && (
-              <p className="text-sm text-brand-glow">
-                {profile.favourite_club}
-              </p>
+              <p className="text-sm text-brand-glow">{profile.favourite_club}</p>
             )}
             {profile.bio && (
               <p className="text-sm text-muted-foreground">{profile.bio}</p>
@@ -178,9 +216,7 @@ function MemberProfilePage() {
 
             {joinedTags.length > 0 && (
               <div className="pt-2">
-                <p className="text-xs text-muted-foreground mb-1.5">
-                  Tournaments
-                </p>
+                <p className="text-xs text-muted-foreground mb-1.5">Tournaments</p>
                 <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                   {joinedTags.map((tag) => (
                     <Link
@@ -202,6 +238,21 @@ function MemberProfilePage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[
+            { label: "Wins", value: stats.wins },
+            { label: "Draws", value: stats.draws },
+            { label: "Losses", value: stats.losses },
+            { label: "Goals", value: stats.goalsFor },
+            { label: "Conceded", value: stats.goalsAgainst },
+          ].map((s) => (
+            <div key={s.label} className="glass rounded-xl p-3 text-center">
+              <div className="text-xl font-bold text-gradient-brand">{s.value}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">{s.label}</div>
+            </div>
+          ))}
         </div>
 
         {achievements.length > 0 && (
@@ -265,4 +316,4 @@ function MemberProfilePage() {
       </div>
     </PageShell>
   );
-        }
+}
