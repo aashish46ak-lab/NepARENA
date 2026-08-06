@@ -65,9 +65,7 @@ export function SubmitResultCard({
     submission?.away_score != null ? String(submission.away_score) : "",
   );
   const [note, setNote] = useState(submission?.note ?? "");
-  const [proofUrl, setProofUrl] = useState(
-    submission?.proof_url ?? submission?.screenshot_url ?? "",
-  );
+  const [proofUrl, setProofUrl] = useState(submission?.proof_url ?? "");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
