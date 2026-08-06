@@ -145,6 +145,18 @@ function RootShell({ children }: { children: ReactNode }) {
 
       <body>
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (new URLSearchParams(window.location.search).get("debug") === "1") {
+                var s = document.createElement("script");
+                s.src = "https://cdn.jsdelivr.net/npm/eruda";
+                s.onload = function () { window.eruda.init(); };
+                document.body.appendChild(s);
+              }
+            `,
+          }}
+        />
         <Scripts />
       </body>
     </html>
@@ -169,4 +181,4 @@ function RootComponent() {
       </AuthProvider>
     </QueryClientProvider>
   );
-  }
+}
