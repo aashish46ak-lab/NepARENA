@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Trophy } from "lucide-react";
 
 const KEY = "efn-guest-dismissed";
 
@@ -19,19 +18,18 @@ export function GuestPopup() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    // Temporarily disabled for AdSense verification
-    return;
-
     if (loading || user) return;
     if (typeof window === "undefined") return;
     if (sessionStorage.getItem(KEY)) return;
 
-    const t = setTimeout(() => setOpen(true), 800);
+    const t = setTimeout(() => setOpen(true), 600);
     return () => clearTimeout(t);
   }, [user, loading]);
 
   const dismiss = () => {
-    sessionStorage.setItem(KEY, "1");
+    try {
+      sessionStorage.setItem(KEY, "1");
+    } catch {}
     setOpen(false);
   };
 
@@ -45,37 +43,41 @@ export function GuestPopup() {
         else setOpen(v);
       }}
     >
-      <DialogContent className="glass sm:max-w-md">
+      <DialogContent className="glass sm:max-w-md border-border/60">
         <DialogHeader>
-          <div className="mx-auto h-14 w-14 rounded-full bg-gradient-brand grid place-items-center glow-brand mb-2">
-            <Trophy className="h-7 w-7 text-primary-foreground" />
+          <div className="mx-auto mb-2 h-16 w-16 overflow-hidden rounded-2xl glow-brand">
+            <img
+              src="/android-chrome-512x512.png"
+              alt="eFootball Nepal"
+              className="h-full w-full object-cover"
+            />
           </div>
-
           <DialogTitle className="text-center text-xl">
-            Join eFootball Nepal
+            Welcome to eFootball Nepal
           </DialogTitle>
-
           <DialogDescription className="text-center">
-            Create an account to register for tournaments, join the community,
-            and appear on the Hall of Fame.
+            Sign in to join tournaments, submit results, and climb the rankings.
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="flex-col sm:flex-col gap-2">
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button
             asChild
             className="w-full bg-gradient-brand text-primary-foreground hover:opacity-90"
             onClick={dismiss}
           >
-            <Link to="/auth">Sign up or Log in</Link>
+            <Link to="/auth">Log in</Link>
           </Button>
-
           <Button
-            variant="ghost"
+            asChild
+            variant="outline"
+            className="w-full border-brand/40"
             onClick={dismiss}
-            className="w-full"
           >
-            Continue as guest
+            <Link to="/auth">Sign up</Link>
+          </Button>
+          <Button variant="ghost" onClick={dismiss} className="w-full text-muted-foreground">
+            Continue as Guest
           </Button>
         </DialogFooter>
       </DialogContent>
