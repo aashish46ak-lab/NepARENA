@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
-import { GuestPopup } from "./GuestPopup";
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
@@ -9,7 +8,6 @@ export function PageShell({ children }: { children: ReactNode }) {
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
-      <GuestPopup />
     </div>
   );
 }
