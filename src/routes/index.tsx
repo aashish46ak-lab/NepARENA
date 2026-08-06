@@ -115,8 +115,20 @@ function HomePage() {
   const { data: latestMembers = [] } = useLatestMembers(5);
   const featured = tournaments[0];
 
-  if (loading) return null;
-  if (isAdmin) return null;
+  if (loading || isAdmin) {
+    return (
+      <PageShell>
+        <div className="min-h-[60vh] grid place-items-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+            <p className="text-sm text-muted-foreground">
+              {isAdmin ? "Opening dashboard…" : "Loading…"}
+            </p>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
@@ -535,4 +547,4 @@ function InfoCell({
       <div className="mt-1 font-semibold">{value}</div>
     </div>
   );
-                }
+}
