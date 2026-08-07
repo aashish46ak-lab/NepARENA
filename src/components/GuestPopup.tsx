@@ -15,6 +15,9 @@ const KEY = "efn-guest-dismissed";
 
 export function GuestPopup() {
   const { user, loading } = useAuth();
+  // TEMPORARY: disable GuestPopup mounting during debugging of homepage hydration.
+  // Prevents the component from rendering or running effects while we test.
+  if (true) return null;
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
