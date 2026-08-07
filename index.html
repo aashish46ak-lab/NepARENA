@@ -1,224 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#050b18">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>eFootball Nepal • Coming Soon</title>
 
-<title>eFootball Nepal | Coming Soon</title>
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+    }
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    body{
+      font-family:Inter,Arial,sans-serif;
+      background:linear-gradient(180deg,#07111f,#030811);
+      color:#fff;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:20px;
+    }
 
-<style>
+    .container{
+      width:100%;
+      max-width:460px;
+      text-align:center;
+    }
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:'Poppins',sans-serif;
-}
+    .logo{
+      width:95px;
+      height:95px;
+      border-radius:22px;
+      margin-bottom:25px;
+      box-shadow:0 0 35px rgba(0,140,255,.35);
+    }
 
-body{
-background:
-radial-gradient(circle at top,#0f4cff55,transparent 35%),
-radial-gradient(circle at bottom,#ff2a6d20,transparent 30%),
-#050b18;
-color:#fff;
-overflow:hidden;
-}
+    h1{
+      font-size:2.3rem;
+      font-weight:800;
+      margin-bottom:12px;
+      color:#fff;
+    }
 
-.container{
-min-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-padding:25px;
-text-align:center;
-}
+    p{
+      color:#b8c8dc;
+      font-size:1rem;
+      line-height:1.6;
+      margin-bottom:35px;
+      padding:0 10px;
+    }
 
-.card{
-width:100%;
-max-width:950px;
-}
+    .countdown{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin-bottom:35px;
+    }
 
-.logo{
-width:110px;
-height:110px;
-border-radius:22px;
-box-shadow:0 0 40px #1d6dff88;
-animation:float 4s ease-in-out infinite;
-}
+    .box{
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:15px 5px;
+      backdrop-filter:blur(10px);
+    }
 
-@keyframes float{
-0%,100%{transform:translateY(0);}
-50%{transform:translateY(-10px);}
-}
+    .num{
+      font-size:1.5rem;
+      font-weight:700;
+      color:#fff;
+    }
 
-.small{
-margin-top:25px;
-font-size:15px;
-letter-spacing:3px;
-color:#7db7ff;
-text-transform:uppercase;
-}
+    .label{
+      margin-top:5px;
+      color:#8ca7c8;
+      font-size:.72rem;
+      text-transform:uppercase;
+      letter-spacing:.8px;
+    }
 
-h1{
-margin-top:12px;
-font-size:58px;
-font-weight:800;
-line-height:1.05;
-}
+    .buttons{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
 
-.subtitle{
-margin-top:15px;
-font-size:18px;
-color:#bdd8ff;
-max-width:650px;
-margin-inline:auto;
-line-height:1.8;
-}
+    .btn{
+      text-decoration:none;
+      color:#fff;
+      background:#1877f2;
+      padding:12px 22px;
+      border-radius:12px;
+      font-weight:600;
+      transition:.2s;
+    }
 
-.countdown{
-margin-top:45px;
-display:flex;
-justify-content:center;
-gap:18px;
-flex-wrap:wrap;
-}
+    .btn:hover{
+      transform:translateY(-2px);
+    }
 
-.box{
-width:140px;
-padding:22px;
-border-radius:18px;
-background:rgba(255,255,255,.05);
-backdrop-filter:blur(16px);
-border:1px solid rgba(255,255,255,.08);
-box-shadow:0 0 30px rgba(33,111,255,.18);
-transition:.35s;
-}
+    .btn.messenger{
+      background:#0084ff;
+    }
 
-.box:hover{
-transform:translateY(-8px);
-box-shadow:0 0 35px rgba(33,111,255,.4);
-}
+    @media(max-width:420px){
 
-.num{
-font-size:38px;
-font-weight:800;
-}
+      h1{
+        font-size:1.9rem;
+      }
 
-.label{
-margin-top:8px;
-font-size:13px;
-letter-spacing:2px;
-text-transform:uppercase;
-color:#9fc5ff;
-}
+      .num{
+        font-size:1.25rem;
+      }
 
-.buttons{
-margin-top:45px;
-display:flex;
-justify-content:center;
-gap:18px;
-flex-wrap:wrap;
-}
+      .label{
+        font-size:.65rem;
+      }
 
-.btn{
-display:flex;
-align-items:center;
-gap:10px;
-padding:15px 26px;
-border-radius:50px;
-text-decoration:none;
-font-weight:600;
-transition:.35s;
-background:linear-gradient(135deg,#0d6efd,#4ea3ff);
-color:white;
-box-shadow:0 0 25px rgba(0,119,255,.35);
-}
+      .countdown{
+        gap:8px;
+      }
 
-.btn:hover{
-transform:translateY(-4px);
-box-shadow:0 0 40px rgba(0,119,255,.6);
-}
-
-.btn svg{
-width:22px;
-height:22px;
-fill:white;
-}
-
-.footer{
-margin-top:55px;
-font-size:14px;
-color:#8cb5ff;
-}
-
-@media(max-width:768px){
-
-h1{
-font-size:40px;
-}
-
-.box{
-width:125px;
-}
-
-.num{
-font-size:30px;
-}
-
-.subtitle{
-font-size:16px;
-}
-
-}
-
-</style>
-
+      .box{
+        padding:12px 2px;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="container">
 
-<div class="card">
+<img src="/android-chrome-512x512.png" class="logo" alt="Logo">
 
-<img src="/android-chrome-512x512.png" class="logo">
+<h1>Coming Soon...</h1>
 
-<div class="small">
-eFootball Nepal
-</div>
-
-<h1>WE'RE COOKING SOMETHING</h1>
-
-<p class="subtitle">
-We're rebuilding eFootball Nepal from the ground up.<br>
-See you soon...
+<p>
+We're cooking up something awesome.<br>
+Stay tuned—we'll see you very soon!
 </p>
 
 <div class="countdown">
 
 <div class="box">
-<div id="days" class="num">00</div>
+<div class="num" id="days">00</div>
 <div class="label">Days</div>
 </div>
 
 <div class="box">
-<div id="hours" class="num">00</div>
+<div class="num" id="hours">00</div>
 <div class="label">Hours</div>
 </div>
 
 <div class="box">
-<div id="minutes" class="num">00</div>
+<div class="num" id="minutes">00</div>
 <div class="label">Minutes</div>
 </div>
 
 <div class="box">
-<div id="seconds" class="num">00</div>
+<div class="num" id="seconds">00</div>
 <div class="label">Seconds</div>
 </div>
 
@@ -226,27 +171,17 @@ See you soon...
 
 <div class="buttons">
 
-<a class="btn"
+<a class="btn messenger"
 href="https://m.me/j/AbY6Z-raYhI7QYfY/?send_source=gc%3Acopy_invite_link_c"
 target="_blank">
-
-💬 Messenger Community
-
+💬 Messenger GC
 </a>
 
 <a class="btn"
 href="https://www.facebook.com/share/1bYndqKpBM/"
 target="_blank">
-
 📘 Facebook Page
-
 </a>
-
-</div>
-
-<div class="footer">
-© 2026 eFootball Nepal • Building the best eFootball community in Nepal
-</div>
 
 </div>
 
@@ -254,27 +189,36 @@ target="_blank">
 
 <script>
 
-const target=new Date("2026-09-02T00:00:00+05:45").getTime();
+const target=new Date("2026-09-02T00:00:00+05:45");
 
 function update(){
 
-const now=new Date().getTime();
+const now=new Date();
 
-const diff=target-now;
+let diff=target-now;
 
-const d=Math.floor(diff/(1000*60*60*24));
-const h=Math.floor((diff%(1000*60*60*24))/(1000*60*60));
-const m=Math.floor((diff%(1000*60*60))/(1000*60));
-const s=Math.floor((diff%(1000*60))/1000);
+if(diff<0)diff=0;
 
-document.getElementById("days").innerHTML=d;
-document.getElementById("hours").innerHTML=String(h).padStart(2,"0");
-document.getElementById("minutes").innerHTML=String(m).padStart(2,"0");
-document.getElementById("seconds").innerHTML=String(s).padStart(2,"0");
+const days=Math.floor(diff/1000/60/60/24);
+
+const hours=Math.floor(diff/1000/60/60)%24;
+
+const minutes=Math.floor(diff/1000/60)%60;
+
+const seconds=Math.floor(diff/1000)%60;
+
+document.getElementById("days").innerText=days;
+
+document.getElementById("hours").innerText=String(hours).padStart(2,"0");
+
+document.getElementById("minutes").innerText=String(minutes).padStart(2,"0");
+
+document.getElementById("seconds").innerText=String(seconds).padStart(2,"0");
 
 }
 
 update();
+
 setInterval(update,1000);
 
 </script>
