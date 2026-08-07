@@ -1,3 +1,4 @@
+/* This file was generated from the historical commit tree and restores the repository state. */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -20,12 +21,8 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">
-          Page not found
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">The page you're looking for doesn't exist or has been moved.</p>
         <div className="mt-6">
           <Link
             to="/"
@@ -49,12 +46,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground break-words">
-          {error?.message || "Something went wrong."}
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">This page didn't load</h1>
+        <p className="mt-2 text-sm text-muted-foreground break-words">{error?.message || "Something went wrong."}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -95,8 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "eFootball Nepal — Tournaments, Community & Hall of Fame" },
       {
         name: "description",
-        content:
-          "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
+        content: "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
       },
       { name: "author", content: "eFootball Nepal" },
       { name: "theme-color", content: "#0b1220" },
@@ -113,8 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:description",
-        content:
-          "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
+        content: "The official home of competitive eFootball in Nepal. Tournaments, players, hall of fame, and community.",
       },
       {
         property: "og:image",
