@@ -15,6 +15,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
+import ComingSoon from "@/components/ComingSoon";
+import { COMING_SOON } from "@/config/comingSoon";
 
 function NotFoundComponent() {
   return (
@@ -177,6 +179,13 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
+  // When Coming Soon is enabled, render only the landing page and do not mount
+  // the rest of the app (AuthProvider, Outlet, etc.). This keeps the page
+  // lightweight and independent from auth or data APIs.
+  if (COMING_SOON) {
+    return <ComingSoon />;
+  }
+
   const { queryClient } = Route.useRouteContext();
 
   return (
