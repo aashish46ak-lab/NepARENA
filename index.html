@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>eFootball Nepal — Coming Soon</title>
+    <meta name="theme-color" content="#050b18" />
+    <style>
+      :root{color-scheme:dark}
+      html,body{height:100%;}
+      body{margin:0;background:#050b18;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;color:#e6f0ff;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+      .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+      .card{max-width:920px;width:100%;text-align:center}
+      .logo{height:96px;width:96px;border-radius:18px;box-shadow:0 20px 60px rgba(2,9,27,0.6);display:inline-block}
+      h1{margin:18px 0 6px;font-size:44px;line-height:1;font-weight:800;color:#dbeafe}
+      p.lead{margin:0;color:#9fd1ff}
+      .count{display:flex;gap:14px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+      .cell{min-width:80px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);backdrop-filter:blur(6px);padding:14px 12px;border-radius:10px}
+      .num{font-size:22px;font-weight:700;color:#e6f8ff}
+      .lbl{margin-top:6px;font-size:11px;color:#9fd1ff;text-transform:uppercase}
+      @media(min-width:640px){h1{font-size:56px}.cell{min-width:96px;padding:18px 16px}.num{font-size:28px}}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <main class="card" role="main" aria-live="polite">
+        <div style="display:flex;align-items:center;flex-direction:column;">
+          <img class="logo" src="/android-chrome-512x512.png" alt="eFootball Nepal logo" />
+          <h1>COMING SOON</h1>
+          <p class="lead">We're rebuilding something better.</p>
+        </div>
+
+        <div class="count" id="count">
+          <div class="cell"><div class="num" id="days">--</div><div class="lbl">Days</div></div>
+          <div class="cell"><div class="num" id="hours">--</div><div class="lbl">Hours</div></div>
+          <div class="cell"><div class="num" id="minutes">--</div><div class="lbl">Minutes</div></div>
+          <div class="cell"><div class="num" id="seconds">--</div><div class="lbl">Seconds</div></div>
+        </div>
+
+        <noscript style="display:block;margin-top:18px;color:#9fbff6;text-align:center;font-size:13px;">JavaScript is required to show the live countdown.</noscript>
+      </main>
+    </div>
+
+    <script>
+      (function(){
+        // Target: Sep 2, 2026 00:00 NPT (UTC+05:45)
+        var targetIso = '2026-09-02T00:00:00+05:45';
+        var target = new Date(targetIso);
+        function pad(n){ return String(n).padStart(2,'0'); }
+        function tick(){
+          var now = new Date();
+          var diff = Math.max(0, target.getTime() - now.getTime());
+          var total = Math.floor(diff/1000);
+          var days = Math.floor(total / (3600*24));
+          var hours = Math.floor((total % (3600*24)) / 3600);
+          var minutes = Math.floor((total % 3600) / 60);
+          var seconds = Math.floor(total % 60);
+          document.getElementById('days').textContent = days;
+          document.getElementById('hours').textContent = pad(hours);
+          document.getElementById('minutes').textContent = pad(minutes);
+          document.getElementById('seconds').textContent = pad(seconds);
+        }
+        // Initial tick + interval
+        try{ tick(); var id = setInterval(tick,1000); }catch(e){}
+      })();
+    </script>
+  </body>
+</html>
