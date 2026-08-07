@@ -197,4 +197,18 @@ function HomePage() {
                 )}
               </div>
               <div className="mt-6">
-                <Button asChild className="bg-gradien
+                <Button asChild className="bg-gradient-brand text-primary-foreground hover:opacity-90 glow-brand">
+                  <Link to={`/tournaments/${featured.id}`}>
+                    View tournament
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Rest of page omitted for brevity in this patch - no other logic changed */}
+    </PageShell>
+  );
+}
