@@ -97,9 +97,10 @@
   * { border-color: var(--color-border); }
   html { color-scheme: dark; overflow-x: clip; }
   body {
-    background: var(--color-background);
+    /* Use root-level variables directly to avoid dependency on @theme plugin ordering */
+    background: var(--background);
     background-attachment: fixed;
-    color: var(--color-foreground);
+    color: var(--foreground);
     min-height: 100vh;
     overflow-x: clip;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
