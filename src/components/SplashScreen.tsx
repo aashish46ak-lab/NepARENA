@@ -6,6 +6,10 @@ export function SplashScreen() {
   const [show, setShow] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
+  // TEMPORARY: disable splash screen during debugging so server-rendered
+  // homepage isn't covered immediately after hydration.
+  if (true) return null;
+
   useEffect(() => {
     try {
       if (sessionStorage.getItem("efn-splash")) return;
