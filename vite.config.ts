@@ -1,27 +1,21 @@
-import { defineConfig } from "vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { nitro } from "nitro/vite";
-import viteReact from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import viteTsConfigPaths from "vite-tsconfig-paths";
+import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 /**
- * Blank white screen was caused by Vercel serving static index.html only
- * (no Nitro server / no JS bundles).
- * Use official TanStack Start + Nitro Vercel preset.
+ * Lovable TanStack config + force Nitro Vercel preset.
+ * Do NOT set vercel.json "framework": null — that caused static-only blank page.
  */
 export default defineConfig({
-  plugins: [
-    viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
-    tailwindcss(),
-    tanstackStart({
-      server: { entry: "server" },
-    }),
-    nitro({ preset: "vercel" }),
-    viteReact(),
-  ],
-  build: {
-    assetsInlineLimit: 4096,
-    chunkSizeWarningLimit: 1000,
+  tanstackStart: {
+    server: { entry: "server" },
+  },
+  nitro: {
+    preset: "vercel",
+  },
+  vite: {
+    build: {
+      assetsInlineLimit: 4096,
+      chunkSizeWarningLimit: 1000,
+    },
+    plugins: [],
   },
 });

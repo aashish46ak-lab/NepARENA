@@ -17,8 +17,6 @@ import {
   Menu,
   Shield,
   User as UserIcon,
-  Trophy,
-  Users,
   Building2,
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -85,8 +83,7 @@ const ADMIN_NAV = [
   },
 ];
 
-/** Platform logo: use android-chrome until public/neparena-logo.png is uploaded */
-const LOGO_SRC = "/android-chrome-512x512.png";
+const LOGO_SRC = "/neparena-logo.png";
 
 export function Header() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -120,6 +117,9 @@ export function Header() {
             src={LOGO_SRC}
             alt={PLATFORM_NAME}
             className="h-8 w-8 rounded-lg object-cover"
+            onError={(e) => {
+              e.currentTarget.src = "/android-chrome-512x512.png";
+            }}
           />
           <span className="font-bold hidden sm:inline text-gradient-brand">
             {settings?.site_name ?? PLATFORM_NAME}

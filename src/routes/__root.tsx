@@ -110,17 +110,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "NepARENA" },
       {
         property: "og:image",
-        content: "https://neparena.vercel.app/android-chrome-512x512.png",
+        content: "https://neparena.vercel.app/neparena-logo.png",
       },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       {
         rel: "icon",
-        href: "/android-chrome-512x512.png",
+        href: "/neparena-logo.png",
         type: "image/png",
       },
-      { rel: "apple-touch-icon", href: "/android-chrome-512x512.png" },
+      { rel: "apple-touch-icon", href: "/neparena-logo.png" },
     ],
   }),
   shellComponent: RootShell,
