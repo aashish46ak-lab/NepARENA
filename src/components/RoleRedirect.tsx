@@ -1,13 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { isSuperAdminEmail } from "@/lib/organizers";
 import { toast } from "sonner";
 
 /**
- * After a successful sign-in, send each user to the home surface for their role.
- * Owner / moderator -> admin dashboard, everyone else -> their member dashboard.
- * Only runs on the auth screens or the landing page right after login, so normal
- * browsing is never hijacked.
+ * After sign-in on auth screens only:
+ * Super Admin → /platform
+ * Organizer admin/mod → /dashboard (existing reusable template)
+ * Member → /profile
  */
 export function RoleRedirect() {
   const { user, loading, isAdmin, profile, signOut } = useAuth();
@@ -20,7 +21,6 @@ export function RoleRedirect() {
       if (!user) handled.current = null;
       return;
     }
-    // Suspended accounts are signed out immediately, wherever they are.
     if (profile?.is_suspended) {
       toast.error("Your account has been suspended. Contact the admins for help.");
       signOut();
@@ -30,6 +30,11 @@ export function RoleRedirect() {
     const onAuthScreen = pathname === "/auth" || pathname.startsWith("/auth/");
     if (!onAuthScreen) return;
     handled.current = user.id;
+
+    if (isSuperAdminEmail(user.email)) {
+      router.navigate({ to: "/platform", replace: true });
+      return;
+    }
     router.navigate({ to: isAdmin ? "/dashboard" : "/profile", replace: true });
   }, [loading, user, isAdmin, profile, pathname, router, signOut]);
 

@@ -19,9 +19,11 @@ import {
   User as UserIcon,
   Trophy,
   Users,
+  Building2,
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { isSuperAdminEmail, PLATFORM_NAME } from "@/lib/organizers";
 
 const PUBLIC_NAV = [
   { to: "/", label: "Home" },
@@ -85,6 +87,7 @@ const ADMIN_NAV = [
 
 export function Header() {
   const { user, profile, isAdmin, signOut } = useAuth();
+  const isSuperAdmin = isSuperAdminEmail(user?.email);
   const [activeMenu, setActiveMenu] = useState<any>(null);
   const settings = useSiteSettings();
   const router = useRouter();
@@ -97,83 +100,95 @@ export function Header() {
     .slice(0, 2)
     .toUpperCase();
 
-  const NAV = isAdmin ? ADMIN_NAV : PUBLIC_NAV;
+  const NAV = isAdmin
+    ? [
+        ...(isSuperAdmin
+          ? [{ label: `${PLATFORM_NAME} Platform`, to: "/platform" as const }]
+          : []),
+        ...ADMIN_NAV,
+      ]
+    : PUBLIC_NAV;
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-border/60">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-        <Link
-          to={isAdmin ? "/dashboard" : "/"}
-          className="flex items-center gap-2 font-bold"
-        >
-          {settings?.logo_url ? (
-            <img
-              src={settings.logo_url}
-              alt=""
-              className="h-8 w-8 rounded"
-            />
-          ) : (
-            <div className="h-8 w-8 rounded bg-gradient-brand grid place-items-center">
-              <Trophy className="h-4 w-4 text-primary-foreground" />
-            </div>
-          )}
-          <span className="text-gradient-brand text-lg tracking-tight">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 h-14">
+        <Link to="/" className="flex items-center gap-2 shrink-0">
+          <img
+            src="/android-chrome-512x512.png"
+            alt=""
+            className="h-8 w-8 rounded-lg"
+          />
+          <span className="font-bold hidden sm:inline text-gradient-brand">
             {settings?.site_name ?? "eFootball Nepal"}
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
           {NAV.map((n) => (
-            <Link
-              key={n.label}
-              to={n.to}
-              search={"search" in n ? n.search : undefined}
-              onClick={() => setActiveMenu(n)}
-              className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-              activeProps={{
-                className:
-                  "px-3 py-1.5 rounded-md text-sm text-foreground bg-white/10",
-              }}
-            >
-              {n.label}
-            </Link>
+            <div key={n.label} className="relative">
+              {"sub" in n && n.sub ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveMenu(activeMenu?.label === n.label ? null : n)
+                  }
+                  className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5"
+                >
+                  {n.label}
+                </button>
+              ) : (
+                <Link
+                  to={n.to}
+                  search={"search" in n ? (n as any).search : undefined}
+                  className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  activeProps={{
+                    className:
+                      "px-3 py-1.5 rounded-md text-sm text-foreground bg-white/10",
+                  }}
+                >
+                  {n.label}
+                </Link>
+              )}
+            </div>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 shrink-0">
           {user && <NotificationsBell />}
 
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="rounded-full ring-2 ring-transparent hover:ring-brand/50 transition">
-                  <Avatar className="h-9 w-9">
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="h-8 w-8">
                     <AvatarImage src={profile?.avatar_url ?? undefined} />
                     <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="text-sm font-medium truncate">
-                    {profile?.username ?? user.email}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {user.email}
-                  </div>
+                <DropdownMenuLabel className="truncate">
+                  {profile?.username ?? user.email}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/profile">
-                    <UserIcon className="h-4 w-4 mr-2" /> My Profile
+                    <UserIcon className="h-4 w-4 mr-2" /> Profile
                   </Link>
                 </DropdownMenuItem>
+                {isSuperAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/platform">
+                      <Building2 className="h-4 w-4 mr-2" /> {PLATFORM_NAME} Platform
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 {isAdmin && (
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard" search={{ t: "dashboard" }}>
-                      <Shield className="h-4 w-4 mr-2" /> Admin
+                    <Link to="/dashboard">
+                      <Shield className="h-4 w-4 mr-2" /> eFootball Nepal Admin
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -209,7 +224,7 @@ export function Header() {
                   <Link
                     key={n.label}
                     to={n.to}
-                    search={"search" in n ? n.search : undefined}
+                    search={"search" in n ? (n as any).search : undefined}
                     className="px-3 py-2 rounded-md hover:bg-white/5"
                   >
                     {n.label}
@@ -225,11 +240,19 @@ export function Header() {
                 )}
                 {isAdmin && (
                   <>
+                    {isSuperAdmin && (
+                      <Link
+                        to="/platform"
+                        className="px-3 py-2 rounded-md hover:bg-white/5 flex items-center gap-2"
+                      >
+                        <Building2 className="h-4 w-4" /> {PLATFORM_NAME} Platform
+                      </Link>
+                    )}
                     <Link
                       to="/dashboard"
                       className="px-3 py-2 rounded-md hover:bg-white/5"
                     >
-                      Dashboard
+                      eFootball Nepal Admin
                     </Link>
                     <Link
                       to="/"
