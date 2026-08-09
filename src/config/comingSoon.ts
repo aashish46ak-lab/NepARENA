@@ -1,3 +1,2 @@
-// Dev preview: full app visible.
-// Production (main) can keep Coming Soon until you choose otherwise.
+// Coming Soon mode is OFF. Do not set to true on production.
 export const COMING_SOON = false;
