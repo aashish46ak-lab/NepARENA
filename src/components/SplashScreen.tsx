@@ -1,26 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * Client-only launch splash (avoids SSR hydration mismatch).
- * Shows briefly after mount, then always dismisses — never sticks forever.
+ * Client-only splash. Shows once per page load, then permanently dismissed.
+ * Uses a ref guard so StrictMode double-mount cannot restart the animation loop.
  */
-export function SplashScreen({ maxMs = 1400 }: { maxMs?: number }) {
-  // false on server + first client paint → no hydration mismatch, SSR UI stays visible
+export function SplashScreen({ maxMs = 1200 }: { maxMs?: number }) {
   const [phase, setPhase] = useState<"hidden" | "in" | "out">("hidden");
+  const ran = useRef(false);
 
   useEffect(() => {
-    let t1: ReturnType<typeof setTimeout> | undefined;
-    let t2: ReturnType<typeof setTimeout> | undefined;
-    let t3: ReturnType<typeof setTimeout> | undefined;
+    // StrictMode runs effects twice in dev — only allow one splash cycle
+    if (ran.current) return;
+    ran.current = true;
 
-    // Enter on next frame so SSR content is already painted
-    t1 = setTimeout(() => setPhase("in"), 30);
-
-    // Start exit
-    t2 = setTimeout(() => setPhase("out"), Math.max(600, maxMs - 400));
-
-    // Fully remove (hard cap — never leave splash up)
-    t3 = setTimeout(() => setPhase("hidden"), maxMs + 50);
+    const t1 = setTimeout(() => setPhase("in"), 20);
+    const t2 = setTimeout(() => setPhase("out"), Math.max(500, maxMs - 350));
+    const t3 = setTimeout(() => setPhase("hidden"), maxMs);
 
     return () => {
       clearTimeout(t1);
@@ -42,11 +37,10 @@ export function SplashScreen({ maxMs = 1400 }: { maxMs?: number }) {
           "radial-gradient(ellipse 90% 70% at 50% 15%, #102044 0%, #0a162e 40%, #050b16 100%)",
         opacity: exiting ? 0 : 1,
         transform: exiting ? "scale(1.03)" : "scale(1)",
-        transition: "opacity 0.45s ease, transform 0.45s ease",
-        pointerEvents: exiting ? "none" : "auto",
+        transition: "opacity 0.4s ease, transform 0.4s ease",
+        pointerEvents: "none",
       }}
     >
-      {/* animated ambient glow */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -59,7 +53,7 @@ export function SplashScreen({ maxMs = 1400 }: { maxMs?: number }) {
       <div
         className="relative flex flex-col items-center gap-6 px-6"
         style={{
-          animation: exiting ? undefined : "na-rise 0.7s cubic-bezier(.16,1,.3,1) both",
+          animation: exiting ? undefined : "na-rise 0.65s cubic-bezier(.16,1,.3,1) both",
         }}
       >
         <div className="relative">
@@ -75,7 +69,7 @@ export function SplashScreen({ maxMs = 1400 }: { maxMs?: number }) {
             alt="NepARENA"
             width={96}
             height={96}
-            className="relative h-24 w-24 rounded-[24px] object-cover shadow-2xl"
+            className="relative h-24 w-24 rounded-[24px] object-cover"
             style={{
               boxShadow:
                 "0 0 0 1px rgba(255,255,255,0.12), 0 20px 50px rgba(0,0,0,0.45)",
@@ -93,10 +87,7 @@ export function SplashScreen({ maxMs = 1400 }: { maxMs?: number }) {
           >
             NepARENA
           </p>
-          <p
-            className="mt-2 text-xl font-bold tracking-tight sm:text-2xl"
-            style={{ color: "#f0f7ff" }}
-          >
+          <p className="mt-2 text-xl font-bold tracking-tight sm:text-2xl" style={{ color: "#f0f7ff" }}>
             Tournament Platform
           </p>
           <p className="mt-1.5 text-xs" style={{ color: "rgba(147,197,253,0.45)" }}>
@@ -104,7 +95,6 @@ export function SplashScreen({ maxMs = 1400 }: { maxMs?: number }) {
           </p>
         </div>
 
-        {/* sleek progress track */}
         <div
           className="h-[3px] w-48 overflow-hidden rounded-full"
           style={{ background: "rgba(255,255,255,0.08)" }}

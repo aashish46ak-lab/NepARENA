@@ -15,6 +15,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen } from "@/components/SplashScreen";
+import { disablePWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
   return (
@@ -38,7 +39,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, restart }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -59,10 +60,56 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             type="button"
             onClick={() => {
               try {
-                for (const k of Object.keys(sessionStorage)) {
-                  if (k.startsWith("tanstack_router_reload")) sessionStorage.removeItem(k);
+                const keys: string[] = [];
+                for (let i = 0; i < sessionStorage.length; i++) {
+                  const k = sessionStorage.key(i);
+                  if (k?.startsWith("tanstack_router_reload")) keys.push(k);
                 }
+                keys.forEach((k) => sessionStorage.removeItem(k));
               } catch {}
+              window.location.href = "/";
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Go home
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              router.invalidate();
+              // reset prop name from TanStack error component
+              (arguments as unknown as { 0?: { reset?: () => void } });
+            }}
+            className="inline-flex items-center justify-center rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  console.error(error);
+  const router = useRouter();
+  useEffect(() => {
+    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#061226] px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-xl font-semibold tracking-tight text-white">
+          This page didn't load
+        </h1>
+        <p className="mt-2 text-sm text-blue-200/60 break-words">
+          {error?.message || "Something went wrong."}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
               window.location.href = "/";
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
@@ -85,7 +132,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-/** Catches client render crashes so the tree is not left fully blank. */
 class ClientErrorBoundary extends Component<
   { children: ReactNode },
   { error: Error | null }
@@ -169,7 +215,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
+  errorComponent: SafeErrorComponent,
 });
 
 function RootShell({ children }: { children: ReactNode }) {
@@ -183,14 +229,16 @@ function RootShell({ children }: { children: ReactNode }) {
               "html,body{margin:0;min-height:100%;background:#061226;color:#e8eefc}#root{min-height:100vh}",
           }}
         />
+        {/* AdSense kept */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
           crossOrigin="anonymous"
         />
+        {/* Nuclear SW kill — runs before any app JS */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}var keys=[];for(var i=0;i<sessionStorage.length;i++){var k=sessionStorage.key(i);if(k&&k.indexOf("tanstack_router_reload")===0)keys.push(k)}keys.forEach(function(k){sessionStorage.removeItem(k)})}catch(e){}})();`,
+            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}}catch(e){}})();`,
           }}
         />
       </head>
@@ -205,11 +253,15 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    void disablePWA();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ClientErrorBoundary>
-          <SplashScreen maxMs={1300} />
+          <SplashScreen maxMs={1200} />
           <RoleRedirect />
           <Outlet />
           <Toaster richColors position="top-right" />
