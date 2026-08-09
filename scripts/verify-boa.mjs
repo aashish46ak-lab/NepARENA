@@ -1,29 +1,55 @@
-import { existsSync, unlinkSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import {
+  existsSync,
+  unlinkSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
+import { resolve, join } from "node:path";
 
 const root = process.cwd();
-const config = resolve(root, ".vercel/output/config.json");
-const server = resolve(root, ".vercel/output/functions/__server.func");
-const staticIndex = resolve(root, ".vercel/output/static/index.html");
+const out = resolve(root, ".vercel/output");
+const configPath = resolve(out, "config.json");
+const serverDir = resolve(out, "functions/__server.func");
+const staticDir = resolve(out, "static");
 
-// Critical: if index.html is in static/, Vercel filesystem route serves it
-// instead of the TanStack SSR server → blank / Coming Soon page.
-if (existsSync(staticIndex)) {
-  unlinkSync(staticIndex);
-  console.log("[NepARENA] Removed .vercel/output/static/index.html (SSR will handle /)");
+function rmIndexHtml(dir) {
+  if (!existsSync(dir)) return;
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) {
+      rmIndexHtml(p);
+    } else if (name === "index.html") {
+      unlinkSync(p);
+      console.log("[NepARENA] Removed", p);
+    }
+  }
 }
 
-if (!existsSync(config) || !existsSync(server)) {
-  console.error(
-    "[NepARENA] Build Output API missing. Expected .vercel/output from Nitro.",
-  );
-  console.error("config:", existsSync(config), "server:", existsSync(server));
+if (!existsSync(configPath) || !existsSync(serverDir)) {
+  console.error("[NepARENA] Missing Build Output API (.vercel/output)");
+  console.error("config:", existsSync(configPath), "server:", existsSync(serverDir));
   process.exit(1);
 }
 
-try {
-  const cfg = JSON.parse(readFileSync(config, "utf8"));
-  console.log("[NepARENA] BOA routes:", JSON.stringify(cfg.routes ?? []));
-} catch {}
+// Never let static index.html shadow the SSR server
+rmIndexHtml(staticDir);
 
-console.log("[NepARENA] Vercel Build Output API OK");
+// Force server-first routing: assets cached, everything else → __server
+const cfg = JSON.parse(readFileSync(configPath, "utf8"));
+cfg.routes = [
+  {
+    src: "/assets/(.*)",
+    headers: { "cache-control": "public, max-age=31536000, immutable" },
+  },
+  {
+    src: "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp|txt|xml|webmanifest|js|css|woff2?)$)",
+    headers: { "cache-control": "public, max-age=86400" },
+  },
+  { handle: "filesystem" },
+  { src: "/(.*)", dest: "/__server" },
+];
+writeFileSync(configPath, JSON.stringify(cfg, null, 2));
+console.log("[NepARENA] BOA routes forced server-first:", JSON.stringify(cfg.routes));
+console.log("[NepARENA] Full app deploy ready");
