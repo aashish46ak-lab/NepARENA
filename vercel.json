@@ -1,4 +1,18 @@
 {
   "installCommand": "npm install",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "rewrites": [
+    { "source": "/favicon.ico", "destination": "/neparena-logo.png" }
+  ],
+  "headers": [
+    {
+      "source": "/(favicon.ico|neparena-logo.png|android-chrome-512x512.png)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
 }

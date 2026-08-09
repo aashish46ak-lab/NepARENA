@@ -14,10 +14,13 @@
       property="og:description"
       content="We're building the home for esports tournaments in Nepal. Stay tuned!"
     />
-    <meta property="og:image" content="/neparena-logo.png" />
+    <meta property="og:image" content="https://neparena.vercel.app/neparena-logo.png" />
     <meta property="og:type" content="website" />
-    <link rel="icon" href="/neparena-logo.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/neparena-logo.png" />
+    <!-- Favicon: NepARENA logo (cache-bust so old eFootball icon clears) -->
+    <link rel="icon" href="/neparena-logo.png?v=3" type="image/png" sizes="any" />
+    <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+    <link rel="shortcut icon" href="/neparena-logo.png?v=3" type="image/png" />
+    <link rel="apple-touch-icon" href="/neparena-logo.png?v=3" />
     <style>
       * {
         margin: 0;
@@ -140,7 +143,7 @@
     <div class="wrap" role="main">
       <img
         class="logo"
-        src="/neparena-logo.png"
+        src="/neparena-logo.png?v=3"
         alt="NepARENA"
         onerror="this.src='/android-chrome-512x512.png'"
       />
@@ -172,7 +175,6 @@
     </div>
     <script>
       (function () {
-        // Clear old SW / caches
         try {
           if ("serviceWorker" in navigator) {
             navigator.serviceWorker.getRegistrations().then(function (r) {
@@ -190,7 +192,6 @@
           }
         } catch (e) {}
 
-        // Target: 2 Sep 2026 00:00 Nepal Time (UTC+5:45)
         var target = new Date("2026-09-02T00:00:00+05:45").getTime();
 
         function pad(n) {
