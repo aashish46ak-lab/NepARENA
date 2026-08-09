@@ -1,41 +1,139 @@
-import React, { useEffect, useState } from "react";
-import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useRouter,
+  HeadContent,
+  Scripts,
+} from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
 
-// Emergency maintenance root — minimal, self-contained, no app imports.
-export const Route = createRootRouteWithContext()({
+import appCss from "../styles.css?url";
+import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider } from "@/hooks/useAuth";
+import { Toaster } from "@/components/ui/sonner";
+import { RoleRedirect } from "@/components/RoleRedirect";
+
+function NotFoundComponent() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-7xl font-bold text-foreground">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <div className="mt-6">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Go home
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  console.error(error);
+  const router = useRouter();
+  useEffect(() => {
+    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          This page didn't load
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground break-words">
+          {error?.message || "Something went wrong."}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                for (const k of Object.keys(sessionStorage)) {
+                  if (k.startsWith("tanstack_router_reload")) sessionStorage.removeItem(k);
+                }
+              } catch {}
+              window.location.href = "/";
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Go home
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "eFootball Nepal — Maintenance" },
+      { title: "NepARENA Dev — eFootball Nepal" },
+      {
+        name: "description",
+        content:
+          "NepARENA development preview. Multi-organizer tournament platform.",
+      },
+      { name: "author", content: "NepARENA" },
+      { name: "theme-color", content: "#0b1220" },
       { name: "robots", content: "noindex, nofollow" },
+      {
+        name: "google-adsense-account",
+        content: "ca-pub-3033911443659343",
+      },
+    ],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      {
+        rel: "icon",
+        href: "/android-chrome-512x512.png",
+        type: "image/png",
+      },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
-  shellComponent: MaintenanceShell,
-  component: MaintenancePage,
+  shellComponent: RootShell,
+  component: RootComponent,
+  notFoundComponent: NotFoundComponent,
+  errorComponent: ErrorComponent,
 });
 
-function MaintenanceShell({ children }: { children: React.ReactNode }) {
+function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
-        <meta name="theme-color" content="#031027" />
-        <style>{`
-          /* Minimal styles for emergency maintenance page */
-          html,body,#root { height: 100%; }
-          body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: #031027; color: #fff; }
-          .ms-container { min-height: 100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-          .ms-card { width:100%; max-width:920px; text-align:center; padding:28px; }
-          .ms-logo { height:92px; width:92px; border-radius:18px; box-shadow: 0 10px 30px rgba(14,42,86,0.45); }
-          .ms-title { margin-top:18px; font-weight:800; font-size:40px; letter-spacing:1px; color:#dbeafe; }
-          .ms-sub { margin-top:8px; color:#93c5fd; }
-          .ms-count { display:flex; gap:12px; justify-content:center; margin-top:22px; flex-wrap:wrap; }
-          .ms-cell { min-width:72px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(6px); padding:14px 12px; border-radius:10px; }
-          .ms-num { font-size:22px; font-weight:700; color:#e0f2fe; }
-          .ms-label { margin-top:6px; font-size:11px; color:#93c5fd; text-transform:uppercase; }
-          @media (min-width:640px){ .ms-title{font-size:56px;} .ms-cell{min-width:96px;padding:18px 16px;} .ms-num{font-size:28px;} }
-        `}</style>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
+          crossOrigin="anonymous"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body>
         {children}
@@ -45,46 +143,16 @@ function MaintenanceShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function useCountdown(targetIso: string) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const target = new Date(targetIso);
-  const diff = Math.max(0, target.getTime() - now.getTime());
-  const totalSec = Math.floor(diff / 1000);
-  const days = Math.floor(totalSec / (3600 * 24));
-  const hours = Math.floor((totalSec % (3600 * 24)) / 3600);
-  const minutes = Math.floor((totalSec % 3600) / 60);
-  const seconds = Math.floor(totalSec % 60);
-  return { days, hours, minutes, seconds };
-}
-
-function two(n: number) { return n.toString().padStart(2, "0"); }
-
-function MaintenancePage() {
-  // Nepal Time target: Sep 2, 2026 00:00 NPT (UTC+5:45)
-  const targetIso = "2026-09-02T00:00:00+05:45";
-  const { days, hours, minutes, seconds } = useCountdown(targetIso);
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
 
   return (
-    <div className="ms-container">
-      <div className="ms-card" role="main" aria-live="polite">
-        <div style={{display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column'}}>
-          <img src="/android-chrome-512x512.png" alt="eFootball Nepal" className="ms-logo" />
-          <h1 className="ms-title">COMING SOON</h1>
-          <div className="ms-sub">We're upgrading the eFootball Nepal experience. Stay tuned!</div>
-        </div>
-
-        <div className="ms-count" aria-hidden>
-          <div className="ms-cell"><div className="ms-num">{days}</div><div className="ms-label">Days</div></div>
-          <div className="ms-cell"><div className="ms-num">{two(hours)}</div><div className="ms-label">Hours</div></div>
-          <div className="ms-cell"><div className="ms-num">{two(minutes)}</div><div className="ms-label">Minutes</div></div>
-          <div className="ms-cell"><div className="ms-num">{two(seconds)}</div><div className="ms-label">Seconds</div></div>
-        </div>
-      </div>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RoleRedirect />
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
