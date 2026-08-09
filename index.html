@@ -4,15 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NepARENA</title>
-    <meta
-      name="description"
-      content="NepARENA — multi-organizer esports tournament platform for Nepal."
-    />
+    <meta name="description" content="NepARENA — multi-organizer esports tournament platform for Nepal." />
     <meta name="theme-color" content="#0b1220" />
     <link rel="icon" href="/neparena-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="/neparena-logo.png" />
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #0b1220; color: #e2e8f0; font-family: system-ui, sans-serif; }
+      #boot { max-width: 420px; margin: 20vh auto; padding: 24px; text-align: center; }
+      #boot img { width: 72px; height: 72px; border-radius: 16px; }
+      #boot h1 { font-size: 1.5rem; margin: 16px 0 8px; }
+      #boot p { opacity: 0.75; font-size: 0.9rem; line-height: 1.4; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot">
+        <img src="/neparena-logo.png" alt="NepARENA" />
+        <h1>NepARENA</h1>
+        <p>Loading…</p>
+      </div>
+    </div>
+    <script>
+      // Unregister any old service workers that could pin a blank cache
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+      }
+      if ("caches" in window) {
+        caches.keys().then(function (keys) {
+          keys.forEach(function (k) { caches.delete(k); });
+        });
+      }
+    </script>
   </body>
 </html>

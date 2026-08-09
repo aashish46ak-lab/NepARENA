@@ -1,22 +1,18 @@
-/* Emergency SW: clear caches + uninstall. No client.navigate (that caused loops). */
-self.addEventListener("install", function () {
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", function (event) {
-  event.waitUntil(
-    (async function () {
+/* Always uninstall — never cache app shell */
+self.addEventListener("install", (e) => self.skipWaiting());
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    (async () => {
       try {
-        var keys = await caches.keys();
-        await Promise.all(keys.map(function (k) { return caches.delete(k); }));
-      } catch (e) {}
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      } catch {}
       try {
         await self.registration.unregister();
-      } catch (e) {}
-    })()
+      } catch {}
+    })(),
   );
 });
-
-self.addEventListener("fetch", function (event) {
-  event.respondWith(fetch(event.request));
+self.addEventListener("fetch", (e) => {
+  e.respondWith(fetch(e.request));
 });
