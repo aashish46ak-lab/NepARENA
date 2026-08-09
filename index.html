@@ -3,57 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NepARENA | Coming Soon</title>
-    <meta name="theme-color" content="#031027" />
-    <link rel="icon" href="/neparena-logo.png?v=7" type="image/png" />
-    <style>
-      *{margin:0;padding:0;box-sizing:border-box}
-      html,body{min-height:100%;font-family:system-ui,sans-serif;background:#031027!important;color:#fff}
-      body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-        background:radial-gradient(circle at top,#0b1835 0%,#061226 45%,#02040a 100%)!important}
-      .wrap{text-align:center;max-width:920px;width:100%}
-      .logo{height:130px;width:130px;border-radius:30px;object-fit:cover;
-        box-shadow:0 12px 40px rgba(14,42,86,.55)}
-      .brand{margin-top:20px;font-size:15px;letter-spacing:.28em;text-transform:uppercase;color:#93c5fd;font-weight:600}
-      .title{margin-top:12px;font-weight:800;font-size:42px;letter-spacing:2px;color:#dbeafe}
-      .sub{margin-top:12px;color:#93c5fd;font-size:16px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.5}
-      .count{display:flex;gap:12px;justify-content:center;margin-top:28px;flex-wrap:wrap}
-      .cell{min-width:78px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px 12px;border-radius:14px}
-      .num{font-size:26px;font-weight:700;color:#e0f2fe}
-      .label{margin-top:6px;font-size:11px;color:#93c5fd;text-transform:uppercase}
-      .foot{margin-top:32px;font-size:13px;color:rgba(147,197,253,.7)}
-      @media(min-width:640px){.logo{height:150px;width:150px}.title{font-size:56px}.cell{min-width:100px}.num{font-size:30px}}
-    </style>
+    <title>NepARENA</title>
   </head>
   <body>
-    <div id="root">
-      <div class="wrap">
-        <img class="logo" src="/neparena-logo.png?v=7" alt="NepARENA" onerror="this.src='/android-chrome-512x512.png'"/>
-        <div class="brand">NepARENA</div>
-        <h1 class="title">COMING SOON</h1>
-        <p class="sub">Full platform is deploying. Multi-organizer esports for Nepal.</p>
-        <div class="count">
-          <div class="cell"><div class="num" id="d">—</div><div class="label">Days</div></div>
-          <div class="cell"><div class="num" id="h">—</div><div class="label">Hours</div></div>
-          <div class="cell"><div class="num" id="m">—</div><div class="label">Minutes</div></div>
-          <div class="cell"><div class="num" id="s">—</div><div class="label">Seconds</div></div>
-        </div>
-        <p class="foot">Launch target · 2 Sep 2026 · Nepal Time</p>
-      </div>
-    </div>
-    <script>
-      (function(){
-        var t=new Date("2026-09-02T00:00:00+05:45").getTime();
-        function p(n){return n<10?"0"+n:String(n)}
-        function tick(){
-          var s=Math.floor(Math.max(0,t-Date.now())/1000);
-          document.getElementById("d").textContent=String(Math.floor(s/86400));
-          document.getElementById("h").textContent=p(Math.floor((s%86400)/3600));
-          document.getElementById("m").textContent=p(Math.floor((s%3600)/60));
-          document.getElementById("s").textContent=p(s%60);
-        }
-        tick();setInterval(tick,1000);
-      })();
-    </script>
+    <div id="root"></div>
   </body>
 </html>
