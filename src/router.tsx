@@ -1,20 +1,24 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
-import { RoutePendingSplash } from "@/components/SplashScreen";
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
 
   const router = createRouter({
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
-    // ssr:false routes (dashboard/platform) used to flash blank blue — show branded splash
-    defaultPendingComponent: RoutePendingSplash,
-    defaultPendingMs: 0,
-    defaultPendingMinMs: 300,
+    // DO NOT set defaultPendingComponent to a full-screen forced splash.
+    // After hydration it can stick and replace the entire UI with a black screen.
   });
 
   return router;

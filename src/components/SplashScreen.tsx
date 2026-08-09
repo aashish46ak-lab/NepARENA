@@ -1,74 +1,85 @@
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
 
 /**
- * Figma-style launch splash — dark navy, logo, progress bar.
- * Covers the blue blank during auth / client route load so users
- * never see an empty blue screen between SSR and hydration.
+ * Client-only launch splash (avoids SSR hydration mismatch).
+ * Shows briefly after mount, then always dismisses — never sticks forever.
  */
-export function SplashScreen({
-  force = false,
-  minMs = 900,
-}: {
-  /** Keep visible while parent says loading */
-  force?: boolean;
-  minMs?: number;
-}) {
-  const [visible, setVisible] = useState(true);
-  const [fade, setFade] = useState(false);
-  const [minDone, setMinDone] = useState(false);
+export function SplashScreen({ maxMs = 1400 }: { maxMs?: number }) {
+  // false on server + first client paint → no hydration mismatch, SSR UI stays visible
+  const [phase, setPhase] = useState<"hidden" | "in" | "out">("hidden");
 
   useEffect(() => {
-    const t = setTimeout(() => setMinDone(true), minMs);
-    return () => clearTimeout(t);
-  }, [minMs]);
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    let t2: ReturnType<typeof setTimeout> | undefined;
+    let t3: ReturnType<typeof setTimeout> | undefined;
 
-  useEffect(() => {
-    if (force || !minDone) return;
-    setFade(true);
-    const t = setTimeout(() => setVisible(false), 420);
-    return () => clearTimeout(t);
-  }, [force, minDone]);
+    // Enter on next frame so SSR content is already painted
+    t1 = setTimeout(() => setPhase("in"), 30);
 
-  // If force goes true again (route change), bring splash back briefly
-  useEffect(() => {
-    if (force) {
-      setVisible(true);
-      setFade(false);
-    }
-  }, [force]);
+    // Start exit
+    t2 = setTimeout(() => setPhase("out"), Math.max(600, maxMs - 400));
 
-  if (!visible) return null;
+    // Fully remove (hard cap — never leave splash up)
+    t3 = setTimeout(() => setPhase("hidden"), maxMs + 50);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [maxMs]);
+
+  if (phase === "hidden") return null;
+
+  const exiting = phase === "out";
 
   return (
     <div
       aria-hidden
-      className={cn(
-        "fixed inset-0 z-[300] flex flex-col items-center justify-center",
-        "transition-opacity duration-400",
-        fade && "opacity-0 pointer-events-none",
-      )}
+      className="fixed inset-0 z-[300] flex flex-col items-center justify-center"
       style={{
         background:
-          "radial-gradient(ellipse 80% 60% at 50% 20%, #0b1835 0%, #061226 45%, #02040a 100%)",
+          "radial-gradient(ellipse 90% 70% at 50% 15%, #102044 0%, #0a162e 40%, #050b16 100%)",
+        opacity: exiting ? 0 : 1,
+        transform: exiting ? "scale(1.03)" : "scale(1)",
+        transition: "opacity 0.45s ease, transform 0.45s ease",
+        pointerEvents: exiting ? "none" : "auto",
       }}
     >
-      {/* soft glow */}
+      {/* animated ambient glow */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-40"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 40%, rgba(37,99,235,0.25) 0%, transparent 55%)",
+            "radial-gradient(circle at 50% 42%, rgba(56,189,248,0.22) 0%, transparent 50%)",
+          animation: "na-glow 2.2s ease-in-out infinite alternate",
         }}
       />
 
-      <div className="relative flex flex-col items-center gap-5 px-6">
+      <div
+        className="relative flex flex-col items-center gap-6 px-6"
+        style={{
+          animation: exiting ? undefined : "na-rise 0.7s cubic-bezier(.16,1,.3,1) both",
+        }}
+      >
         <div className="relative">
-          <div className="absolute -inset-3 rounded-[28px] bg-blue-500/20 blur-xl" />
+          <div
+            className="absolute -inset-4 rounded-[32px] blur-2xl"
+            style={{
+              background: "rgba(59,130,246,0.35)",
+              animation: "na-pulse 1.6s ease-in-out infinite",
+            }}
+          />
           <img
             src="/neparena-logo.png"
             alt="NepARENA"
-            className="relative h-[88px] w-[88px] rounded-[22px] object-cover shadow-2xl ring-1 ring-white/10"
+            width={96}
+            height={96}
+            className="relative h-24 w-24 rounded-[24px] object-cover shadow-2xl"
+            style={{
+              boxShadow:
+                "0 0 0 1px rgba(255,255,255,0.12), 0 20px 50px rgba(0,0,0,0.45)",
+            }}
             onError={(e) => {
               (e.target as HTMLImageElement).src = "/android-chrome-512x512.png";
             }}
@@ -77,40 +88,56 @@ export function SplashScreen({
 
         <div className="text-center">
           <p
-            className="text-[11px] font-semibold uppercase tracking-[0.28em] text-blue-300/90"
+            className="text-[11px] font-semibold uppercase tracking-[0.32em]"
+            style={{ color: "rgba(147,197,253,0.95)" }}
           >
             NepARENA
           </p>
-          <p className="mt-1.5 text-lg font-bold tracking-tight text-white sm:text-xl">
+          <p
+            className="mt-2 text-xl font-bold tracking-tight sm:text-2xl"
+            style={{ color: "#f0f7ff" }}
+          >
             Tournament Platform
           </p>
-          <p className="mt-1 text-xs text-blue-200/50">
+          <p className="mt-1.5 text-xs" style={{ color: "rgba(147,197,253,0.45)" }}>
             Host · Compete · Follow
           </p>
         </div>
 
-        {/* progress bar */}
-        <div className="mt-2 h-[3px] w-44 overflow-hidden rounded-full bg-white/10">
+        {/* sleek progress track */}
+        <div
+          className="h-[3px] w-48 overflow-hidden rounded-full"
+          style={{ background: "rgba(255,255,255,0.08)" }}
+        >
           <div
-            className="h-full w-1/3 rounded-full bg-gradient-to-r from-blue-400 via-sky-300 to-blue-500"
+            className="h-full rounded-full"
             style={{
-              animation: "neparena-splash-bar 1.05s ease-in-out infinite",
+              width: "40%",
+              background: "linear-gradient(90deg, #38bdf8, #60a5fa, #818cf8)",
+              animation: "na-bar 1s ease-in-out infinite",
             }}
           />
         </div>
       </div>
 
       <style>{`
-        @keyframes neparena-splash-bar {
+        @keyframes na-bar {
           0% { transform: translateX(-120%); }
-          100% { transform: translateX(340%); }
+          100% { transform: translateX(280%); }
+        }
+        @keyframes na-rise {
+          from { opacity: 0; transform: translateY(14px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes na-pulse {
+          0%, 100% { opacity: 0.45; transform: scale(0.96); }
+          50% { opacity: 0.85; transform: scale(1.05); }
+        }
+        @keyframes na-glow {
+          from { opacity: 0.55; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>
   );
-}
-
-/** Full-screen pending state for ssr:false routes (dashboard / platform). */
-export function RoutePendingSplash() {
-  return <SplashScreen force minMs={400} />;
 }

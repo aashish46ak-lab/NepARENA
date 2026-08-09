@@ -7,11 +7,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, Component, type ErrorInfo, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -85,6 +85,52 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+/** Catches client render crashes so the tree is not left fully blank. */
+class ClientErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("ClientErrorBoundary", error, info.componentStack);
+    reportLovableError(error, {
+      boundary: "client_error_boundary",
+      stack: info.componentStack,
+    });
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#061226] px-4 text-center">
+          <img
+            src="/neparena-logo.png"
+            alt="NepARENA"
+            className="h-16 w-16 rounded-2xl object-cover"
+          />
+          <h1 className="text-lg font-semibold text-white">Something went wrong</h1>
+          <p className="max-w-sm text-sm text-blue-200/60 break-words">
+            {this.state.error.message}
+          </p>
+          <button
+            type="button"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -131,10 +177,10 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        {/* Critical first-paint: never pure white / empty blue */}
         <style
           dangerouslySetInnerHTML={{
-            __html: `html,body{margin:0;min-height:100%;background:#061226;color:#e8eefc}#root{min-height:100vh}`,
+            __html:
+              "html,body{margin:0;min-height:100%;background:#061226;color:#e8eefc}#root{min-height:100vh}",
           }}
         />
         <script
@@ -144,7 +190,7 @@ function RootShell({ children }: { children: ReactNode }) {
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}for(var i=0;i<sessionStorage.length;i++){var k=sessionStorage.key(i);if(k&&k.indexOf("tanstack_router_reload")===0)sessionStorage.removeItem(k)}}catch(e){}})();`,
+            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}var keys=[];for(var i=0;i<sessionStorage.length;i++){var k=sessionStorage.key(i);if(k&&k.indexOf("tanstack_router_reload")===0)keys.push(k)}keys.forEach(function(k){sessionStorage.removeItem(k)})}catch(e){}})();`,
           }}
         />
       </head>
@@ -156,27 +202,18 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function AuthSplashGate({ children }: { children: ReactNode }) {
-  const { loading } = useAuth();
-  return (
-    <>
-      <SplashScreen force={loading} minMs={700} />
-      {children}
-    </>
-  );
-}
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AuthSplashGate>
+        <ClientErrorBoundary>
+          <SplashScreen maxMs={1300} />
           <RoleRedirect />
           <Outlet />
           <Toaster richColors position="top-right" />
-        </AuthSplashGate>
+        </ClientErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   );
