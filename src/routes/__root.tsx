@@ -89,28 +89,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "NepARENA Dev — eFootball Nepal" },
+      { title: "NepARENA — Tournament Platform" },
       {
         name: "description",
         content:
-          "NepARENA development preview. Multi-organizer tournament platform.",
+          "NepARENA is the multi-organizer esports tournament platform. Host, compete, and follow organizers across Nepal.",
       },
       { name: "author", content: "NepARENA" },
       { name: "theme-color", content: "#0b1220" },
-      { name: "robots", content: "noindex, nofollow" },
+      { name: "robots", content: "index, follow" },
       {
         name: "google-adsense-account",
         content: "ca-pub-3033911443659343",
+      },
+      { property: "og:title", content: "NepARENA — Tournament Platform" },
+      {
+        property: "og:description",
+        content: "Multi-organizer esports tournament platform for Nepal.",
+      },
+      { property: "og:site_name", content: "NepARENA" },
+      {
+        property: "og:image",
+        content: "https://efootballnepal.vercel.app/neparena-logo.png",
       },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       {
         rel: "icon",
-        href: "/android-chrome-512x512.png",
+        href: "/neparena-logo.png",
         type: "image/png",
       },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "apple-touch-icon", href: "/neparena-logo.png" },
     ],
   }),
   shellComponent: RootShell,
