@@ -114,12 +114,18 @@ export function Header() {
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 h-14">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <img
-            src="/android-chrome-512x512.png"
-            alt=""
-            className="h-8 w-8 rounded-lg"
+            src="/neparena-logo.png"
+            alt={PLATFORM_NAME}
+            className="h-8 w-8 rounded-lg object-cover"
+            onError={(e) => {
+              const el = e.currentTarget;
+              if (el.src.indexOf("android-chrome") === -1) {
+                el.src = "/android-chrome-512x512.png";
+              }
+            }}
           />
           <span className="font-bold hidden sm:inline text-gradient-brand">
-            {settings?.site_name ?? "eFootball Nepal"}
+            {settings?.site_name ?? PLATFORM_NAME}
           </span>
         </Link>
 
