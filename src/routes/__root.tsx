@@ -11,23 +11,24 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
+import { SplashScreen } from "@/components/SplashScreen";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#061226] px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="text-7xl font-bold text-white">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-white">Page not found</h2>
+        <p className="mt-2 text-sm text-blue-200/60">
           The page you're looking for doesn't exist or has been moved.
         </p>
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
             Go home
           </Link>
@@ -45,12 +46,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#061226] px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-xl font-semibold tracking-tight text-white">
           This page didn't load
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground break-words">
+        <p className="mt-2 text-sm text-blue-200/60 break-words">
           {error?.message || "Something went wrong."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -74,7 +75,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium"
+            className="inline-flex items-center justify-center rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white"
           >
             Try again
           </button>
@@ -96,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "NepARENA is the multi-organizer esports tournament platform. Host, compete, and follow organizers across Nepal.",
       },
       { name: "author", content: "NepARENA" },
-      { name: "theme-color", content: "#0b1220" },
+      { name: "theme-color", content: "#061226" },
       { name: "robots", content: "index, follow" },
       {
         name: "google-adsense-account",
@@ -115,11 +116,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      {
-        rel: "icon",
-        href: "/neparena-logo.png",
-        type: "image/png",
-      },
+      { rel: "icon", href: "/neparena-logo.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/neparena-logo.png" },
     ],
   }),
@@ -134,6 +131,12 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        {/* Critical first-paint: never pure white / empty blue */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `html,body{margin:0;min-height:100%;background:#061226;color:#e8eefc}#root{min-height:100vh}`,
+          }}
+        />
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
@@ -141,15 +144,25 @@ function RootShell({ children }: { children: ReactNode }) {
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}}catch(e){}})();`,
+            __html: `(function(){try{if("serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if("caches"in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}for(var i=0;i<sessionStorage.length;i++){var k=sessionStorage.key(i);if(k&&k.indexOf("tanstack_router_reload")===0)sessionStorage.removeItem(k)}}catch(e){}})();`,
           }}
         />
       </head>
-      <body>
+      <body className="bg-[#061226] text-foreground antialiased">
         {children}
         <Scripts />
       </body>
     </html>
+  );
+}
+
+function AuthSplashGate({ children }: { children: ReactNode }) {
+  const { loading } = useAuth();
+  return (
+    <>
+      <SplashScreen force={loading} minMs={700} />
+      {children}
+    </>
   );
 }
 
@@ -159,9 +172,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RoleRedirect />
-        <Outlet />
-        <Toaster richColors position="top-right" />
+        <AuthSplashGate>
+          <RoleRedirect />
+          <Outlet />
+          <Toaster richColors position="top-right" />
+        </AuthSplashGate>
       </AuthProvider>
     </QueryClientProvider>
   );
