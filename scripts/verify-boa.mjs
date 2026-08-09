@@ -18,38 +18,28 @@ function rmIndexHtml(dir) {
   if (!existsSync(dir)) return;
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) {
-      rmIndexHtml(p);
-    } else if (name === "index.html") {
-      unlinkSync(p);
-      console.log("[NepARENA] Removed", p);
-    }
+    try {
+      if (statSync(p).isDirectory()) rmIndexHtml(p);
+      else if (name === "index.html") {
+        unlinkSync(p);
+        console.log("[NepARENA] Removed", p);
+      }
+    } catch {}
   }
 }
 
 if (!existsSync(configPath) || !existsSync(serverDir)) {
   console.error("[NepARENA] Missing Build Output API (.vercel/output)");
-  console.error("config:", existsSync(configPath), "server:", existsSync(serverDir));
   process.exit(1);
 }
 
-// Never let static index.html shadow the SSR server
 rmIndexHtml(staticDir);
 
-// Force server-first routing: assets cached, everything else → __server
+// NO filesystem — static index.html can no longer win over SSR.
+// Nitro __server serves HTML + public assets.
 const cfg = JSON.parse(readFileSync(configPath, "utf8"));
-cfg.routes = [
-  {
-    src: "/assets/(.*)",
-    headers: { "cache-control": "public, max-age=31536000, immutable" },
-  },
-  {
-    src: "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp|txt|xml|webmanifest|js|css|woff2?)$)",
-    headers: { "cache-control": "public, max-age=86400" },
-  },
-  { handle: "filesystem" },
-  { src: "/(.*)", dest: "/__server" },
-];
+cfg.routes = [{ src: "/(.*)", dest: "/__server" }];
 writeFileSync(configPath, JSON.stringify(cfg, null, 2));
-console.log("[NepARENA] BOA routes forced server-first:", JSON.stringify(cfg.routes));
-console.log("[NepARENA] Full app deploy ready");
+
+console.log("[NepARENA] ALL routes → __server");
+console.log(JSON.stringify(cfg.routes));
