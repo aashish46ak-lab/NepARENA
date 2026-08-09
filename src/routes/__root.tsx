@@ -39,57 +39,6 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, restart }: { error: Error; reset: () => void }) {
-  console.error(error);
-  const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#061226] px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-white">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-blue-200/60 break-words">
-          {error?.message || "Something went wrong."}
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                const keys: string[] = [];
-                for (let i = 0; i < sessionStorage.length; i++) {
-                  const k = sessionStorage.key(i);
-                  if (k?.startsWith("tanstack_router_reload")) keys.push(k);
-                }
-                keys.forEach((k) => sessionStorage.removeItem(k));
-              } catch {}
-              window.location.href = "/";
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Go home
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              router.invalidate();
-              // reset prop name from TanStack error component
-              (arguments as unknown as { 0?: { reset?: () => void } });
-            }}
-            className="inline-flex items-center justify-center rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white"
-          >
-            Try again
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
@@ -229,7 +178,6 @@ function RootShell({ children }: { children: ReactNode }) {
               "html,body{margin:0;min-height:100%;background:#061226;color:#e8eefc}#root{min-height:100vh}",
           }}
         />
-        {/* AdSense kept */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343"
