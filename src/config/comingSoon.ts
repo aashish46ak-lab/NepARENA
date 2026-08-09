@@ -1,2 +1,2 @@
-// Coming Soon mode is OFF. Do not set to true on production.
+// Deploy Now: public app is live.
 export const COMING_SOON = false;
