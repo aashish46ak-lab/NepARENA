@@ -5,16 +5,13 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
-/**
- * Official TanStack Start + Nitro Vercel preset.
- * Server-first: post-build script forces all non-asset routes to __server.
- */
 export default defineConfig({
   plugins: [
     viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
     tailwindcss(),
     tanstackStart({
-      server: { entry: "server" },
+      client: { entry: "./src/client.tsx" },
+      server: { entry: "./src/server.ts" },
     }),
     nitro({ preset: "vercel" }),
     viteReact(),
