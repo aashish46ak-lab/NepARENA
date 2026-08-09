@@ -85,6 +85,9 @@ const ADMIN_NAV = [
   },
 ];
 
+/** Platform logo: use android-chrome until public/neparena-logo.png is uploaded */
+const LOGO_SRC = "/android-chrome-512x512.png";
+
 export function Header() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const isSuperAdmin = isSuperAdminEmail(user?.email);
@@ -114,15 +117,9 @@ export function Header() {
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 h-14">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <img
-            src="/neparena-logo.png"
+            src={LOGO_SRC}
             alt={PLATFORM_NAME}
             className="h-8 w-8 rounded-lg object-cover"
-            onError={(e) => {
-              const el = e.currentTarget;
-              if (el.src.indexOf("android-chrome") === -1) {
-                el.src = "/android-chrome-512x512.png";
-              }
-            }}
           />
           <span className="font-bold hidden sm:inline text-gradient-brand">
             {settings?.site_name ?? PLATFORM_NAME}
