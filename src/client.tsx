@@ -1,15 +1,105 @@
 import { StartClient } from "@tanstack/react-start/client";
 import { hydrateRoot } from "react-dom/client";
+import { StrictMode, startTransition, Suspense, Component, type ReactNode } from "react";
 
 /**
- * Screenshot proof: SSR HTML arrives (checkerboard + banner), then client JS
- * wipes body → empty checkerboard. Localhost works because no production hydrate.
- *
- * Fix path:
- * 1) package.json sideEffects was `false` (dangerous for CSS/entry in prod)
- * 2) hydrate with recoverable error logging
- * 3) watchdog restores a visible UI if body is emptied
+ * Official TanStack Start client entry + visible Suspense fallback.
+ * StartClient uses <Await promise={hydrateStart()}> with NO fallback → blank page
+ * while the promise is pending or if it fails silently. That matches:
+ * production blank vs localhost (vite dev) working.
  */
+
+function BootFallback() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "#0a0a0a",
+        color: "#f5f5f5",
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <img
+          src="/neparena-logo.png"
+          alt="NepARENA"
+          width={72}
+          height={72}
+          style={{ borderRadius: 16, marginBottom: 16 }}
+        />
+        <div style={{ fontSize: 14, opacity: 0.7 }}>Loading NepARENA…</div>
+      </div>
+    </div>
+  );
+}
+
+class BootErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("[NepARENA] boot error", error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "grid",
+            placeItems: "center",
+            background: "#0a0a0a",
+            color: "#f5f5f5",
+            fontFamily: "system-ui, sans-serif",
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 420,
+              border: "1px solid #333",
+              borderRadius: 16,
+              padding: 24,
+              background: "#111",
+              textAlign: "center",
+            }}
+          >
+            <h1 style={{ fontSize: 18, margin: "0 0 8px" }}>Boot error</h1>
+            <p style={{ color: "#f87171", fontSize: 13, wordBreak: "break-word" }}>
+              {this.state.error.message}
+            </p>
+            <button
+              type="button"
+              onClick={() => location.reload()}
+              style={{
+                marginTop: 16,
+                width: "100%",
+                padding: 12,
+                border: 0,
+                borderRadius: 10,
+                background: "#f5f5f5",
+                color: "#111",
+                fontWeight: 600,
+              }}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 try {
   if ("serviceWorker" in navigator) {
@@ -21,45 +111,20 @@ try {
   /* ignore */
 }
 
-const onRecoverableError = (error: unknown) => {
-  console.error("[NepARENA] recoverable hydrate error", error);
-};
-
-try {
-  hydrateRoot(document, <StartClient />, { onRecoverableError });
-} catch (error) {
-  console.error("[NepARENA] hard hydrate failure", error);
-}
-
-// If React wipes the document, show a real recovery screen (not blank theme)
-window.setTimeout(() => {
-  const text = (document.body?.innerText || "").replace(/\s+/g, " ").trim();
-  const hasApp =
-    text.includes("Tournament") ||
-    text.includes("NepARENA") ||
-    text.includes("View tournaments") ||
-    text.includes("Hall of Fame") ||
-    text.includes("Something went wrong") ||
-    text.includes("This page didn't load");
-
-  if (hasApp) return;
-
-  document.body.innerHTML = `
-    <div style="min-height:100vh;margin:0;padding:24px;font-family:system-ui,sans-serif;background:#0a0a0a;color:#f5f5f5">
-      <div style="max-width:420px;margin:40px auto;padding:24px;border:1px solid #333;border-radius:16px;background:#111">
-        <img src="/neparena-logo.png" alt="NepARENA" width="64" height="64" style="border-radius:14px;display:block;margin:0 auto 16px" />
-        <h1 style="margin:0 0 8px;font-size:20px;text-align:center">NepARENA failed to start</h1>
-        <p style="margin:0 0 16px;font-size:14px;line-height:1.5;color:#aaa;text-align:center">
-          Production client wiped the page after load. This is a code/hydrate issue (not DNS).
-          Friend saw it on localhost because vite dev skips this path.
-        </p>
-        <button onclick="location.reload()" style="width:100%;padding:12px;border:0;border-radius:10px;background:#f5f5f5;color:#111;font-weight:600">
-          Reload
-        </button>
-        <p style="margin:16px 0 0;font-size:12px;color:#666;text-align:center">
-          Open browser console and send the red error text.
-        </p>
-      </div>
-    </div>
-  `;
-}, 3000);
+startTransition(() => {
+  hydrateRoot(
+    document,
+    <StrictMode>
+      <BootErrorBoundary>
+        <Suspense fallback={<BootFallback />}>
+          <StartClient />
+        </Suspense>
+      </BootErrorBoundary>
+    </StrictMode>,
+    {
+      onRecoverableError(error) {
+        console.error("[NepARENA] recoverable", error);
+      },
+    },
+  );
+});
