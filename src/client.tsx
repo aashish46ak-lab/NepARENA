@@ -1,12 +1,16 @@
 import { StartClient } from "@tanstack/react-start/client";
 import { hydrateRoot } from "react-dom/client";
-import { StrictMode, startTransition, Suspense, Component, type ReactNode } from "react";
+import {
+  StrictMode,
+  startTransition,
+  Suspense,
+  Component,
+  type ReactNode,
+} from "react";
 
 /**
- * Official TanStack Start client entry + visible Suspense fallback.
- * StartClient uses <Await promise={hydrateStart()}> with NO fallback → blank page
- * while the promise is pending or if it fails silently. That matches:
- * production blank vs localhost (vite dev) working.
+ * Official TanStack Start client entry + visible Suspense / error UI.
+ * Root crash was router.stores undefined during hydrateStart (fixed in router.tsx).
  */
 
 function BootFallback() {
@@ -74,7 +78,13 @@ class BootErrorBoundary extends Component<
             }}
           >
             <h1 style={{ fontSize: 18, margin: "0 0 8px" }}>Boot error</h1>
-            <p style={{ color: "#f87171", fontSize: 13, wordBreak: "break-word" }}>
+            <p
+              style={{
+                color: "#f87171",
+                fontSize: 13,
+                wordBreak: "break-word",
+              }}
+            >
               {this.state.error.message}
             </p>
             <button
