@@ -1,6 +1,7 @@
 /**
- * NepARENA Super Admin dashboard — ONLY aashish46ak@gmail.com
- * Separate from organizer /dashboard (which stays the reusable template).
+ * NepARENA Super Admin — aashish46ak@gmail.com only.
+ * Shows platform signup metrics + organizer invites.
+ * Organizer member lists stay on each organizer dashboard.
  */
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -11,7 +12,6 @@ import {
   inviteOrganizer,
   isSuperAdminEmail,
   setOrganizerStatus,
-  type Organizer,
   PLATFORM_NAME,
 } from "@/lib/organizers";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   UserPlus,
   Ban,
   CheckCircle,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,11 +79,11 @@ function PlatformPage() {
       <PageShell>
         <div className="mx-auto max-w-lg py-20 text-center px-4">
           <Shield className="mx-auto h-10 w-10 text-brand" />
-          <h1 className="mt-4 text-2xl font-bold">Super Admin only</h1>
+          <h1 className="mt-4 text-xl font-semibold">Super Admin only</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This {PLATFORM_NAME} control panel is restricted.
+            Sign in with the platform owner account to open this panel.
           </p>
-          <Link to="/" className="mt-6 inline-block text-brand">
+          <Link to="/" className="mt-6 inline-block text-brand underline">
             Back home
           </Link>
         </div>
@@ -90,181 +91,184 @@ function PlatformPage() {
     );
   }
 
-  const onInvite = async () => {
-    if (!user) return;
-    setBusy(true);
-    setLastInviteLink(null);
-    const res = await inviteOrganizer({
-      email,
-      name,
-      invitedBy: user.id,
-    });
-    setBusy(false);
-    if (!res.ok) {
-      toast.error(res.error);
-      return;
-    }
-    const link = `${window.location.origin}/invite/${res.token}`;
-    setLastInviteLink(link);
-    toast.success(`Invitation created for ${email}`);
-    setEmail("");
-    setName("");
-    void reload();
-  };
-
-  const onStatus = async (o: Organizer, status: Organizer["status"]) => {
-    const { error } = await setOrganizerStatus(o.id, status);
-    if (error) toast.error(error.message);
-    else {
-      toast.success(`${o.name} → ${status}`);
-      void reload();
-    }
-  };
+  const maxBar = Math.max(stats?.players ?? 1, stats?.tournaments ?? 1, stats?.organizers ?? 1, 1);
 
   return (
     <PageShell>
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-8 flex flex-wrap items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-brand">
-            <Building2 className="h-6 w-6 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold md:text-3xl">{PLATFORM_NAME} Platform</h1>
-            <p className="text-sm text-muted-foreground">
-              Super Admin · {user.email}
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link to="/dashboard">Organizer dashboard</Link>
-          </Button>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3 mb-10">
-          <StatCard icon={Building2} label="Organizers" value={stats?.organizers ?? "—"} />
-          <StatCard icon={Trophy} label="Tournaments" value={stats?.tournaments ?? "—"} />
-          <StatCard icon={Users} label="Players" value={stats?.players ?? "—"} />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-4 mb-10 text-sm">
-          <Badge className="justify-center py-2" variant="outline">
-            Active: {stats?.byStatus.active ?? 0}
-          </Badge>
-          <Badge className="justify-center py-2" variant="outline">
-            Pending: {stats?.byStatus.pending ?? 0}
-          </Badge>
-          <Badge className="justify-center py-2" variant="outline">
-            Suspended: {stats?.byStatus.suspended ?? 0}
-          </Badge>
-          <Badge className="justify-center py-2" variant="outline">
-            Verified: {stats?.byStatus.verified ?? 0}
-          </Badge>
-        </div>
-
-        <section className="glass rounded-2xl p-5 md:p-6 mb-10">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <UserPlus className="h-5 w-5" /> Invite organizer
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Creates a pending organizer + unique invite link. Share the link so they can accept and get their dashboard.
+      <div className="mx-auto max-w-5xl px-4 py-10 space-y-8">
+        <div>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">{PLATFORM_NAME}</p>
+          <h1 className="mt-1 text-3xl font-bold text-gradient-brand">Super Admin</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Platform-wide signups and organizer control. Member details live inside each organizer workspace.
           </p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Organizer name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <Input
-              placeholder="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Button onClick={onInvite} disabled={busy || !name.trim() || !email.trim()}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Invite"}
-            </Button>
-          </div>
-          {lastInviteLink && (
-            <div className="mt-4 rounded-lg bg-muted/40 p-3 text-xs break-all">
-              <div className="font-medium mb-1">Invite link (copy & send):</div>
-              <a href={lastInviteLink} className="text-brand underline">
-                {lastInviteLink}
-              </a>
-            </div>
-          )}
-        </section>
+        </div>
 
-        <section>
-          <h2 className="text-lg font-semibold mb-4">Organizers</h2>
-          {!stats?.organizersList?.length ? (
-            <p className="text-sm text-muted-foreground">
-              No organizers yet — run <code className="text-xs">11-neparena-organizers.sql</code> in
-              Supabase, or create an invite above.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {stats.organizersList.map((o) => (
-                <div
-                  key={o.id}
-                  className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold truncate">{o.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      /o/{o.slug} · {o.contact_email ?? "—"}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      <Badge variant="outline" className="text-[10px]">
-                        {o.status}
-                      </Badge>
-                      {o.is_verified && (
-                        <Badge className="text-[10px] bg-emerald-500/20 text-emerald-300">
-                          verified
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/o/$slug" params={{ slug: o.slug }}>
-                        Public page
-                      </Link>
-                    </Button>
-                    {o.status !== "active" && (
-                      <Button size="sm" variant="outline" onClick={() => onStatus(o, "active")}>
-                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> Activate
-                      </Button>
-                    )}
-                    {o.status !== "suspended" && (
-                      <Button size="sm" variant="outline" onClick={() => onStatus(o, "suspended")}>
-                        <Ban className="h-3.5 w-3.5 mr-1" /> Suspend
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <MetricCard icon={Users} label="Signed-up members" value={stats?.players ?? "—"} />
+          <MetricCard icon={Trophy} label="Tournaments" value={stats?.tournaments ?? "—"} />
+          <MetricCard icon={Building2} label="Organizers" value={stats?.organizers ?? "—"} />
+        </div>
+
+        <div className="glass rounded-2xl p-5 space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Growth snapshot
+          </h2>
+          <Bar label="Members" value={stats?.players ?? 0} max={maxBar} />
+          <Bar label="Tournaments" value={stats?.tournaments ?? 0} max={maxBar} />
+          <Bar label="Organizers" value={stats?.organizers ?? 0} max={maxBar} />
+        </div>
+
+        <div className="glass rounded-2xl p-5 space-y-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <UserPlus className="h-4 w-4" /> Invite organizer
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Invite by Gmail. They open the link, create their organizer page, and get the same dashboard template as eFootball Nepal.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input placeholder="Organizer name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input placeholder="Gmail address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <Button
+            disabled={busy || !email.trim() || !name.trim()}
+            className="bg-gradient-brand"
+            onClick={async () => {
+              if (!user) return;
+              setBusy(true);
+              const res = await inviteOrganizer({
+                email: email.trim(),
+                name: name.trim(),
+                invitedBy: user.id,
+              });
+              setBusy(false);
+              if (!res.ok) {
+                toast.error(res.error);
+                return;
+              }
+              const link = `${window.location.origin}/invite/${res.token}`;
+              setLastInviteLink(link);
+              toast.success("Invite created");
+              setEmail("");
+              setName("");
+              void reload();
+            }}
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate invite link"}
+          </Button>
+          {lastInviteLink && (
+            <div className="rounded-xl border border-border/60 bg-background/50 p-3 text-sm break-all flex gap-2 items-start">
+              <Link2 className="h-4 w-4 shrink-0 mt-0.5 text-brand" />
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Share this link</p>
+                <a href={lastInviteLink} className="text-brand underline">
+                  {lastInviteLink}
+                </a>
+              </div>
             </div>
           )}
-        </section>
+        </div>
+
+        <div className="glass rounded-2xl p-5 space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Organizers
+          </h2>
+          <div className="space-y-2">
+            {(stats?.organizersList ?? []).map((o) => (
+              <div
+                key={o.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 px-3 py-2"
+              >
+                <div>
+                  <p className="font-medium">{o.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    /o/{o.slug} · {o.contact_email ?? "no email"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{o.status}</Badge>
+                  {o.status !== "active" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        await setOrganizerStatus(o.id, "active");
+                        toast.success("Activated");
+                        void reload();
+                      }}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" /> Activate
+                    </Button>
+                  )}
+                  {o.status === "active" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => {
+                        await setOrganizerStatus(o.id, "suspended");
+                        toast.success("Suspended");
+                        void reload();
+                      }}
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Link to="/o/$slug" params={{ slug: o.slug }}>
+                    <Button size="sm" variant="secondary">
+                      Open page
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+            {!stats?.organizersList?.length && (
+              <p className="text-sm text-muted-foreground">No organizers yet. Run SQL 11 + 12, then invite.</p>
+            )}
+          </div>
+        </div>
       </div>
     </PageShell>
   );
 }
 
-function StatCard({
+function MetricCard({
   icon: Icon,
   label,
   value,
 }: {
-  icon: typeof Building2;
+  icon: typeof Users;
   label: string;
   value: string | number;
 }) {
   return (
     <div className="glass rounded-2xl p-5">
-      <div className="flex items-center gap-2 text-muted-foreground text-sm">
-        <Icon className="h-4 w-4" /> {label}
+      <div className="flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-brand">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-2xl font-bold tabular-nums">{value}</p>
+        </div>
       </div>
-      <div className="mt-2 text-3xl font-bold text-gradient-brand">{value}</div>
+    </div>
+  );
+}
+
+function Bar({ label, value, max }: { label: string; value: number; max: number }) {
+  const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
+  return (
+    <div>
+      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+        <span>{label}</span>
+        <span className="tabular-nums">{value}</span>
+      </div>
+      <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-gradient-brand transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }
