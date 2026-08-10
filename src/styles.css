@@ -4,8 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* DEBUG: transparent backgrounds — theme must not paint a solid full-screen cover */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -51,40 +49,40 @@
 
 :root {
   --radius: 0.75rem;
-  --background: transparent;
-  --foreground: #111111;
-  --card: #ffffff;
-  --card-foreground: #111111;
-  --popover: #ffffff;
-  --popover-foreground: #111111;
-  --primary: #111111;
-  --primary-foreground: #ffffff;
-  --secondary: #f3f3f3;
-  --secondary-foreground: #111111;
-  --muted: #f5f5f5;
-  --muted-foreground: #555555;
-  --accent: #eeeeee;
-  --accent-foreground: #111111;
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --card: #141414;
+  --card-foreground: #f5f5f5;
+  --popover: #121212;
+  --popover-foreground: #f5f5f5;
+  --primary: #e8e8e8;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1a1a1a;
+  --muted-foreground: #a3a3a3;
+  --accent: #262626;
+  --accent-foreground: #f5f5f5;
   --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #dddddd;
-  --input: #f0f0f0;
-  --ring: #111111;
-  --brand: #333333;
-  --brand-glow: #666666;
-  --chart-1: #111111;
-  --chart-2: #666666;
-  --chart-3: #999999;
+  --destructive-foreground: #fff;
+  --border: #2a2a2a;
+  --input: #1c1c1c;
+  --ring: #e8e8e8;
+  --brand: #d4d4d4;
+  --brand-glow: #f5f5f5;
+  --chart-1: #e8e8e8;
+  --chart-2: #a3a3a3;
+  --chart-3: #525252;
   --chart-4: #16a34a;
   --chart-5: #dc2626;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #111111;
-  --sidebar-primary: #111111;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eeeeee;
-  --sidebar-accent-foreground: #111111;
-  --sidebar-border: #dddddd;
-  --sidebar-ring: #111111;
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #f5f5f5;
+  --sidebar-primary: #e8e8e8;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1c1c1c;
+  --sidebar-accent-foreground: #f5f5f5;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #e8e8e8;
 }
 
 @layer base {
@@ -92,35 +90,28 @@
     @apply border-border;
   }
   body {
-    background: transparent !important;
-    color: var(--foreground);
-    @apply antialiased;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(20, 20, 20, 0.9);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .text-gradient-brand {
-  background: linear-gradient(135deg, #111 0%, #555 50%, #222 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #a3a3a3 50%, #e5e5e5 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .bg-gradient-brand {
-  background: linear-gradient(135deg, #222 0%, #111 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #f5f5f5 0%, #d4d4d4 100%);
+  color: #0a0a0a;
 }
 
 .glow-brand {
-  box-shadow: 0 0 16px rgba(0, 0, 0, 0.12);
-}
-
-/* PageShell must not force a solid full-screen paint during debug */
-.min-h-screen {
-  background: transparent;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.08);
 }
