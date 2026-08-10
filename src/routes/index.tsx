@@ -67,8 +67,7 @@ function PlatformProfilePage() {
   });
 
   return (
-    <PageShell>
-      {/* 1. Platform profile hero */}
+    <PageShell force="platform">
       <section className="relative overflow-hidden">
         <div className="h-36 bg-[linear-gradient(135deg,#0a0a0a_0%,#1f1f1f_50%,#2a2a2a_100%)] sm:h-44" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_at_30%_0%,rgba(212,212,212,0.15),transparent_55%)]" />
@@ -96,24 +95,24 @@ function PlatformProfilePage() {
           <p className="mt-1 text-sm text-neutral-500">@neparena · Platform</p>
 
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-400">
-            <span>
+            <Link to="/users" className="hover:text-neutral-200">
               <strong className="text-neutral-100">
                 {stats?.users?.toLocaleString() ?? "—"}
               </strong>{" "}
               Followers
-            </span>
-            <span>
+            </Link>
+            <Link to="/organizers" className="hover:text-neutral-200">
               <strong className="text-neutral-100">
                 {stats?.organizers?.toLocaleString() ?? "—"}
               </strong>{" "}
               Following
-            </span>
-            <span>
+            </Link>
+            <Link to="/users" className="hover:text-neutral-200">
               <strong className="text-neutral-100">
                 {stats?.users?.toLocaleString() ?? "—"}
               </strong>{" "}
               Registered users
-            </span>
+            </Link>
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
               Joined 2026
@@ -121,7 +120,7 @@ function PlatformProfilePage() {
           </div>
 
           <p className="mt-6 text-base leading-relaxed text-neutral-300">
-            Nepal&apos;s Multi-Organizer eFootball Platform where verified
+            Nepal's Multi-Organizer eFootball Platform where verified
             tournament organizers build and manage their own esports communities —
             each with independent branding, members, and tournaments.
           </p>
@@ -159,10 +158,14 @@ function PlatformProfilePage() {
         </div>
       </section>
 
-      {/* 2. Founders */}
       <section className="border-t border-white/5 bg-white/[0.015]">
         <div className="mx-auto max-w-3xl px-4 py-12">
-          <h2 className="text-xl font-semibold text-neutral-100">Founders</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-neutral-100">Founders</h2>
+            <Button asChild variant="outline" className="border-white/15">
+              <Link to="/ownership">View Ownership</Link>
+            </Button>
+          </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
               <div className="flex gap-4">
@@ -215,7 +218,6 @@ function PlatformProfilePage() {
         </div>
       </section>
 
-      {/* 3. Platform statistics */}
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-12">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
@@ -254,14 +256,12 @@ function PlatformProfilePage() {
         </div>
       </section>
 
-      {/* 5. Install NepARENA PWA card */}
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-12">
           <InstallNepArenaCard />
         </div>
       </section>
 
-      {/* 6. View Organizers — button only, no cards */}
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-14">
           <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-8 text-center">
@@ -286,7 +286,6 @@ function PlatformProfilePage() {
         </div>
       </section>
 
-      {/* 4. Chat with Admin — floating */}
       <AdminChatFab />
     </PageShell>
   );
