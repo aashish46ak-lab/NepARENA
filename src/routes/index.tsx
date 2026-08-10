@@ -25,8 +25,6 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  // Client-render home like localhost — avoids SSR/hydrate mismatch blank screen on Vercel
-  ssr: false,
   head: () => ({
     meta: [
       { title: "NepARENA — Tournaments & Community" },
@@ -76,7 +74,6 @@ function HomePage() {
   const { data: sponsors = [] } = useSponsors();
   const { data: owner } = useOwnerInfo();
   const { data: memberCount } = useMemberCount();
-  const { data: latestMembers = [] } = useLatestMembers();
 
   const live = tournaments.filter((t) =>
     ["live", "ongoing", "registration_open"].includes(t.status),
@@ -131,10 +128,7 @@ function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-12">
           <div className="mb-6 flex items-end justify-between gap-3">
             <h2 className="text-xl font-semibold">Tournaments</h2>
-            <Link
-              to="/tournaments"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
+            <Link to="/tournaments" className="text-sm text-muted-foreground hover:text-foreground">
               See all
             </Link>
           </div>
@@ -148,12 +142,7 @@ function HomePage() {
               >
                 <div className="aspect-[16/9] bg-muted/30">
                   {t.banner_url ? (
-                    <SmartImage
-                      src={t.banner_url}
-                      alt={t.name}
-                      className="h-full w-full"
-                      fit="cover"
-                    />
+                    <SmartImage src={t.banner_url} alt={t.name} className="h-full w-full" fit="cover" />
                   ) : (
                     <div className="grid h-full place-items-center text-muted-foreground">
                       <Trophy className="h-8 w-8 opacity-40" />
@@ -162,16 +151,12 @@ function HomePage() {
                 </div>
                 <div className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold leading-snug group-hover:text-brand">
-                      {t.name}
-                    </h3>
+                    <h3 className="font-semibold leading-snug group-hover:text-brand">{t.name}</h3>
                     <StatusBadge status={t.status} />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {t.participants_count ?? 0} players
-                    {Number(t.prize_pool) > 0
-                      ? ` · NPR ${Number(t.prize_pool).toLocaleString()}`
-                      : ""}
+                    {Number(t.prize_pool) > 0 ? ` · NPR ${Number(t.prize_pool).toLocaleString()}` : ""}
                   </p>
                 </div>
               </Link>
@@ -190,9 +175,7 @@ function HomePage() {
               <div key={a.id} className="glass rounded-xl p-4">
                 <p className="font-medium">{a.title}</p>
                 {a.body && (
-                  <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
-                    {a.body}
-                  </p>
+                  <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{a.body}</p>
                 )}
               </div>
             ))}
@@ -206,19 +189,13 @@ function HomePage() {
             <h2 className="flex items-center gap-2 text-xl font-semibold">
               <Crown className="h-5 w-5 text-brand" /> Hall of Fame
             </h2>
-            <Link to="/hall-of-fame" className="text-sm text-muted-foreground">
-              Full list
-            </Link>
+            <Link to="/hall-of-fame" className="text-sm text-muted-foreground">Full list</Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {hof.slice(0, 3).map((h) => (
               <div key={h.id} className="glass flex items-center gap-3 rounded-xl p-4">
                 {h.photo_url ? (
-                  <img
-                    src={h.photo_url}
-                    alt=""
-                    className="h-12 w-12 rounded-full object-cover"
-                  />
+                  <img src={h.photo_url} alt="" className="h-12 w-12 rounded-full object-cover" />
                 ) : (
                   <div className="grid h-12 w-12 place-items-center rounded-full bg-gradient-brand text-primary-foreground">
                     <Award className="h-5 w-5" />
@@ -227,8 +204,7 @@ function HomePage() {
                 <div>
                   <p className="font-medium">{h.player_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {h.achievement}
-                    {h.tournament ? ` · ${h.tournament}` : ""}
+                    {h.achievement}{h.tournament ? ` · ${h.tournament}` : ""}
                   </p>
                 </div>
               </div>
@@ -237,93 +213,18 @@ function HomePage() {
         </section>
       )}
 
-      {latestMembers.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-10">
-          <div className="mb-4 flex items-end justify-between">
-            <h2 className="text-xl font-semibold">Members</h2>
-            <Link to="/members" className="text-sm text-muted-foreground">
-              View more
-            </Link>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {latestMembers.slice(0, 8).map((m) => (
-              <Link
-                key={m.id}
-                to="/members/$id"
-                params={{ id: m.id }}
-                className="glass flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={m.avatar_url ?? undefined} />
-                  <AvatarFallback>
-                    {(m.username ?? "?").slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                {m.username ?? "Player"}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {sponsors.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-10">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Partners
-          </h2>
-          <div className="flex flex-wrap items-center gap-6 opacity-80">
-            {sponsors.map((s) =>
-              s.logo_url ? (
-                <img
-                  key={s.id}
-                  src={s.logo_url}
-                  alt={s.name}
-                  className="h-8 object-contain"
-                />
-              ) : (
-                <span key={s.id} className="text-sm text-muted-foreground">
-                  {s.name}
-                </span>
-              ),
-            )}
-          </div>
-        </section>
-      )}
-
       {gallery.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 py-10 pb-16">
           <div className="mb-4 flex items-end justify-between">
             <h2 className="text-xl font-semibold">Gallery</h2>
-            <Link to="/gallery" className="text-sm text-muted-foreground">
-              Open gallery
-            </Link>
+            <Link to="/gallery" className="text-sm text-muted-foreground">Open gallery</Link>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {gallery.slice(0, 4).map((g) => (
               <div key={g.id} className="aspect-square overflow-hidden rounded-xl">
-                <SmartImage
-                  src={g.image_url}
-                  alt={g.caption ?? ""}
-                  className="h-full w-full"
-                  fit="cover"
-                />
+                <SmartImage src={g.image_url} alt={g.caption ?? ""} className="h-full w-full" fit="cover" />
               </div>
             ))}
-          </div>
-        </section>
-      )}
-
-      {owner && (
-        <section className="border-t border-border/40 py-8">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 text-sm text-muted-foreground">
-            {owner.photo_url && (
-              <img
-                src={owner.photo_url}
-                alt=""
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            )}
-            <span>Platform by NepARENA</span>
           </div>
         </section>
       )}
