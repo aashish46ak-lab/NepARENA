@@ -1,57 +1,61 @@
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { PLATFORM_NAME } from "@/lib/organizers";
 
-/** Native-feeling launch splash — shows once per browser session. */
-export function SplashScreen() {
-  const [show, setShow] = useState(false);
-  const [leaving, setLeaving] = useState(false);
-
-  // TEMPORARY: disable splash screen during debugging so server-rendered
-  // homepage isn't covered immediately after hydration.
-  if (true) return null;
+/** Premium splash — smooth logo scale + fade. */
+export function SplashScreen({ onDone }: { onDone?: () => void }) {
+  const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
 
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem("efn-splash")) return;
-      sessionStorage.setItem("efn-splash", "1");
-    } catch {
-      return;
-    }
-    setShow(true);
-    const t1 = setTimeout(() => setLeaving(true), 1100);
-    const t2 = setTimeout(() => setShow(false), 1650);
+    const t1 = window.setTimeout(() => setPhase("hold"), 400);
+    const t2 = window.setTimeout(() => setPhase("out"), 1600);
+    const t3 = window.setTimeout(() => onDone?.(), 2100);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
     };
-  }, []);
-
-  if (!show) return null;
+  }, [onDone]);
 
   return (
     <div
-      aria-hidden
-      className={cn(
-        "fixed inset-0 z-[200] grid place-items-center bg-background transition-opacity duration-500",
-        leaving && "opacity-0 pointer-events-none",
-      )}
+      className={`fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-[#0a0a0a] transition-opacity duration-500 ${
+        phase === "out" ? "opacity-0 pointer-events-none" : "opacity-100"
+      }`}
     >
-      <div className="flex flex-col items-center gap-4 animate-[splash-pop_.7s_ease]">
+      <div
+        className={`transition-all duration-700 ease-out ${
+          phase === "in"
+            ? "scale-75 opacity-0"
+            : phase === "hold"
+              ? "scale-100 opacity-100"
+              : "scale-105 opacity-0"
+        }`}
+      >
         <img
-          src="/android-chrome-512x512.png"
-          alt=""
-          className="h-20 w-20 rounded-2xl glow-brand"
+          src="/neparena-logo.png"
+          alt={PLATFORM_NAME}
+          className="h-24 w-24 rounded-3xl object-cover shadow-[0_0_60px_rgba(255,255,255,0.12)] ring-1 ring-white/20"
+          onError={(e) => {
+            e.currentTarget.src = "/android-chrome-512x512.png";
+          }}
         />
-        <div className="text-center">
-          <p className="text-xl font-bold text-gradient-brand">eFootball Nepal</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Tournaments · Community · Glory
-          </p>
-        </div>
-        <div className="h-1 w-40 overflow-hidden rounded-full bg-secondary">
-          <div className="h-full w-1/3 rounded-full bg-gradient-brand animate-[splash-bar_1.1s_ease-in-out_infinite]" />
-        </div>
       </div>
+      <p
+        className={`mt-6 text-sm font-medium tracking-[0.35em] text-neutral-400 transition-opacity duration-700 ${
+          phase === "hold" ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {PLATFORM_NAME}
+      </p>
+      <div className="mt-10 h-0.5 w-24 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full w-full origin-left animate-[splashbar_1.6s_ease-in-out_forwards] bg-gradient-to-r from-neutral-500 to-neutral-200" />
+      </div>
+      <style>{`
+        @keyframes splashbar {
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
+        }
+      `}</style>
     </div>
   );
 }

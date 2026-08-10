@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
+import { PLATFORM_NAME } from "@/lib/organizers";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "efn-install-dismissed";
+const DISMISS_KEY = "neparena-install-dismissed";
 
-/**
- * Floating "Install eFootball Nepal" card shown when the browser fires
- * beforeinstallprompt (i.e. the PWA is installable). Hidden once installed,
- * in standalone mode, or after the user dismisses it.
- */
 export function InstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
@@ -43,48 +39,46 @@ export function InstallPrompt() {
 
   if (!visible || !deferred) return null;
 
-  const install = async () => {
-    await deferred.prompt();
-    const choice = await deferred.userChoice;
-    setDeferred(null);
-    if (choice.outcome === "accepted") setVisible(false);
-  };
-
-  const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, "1");
-    setVisible(false);
-  };
-
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 animate-enter">
-      <div className="glass flex items-center gap-3 rounded-2xl p-4 shadow-lg">
+    <div className="fixed bottom-5 left-4 right-4 z-[60] mx-auto max-w-md overflow-hidden rounded-2xl border border-white/15 bg-[#111]/95 p-4 shadow-2xl backdrop-blur-xl sm:left-auto">
+      <button
+        type="button"
+        className="absolute right-2 top-2 text-neutral-500 hover:text-neutral-300"
+        onClick={() => {
+          localStorage.setItem(DISMISS_KEY, "1");
+          setVisible(false);
+        }}
+        aria-label="Dismiss"
+      >
+        <X className="h-4 w-4" />
+      </button>
+      <div className="flex gap-3 pr-6">
         <img
-          src="/pwa-192x192.png"
-          alt="eFootball Nepal app icon"
-          className="h-11 w-11 shrink-0 rounded-xl"
+          src="/neparena-logo.png"
+          alt=""
+          className="h-12 w-12 rounded-xl object-cover ring-1 ring-white/20"
+          onError={(e) => {
+            e.currentTarget.src = "/android-chrome-512x512.png";
+          }}
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Install eFootball Nepal</p>
-          <p className="text-xs text-muted-foreground">
-            Faster access, offline-ready, no browser UI.
+          <p className="font-semibold text-neutral-100">Install {PLATFORM_NAME}</p>
+          <p className="mt-0.5 text-xs text-neutral-400">
+            Add to your home screen for a fast, native app experience.
           </p>
+          <Button
+            size="sm"
+            className="mt-3 bg-neutral-100 text-black hover:bg-white"
+            onClick={async () => {
+              await deferred.prompt();
+              await deferred.userChoice;
+              setVisible(false);
+            }}
+          >
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Install app
+          </Button>
         </div>
-        <Button
-          size="sm"
-          className="shrink-0 bg-gradient-brand text-primary-foreground hover:opacity-90"
-          onClick={install}
-        >
-          <Download className="mr-1.5 h-4 w-4" />
-          Install
-        </Button>
-        <button
-          type="button"
-          onClick={dismiss}
-          aria-label="Dismiss install prompt"
-          className="shrink-0 text-muted-foreground transition hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );

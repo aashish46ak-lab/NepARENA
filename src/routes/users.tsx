@@ -1,0 +1,77 @@
+/**
+ * Platform registered users (Followers list on platform profile).
+ */
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { PageShell } from "@/components/PageShell";
+import { PLATFORM_NAME } from "@/lib/organizers";
+import { supabase } from "@/lib/supabase";
+import { Users } from "lucide-react";
+
+export const Route = createFileRoute("/users")({
+  head: () => ({
+    meta: [{ title: `Users — ${PLATFORM_NAME}` }],
+  }),
+  component: PlatformUsersPage,
+});
+
+function PlatformUsersPage() {
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["platform_users"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url, created_at")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      return data ?? [];
+    },
+  });
+
+  return (
+    <PageShell force="platform">
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          <Users className="h-6 w-6" /> Registered users
+        </h1>
+        <p className="mt-1 text-sm text-neutral-500">
+          Everyone signed up on {PLATFORM_NAME}
+        </p>
+        {isLoading && (
+          <p className="mt-8 text-sm text-neutral-500">Loading…</p>
+        )}
+        <ul className="mt-8 divide-y divide-white/5 rounded-2xl border border-white/10">
+          {users.map((u) => (
+            <li key={u.id}>
+              <Link
+                to="/members/$id"
+                params={{ id: u.id }}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03]"
+              >
+                {u.avatar_url ? (
+                  <img
+                    src={u.avatar_url}
+                    alt=""
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-neutral-800 text-xs font-semibold">
+                    {(u.username ?? "?").slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {u.display_name || u.username || "Player"}
+                  </p>
+                  <p className="truncate text-xs text-neutral-500">
+                    @{u.username ?? "user"}
+                  </p>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </PageShell>
+  );
+}
