@@ -34,8 +34,10 @@ export function sortStandings(rows: StandingRow[]): StandingRow[] {
   );
 }
 
-/** Rebuild standings from finished matches. */
-export async function recomputeStandings(tournamentId: string): Promise<void> {
+/** Rebuild standings from finished matches. Returns computed rows. */
+export async function recomputeStandings(
+  tournamentId: string,
+): Promise<StandingRow[]> {
   const [{ data: players }, { data: matches }] = await Promise.all([
     supabase
       .from("tournament_participants")
@@ -61,8 +63,7 @@ export async function recomputeStandings(tournamentId: string): Promise<void> {
     away_score: number | null;
   }[];
 
-  type Acc = StandingRow;
-  const map = new Map<string, Acc>();
+  const map = new Map<string, StandingRow>();
 
   for (const p of approved) {
     map.set(p.id, {
@@ -128,43 +129,38 @@ export async function recomputeStandings(tournamentId: string): Promise<void> {
   const rows = [...map.values()];
   if (rows.length > 0) {
     const { error } = await supabase.from("tournament_standings").insert(rows);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("standings insert", error);
+      // continue with in-memory rows even if DB write fails (RLS etc.)
+    }
   }
 
   await supabase
     .from("tournaments")
     .update({ participants_count: approved.length })
     .eq("id", tournamentId);
+
+  return sortStandings(rows);
 }
 
 const PLACE_LABELS = ["Champion (1st)", "Runner-up (2nd)", "3rd Place"];
 
-/** End tournament → History + Hall of Fame (top 3). */
+/**
+ * End tournament → History + Hall of Fame (top 3).
+ * Always attempts to save; does not block ending if podium is empty.
+ */
 export async function archiveTournamentToHistory(
   tournament: Tournament,
-): Promise<{ winner: string; count: number }> {
-  await recomputeStandings(tournament.id);
+): Promise<{ winner: string; count: number; warning?: string }> {
+  const standings = await recomputeStandings(tournament.id);
 
-  const [{ data: standingsRaw }, { data: playersRaw }] = await Promise.all([
-    supabase
-      .from("tournament_standings")
-      .select("*")
-      .eq("tournament_id", tournament.id),
-    supabase
-      .from("tournament_participants")
-      .select("*")
-      .eq("tournament_id", tournament.id),
-  ]);
+  const { data: playersRaw } = await supabase
+    .from("tournament_participants")
+    .select("*")
+    .eq("tournament_id", tournament.id);
 
-  const standings = sortStandings((standingsRaw ?? []) as StandingRow[]);
   const players = (playersRaw ?? []) as TournamentParticipant[];
   const top3 = standings.slice(0, 3);
-
-  if (top3.length === 0) {
-    throw new Error(
-      "No standings found. Enter results first, then end the tournament.",
-    );
-  }
 
   const year = new Date().getFullYear();
   const display = (row: StandingRow) => {
@@ -177,10 +173,22 @@ export async function archiveTournamentToHistory(
     return p?.photo_url || p?.club_logo_url || null;
   };
 
-  const winner = display(top3[0]);
-  const runnerUp = top3[1] ? display(top3[1]) : null;
-  const third = top3[2] ? display(top3[2]) : null;
+  let winner = "TBD";
+  let runnerUp: string | null = null;
+  let third: string | null = null;
+  let warning: string | undefined;
 
+  if (top3.length === 0) {
+    warning =
+      "No played results yet — history saved without podium. Add results later if needed.";
+    winner = "See tournament standings";
+  } else {
+    winner = display(top3[0]);
+    runnerUp = top3[1] ? display(top3[1]) : null;
+    third = top3[2] ? display(top3[2]) : null;
+  }
+
+  // Upsert-style: remove same name+year then insert
   await supabase
     .from("tournament_history")
     .delete()
@@ -199,24 +207,22 @@ export async function archiveTournamentToHistory(
   });
   if (histErr) throw new Error("History save failed: " + histErr.message);
 
-  await supabase
-    .from("hall_of_fame")
-    .delete()
-    .eq("tournament", tournament.name);
+  await supabase.from("hall_of_fame").delete().eq("tournament", tournament.name);
 
-  const hofRows = top3.map((row, i) => ({
-    player_name: display(row),
-    achievement: PLACE_LABELS[i] || i + 1 + "th Place",
-    tournament: tournament.name,
-    photo_url: photoOf(row),
-    year,
-    sort_order: i,
-  }));
+  if (top3.length > 0) {
+    const hofRows = top3.map((row, i) => ({
+      player_name: display(row),
+      achievement: PLACE_LABELS[i] || i + 1 + "th Place",
+      tournament: tournament.name,
+      photo_url: photoOf(row),
+      year,
+      sort_order: i,
+    }));
+    const { error: hofErr } = await supabase.from("hall_of_fame").insert(hofRows);
+    if (hofErr) throw new Error("Hall of Fame save failed: " + hofErr.message);
+  }
 
-  const { error: hofErr } = await supabase.from("hall_of_fame").insert(hofRows);
-  if (hofErr) throw new Error("Hall of Fame save failed: " + hofErr.message);
-
-  return { winner, count: top3.length };
+  return { winner, count: top3.length, warning };
 }
 
 export function useTournamentData(tournamentId: string, active: boolean) {
@@ -228,63 +234,66 @@ export function useTournamentData(tournamentId: string, active: boolean) {
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [invitations, setInvitations] = useState<TournamentInvitation[]>([]);
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
-    const [p, m, md, s, inv] = await Promise.all([
-      supabase
-        .from("tournament_participants")
-        .select("*")
-        .eq("tournament_id", tournamentId)
-        .order("created_at"),
-      supabase
-        .from("matches")
-        .select("*")
-        .eq("tournament_id", tournamentId)
-        .order("round")
-        .order("position"),
-      supabase
-        .from("matchdays")
-        .select("*")
-        .eq("tournament_id", tournamentId)
-        .order("sort_order"),
-      supabase
-        .from("tournament_standings")
-        .select("*")
-        .eq("tournament_id", tournamentId),
-      supabase
-        .from("tournament_invitations")
-        .select("*")
-        .eq("tournament_id", tournamentId)
-        .order("created_at", { ascending: false }),
-    ]);
-    const parts = (p.data ?? []) as TournamentParticipant[];
-    const invs = (inv.data ?? []) as TournamentInvitation[];
-    setPlayers(parts);
-    setMatches((m.data ?? []) as Match[]);
-    setMatchdays((md.data ?? []) as Matchday[]);
-    setStandings((s.data ?? []) as StandingRow[]);
-    setInvitations(invs);
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      const [p, m, md, s, inv] = await Promise.all([
+        supabase
+          .from("tournament_participants")
+          .select("*")
+          .eq("tournament_id", tournamentId)
+          .order("created_at"),
+        supabase
+          .from("matches")
+          .select("*")
+          .eq("tournament_id", tournamentId)
+          .order("round")
+          .order("position"),
+        supabase
+          .from("matchdays")
+          .select("*")
+          .eq("tournament_id", tournamentId)
+          .order("sort_order"),
+        supabase
+          .from("tournament_standings")
+          .select("*")
+          .eq("tournament_id", tournamentId),
+        supabase
+          .from("tournament_invitations")
+          .select("*")
+          .eq("tournament_id", tournamentId)
+          .order("created_at", { ascending: false }),
+      ]);
+      const parts = (p.data ?? []) as TournamentParticipant[];
+      const invs = (inv.data ?? []) as TournamentInvitation[];
+      setPlayers(parts);
+      setMatches((m.data ?? []) as Match[]);
+      setMatchdays((md.data ?? []) as Matchday[]);
+      setStandings((s.data ?? []) as StandingRow[]);
+      setInvitations(invs);
 
-    const ids = [
-      ...new Set(
-        [...parts.map((x) => x.user_id), ...invs.map((x) => x.user_id)].filter(
-          (x): x is string => !!x,
+      const ids = [
+        ...new Set(
+          [...parts.map((x) => x.user_id), ...invs.map((x) => x.user_id)].filter(
+            (x): x is string => !!x,
+          ),
         ),
-      ),
-    ];
-    if (ids.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("id", ids);
-      setProfiles(
-        new Map(((profs ?? []) as Profile[]).map((pr) => [pr.id, pr])),
-      );
-    } else {
-      setProfiles(new Map());
-    }
-    setLoading(false);
-  }, [tournamentId]);
+      ];
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", ids);
+        setProfiles(
+          new Map(((profs ?? []) as Profile[]).map((pr) => [pr.id, pr])),
+        );
+      } else {
+        setProfiles(new Map());
+      }
+      setLoading(false);
+    },
+    [tournamentId],
+  );
 
   useEffect(() => {
     if (active) void load();
@@ -298,7 +307,6 @@ export function useTournamentData(tournamentId: string, active: boolean) {
     matchdays,
     standings,
     invitations,
-    // Publish / save पछि tab नखोस्
     reload: () => load({ silent: true }),
   };
 }
@@ -317,4 +325,4 @@ export function playerName(
 ): string {
   if (!id) return "TBD";
   return players.find((p) => p.id === id)?.player_name ?? "TBD";
-                           }
+}
