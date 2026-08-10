@@ -254,3 +254,71 @@ export async function ensureEfootballNepalAdmin(userId: string) {
     .eq("id", org.id);
   return { ok: true as const, organizerId: org.id };
 }
+
+export async function getInvitationByToken(token: string) {
+  const { data, error } = await supabase
+    .from("organizer_invitations")
+    .select("*, organizer:organizers(*)")
+    .eq("token", token)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as OrganizerInvitation & {
+    organizer?: Organizer | null;
+    status: string;
+  };
+}
+
+export async function acceptInvitation(params: {
+  token: string;
+  userId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const inv = await getInvitationByToken(params.token);
+  if (!inv || inv.status !== "pending") {
+    return { ok: false, error: "Invitation not found or already used" };
+  }
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
+    return { ok: false, error: "Invitation expired" };
+  }
+  const organizerId = inv.organizer_id;
+  if (!organizerId) return { ok: false, error: "No organizer on invitation" };
+
+  const { error: memErr } = await supabase.from("organizer_members").upsert(
+    {
+      organizer_id: organizerId,
+      user_id: params.userId,
+      role: "owner",
+    },
+    { onConflict: "organizer_id,user_id" },
+  );
+  if (memErr) return { ok: false, error: memErr.message };
+
+  await supabase
+    .from("organizers")
+    .update({
+      owner_user_id: params.userId,
+      status: "active",
+    })
+    .eq("id", organizerId);
+
+  await supabase
+    .from("organizer_invitations")
+    .update({ status: "accepted" })
+    .eq("token", params.token);
+
+  return { ok: true };
+}
+
+export async function getDefaultOrganizer(): Promise<Organizer | null> {
+  return getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
+}
+
+export async function listOrganizerMemberships(
+  userId: string,
+): Promise<(OrganizerMember & { organizer?: Organizer })[]> {
+  const { data, error } = await supabase
+    .from("organizer_members")
+    .select("*, organizer:organizers(*)")
+    .eq("user_id", userId);
+  if (error) return [];
+  return (data ?? []) as (OrganizerMember & { organizer?: Organizer })[];
+}
