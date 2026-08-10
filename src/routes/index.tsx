@@ -1,161 +1,360 @@
+/**
+ * NepARENA = PLATFORM PROFILE homepage (Facebook / Discord / X style).
+ * NOT an organizer directory. No eFootball Nepal cards or tournament lists.
+ * Organizers only after "View Organizers" → /organizers.
+ */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
-import { GuestPopup } from "@/components/GuestPopup";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PLATFORM_NAME } from "@/lib/organizers";
+import { supabase } from "@/lib/supabase";
+import { AdminChatFab } from "@/components/AdminChatFab";
 import {
-  listActiveOrganizers,
-  getFollowerCount,
-  PLATFORM_NAME,
-} from "@/lib/organizers";
-import { useAuth } from "@/hooks/useAuth";
-import { Building2, Users, ArrowRight, Shield } from "lucide-react";
+  Users,
+  Building2,
+  Trophy,
+  Sparkles,
+  Target,
+  Eye,
+  Rocket,
+  CheckCircle2,
+  ArrowRight,
+  Mail,
+  Download,
+  Calendar,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: `${PLATFORM_NAME} — Tournament Platform` },
+      { title: `${PLATFORM_NAME} — Multi-Organizer eFootball Platform` },
       {
         name: "description",
         content:
-          "NepARENA multi-organizer esports platform. Follow organizers, join tournaments, climb rankings.",
+          "NepARENA is Nepal's multi-organizer eFootball platform. Verified organizers build independent esports communities.",
       },
       { property: "og:title", content: PLATFORM_NAME },
-      { property: "og:image", content: "https://neparena.xyz/neparena-logo.png" },
-      { property: "og:url", content: "https://neparena.xyz" },
+      { property: "og:site_name", content: PLATFORM_NAME },
     ],
   }),
-  component: HomePage,
+  component: PlatformProfilePage,
 });
 
-function HomePage() {
-  const { user } = useAuth();
-  const { data: organizers = [], isLoading } = useQuery({
-    queryKey: ["active_organizers"],
-    queryFn: listActiveOrganizers,
+async function platformStats() {
+  const [users, organizers, tournaments] = await Promise.all([
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase
+      .from("organizers")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active"),
+    supabase.from("tournaments").select("id", { count: "exact", head: true }),
+  ]);
+  return {
+    users: users.count ?? 0,
+    organizers: organizers.count ?? 0,
+    communities: organizers.count ?? 0,
+    tournaments: tournaments.count ?? 0,
+  };
+}
+
+function PlatformProfilePage() {
+  const { data: stats } = useQuery({
+    queryKey: ["platform_home_stats"],
+    queryFn: platformStats,
   });
 
   return (
     <PageShell>
-      <GuestPopup />
+      <section className="relative overflow-hidden">
+        <div className="h-36 bg-[linear-gradient(135deg,#0a0a0a_0%,#1f1f1f_50%,#2a2a2a_100%)] sm:h-44" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_at_30%_0%,rgba(212,212,212,0.15),transparent_55%)]" />
 
-      <section className="relative overflow-hidden border-b border-border/40">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(200,200,200,0.1),_transparent_55%)]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-14 sm:py-18">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            {PLATFORM_NAME}
+        <div className="relative mx-auto max-w-3xl px-4 pb-10">
+          <img
+            src="/neparena-logo.png"
+            alt={PLATFORM_NAME}
+            className="-mt-14 h-28 w-28 rounded-3xl object-cover shadow-2xl ring-4 ring-[#0a0a0a] sm:h-32 sm:w-32"
+            onError={(e) => {
+              e.currentTarget.src = "/android-chrome-512x512.png";
+            }}
+          />
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              {PLATFORM_NAME}
+            </h1>
+            <Badge className="gap-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500/20">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Verified
+            </Badge>
+          </div>
+
+          <p className="mt-1 text-sm text-neutral-500">@neparena · Platform</p>
+
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-400">
+            <span>
+              <strong className="text-neutral-100">
+                {stats?.users?.toLocaleString() ?? "—"}
+              </strong>{" "}
+              Followers
+            </span>
+            <span>
+              <strong className="text-neutral-100">
+                {stats?.organizers?.toLocaleString() ?? "—"}
+              </strong>{" "}
+              Following
+            </span>
+            <span>
+              <strong className="text-neutral-100">
+                {stats?.users?.toLocaleString() ?? "—"}
+              </strong>{" "}
+              Registered users
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              Joined 2026
+            </span>
+          </div>
+
+          <p className="mt-6 text-base leading-relaxed text-neutral-300">
+            Nepal&apos;s Multi-Organizer eFootball Platform where verified
+            tournament organizers build and manage their own esports communities —
+            each with independent branding, members, and tournaments.
           </p>
-          <h1 className="mt-3 max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
-            <span className="text-gradient-brand">Organizers</span>
-            <span className="block text-foreground/90">across Nepal esports</span>
-          </h1>
-          <p className="mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
-            Pick an organizer to see their tournaments, standings, and community.
-            eFootball Nepal and others each have their own page — not mixed on the
-            platform home.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {!user && (
-              <Button asChild className="bg-gradient-brand text-primary-foreground">
-                <Link to="/auth">
-                  Sign in <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Link>
-              </Button>
-            )}
-            <Button asChild variant="outline">
-              <Link to="/members">Members</Link>
+
+          <div className="mt-8 space-y-6">
+            <ProfileBlock title="Mission" icon={Target}>
+              Empower independent organizers with professional tools for
+              tournaments, members, results, and community growth — without
+              forcing every league under one brand name.
+            </ProfileBlock>
+            <ProfileBlock title="Vision" icon={Eye}>
+              Become the standard multi-organizer infrastructure for competitive
+              eFootball across Nepal, from local cups to national seasons.
+            </ProfileBlock>
+            <ProfileBlock title="About NepARENA" icon={Sparkles}>
+              NepARENA is a platform, not a single organizer. We provide the
+              technology layer so communities keep their identity while players
+              share one account across organizers.
+            </ProfileBlock>
+            <ProfileBlock title="Why NepARENA exists" icon={Rocket}>
+              Organizers were rebuilding the same tournament tools again and
+              again. NepARENA exists so every community can run professionally on
+              shared, reliable infrastructure.
+            </ProfileBlock>
+            <ProfileBlock title="Why choose NepARENA" icon={CheckCircle2}>
+              Multi-tenant dashboards, verified organizers, shared player
+              identity, result verification, standings, and room for many leagues
+              — without mixing brands or themes.
+            </ProfileBlock>
+            <ProfileBlock title="Future goals" icon={Trophy}>
+              National organizer network, better discovery, mobile-first PWA, and
+              tools that scale from neighborhood cups to long competitive seasons.
+            </ProfileBlock>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-white/5 bg-white/[0.015]">
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <h2 className="text-xl font-semibold text-neutral-100">Founders</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+              <div className="flex gap-4">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-400 text-lg font-bold text-black">
+                  AK
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+                    Founder & CEO
+                  </p>
+                  <h3 className="text-lg font-semibold">Ashish Khadka</h3>
+                  <a
+                    href="mailto:aashish46ak@gmail.com"
+                    className="mt-1 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-200"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    aashish46ak@gmail.com
+                  </a>
+                  <p className="mt-2 text-sm text-neutral-500">
+                    Platform creator, system architecture, product vision and
+                    roadmap.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+              <div className="flex gap-4">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-neutral-400 to-neutral-700 text-lg font-bold text-white">
+                  AB
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+                    Co-Founder
+                  </p>
+                  <h3 className="text-lg font-semibold">Ashish Baral</h3>
+                  <a
+                    href="mailto:baralk851@gmail.com"
+                    className="mt-1 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-200"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    baralk851@gmail.com
+                  </a>
+                  <p className="mt-2 text-sm text-neutral-500">
+                    Platform improvements, feedback, ideas, testing and strategy.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-white/5">
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+            Platform statistics
+          </h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[{
+              label: "Registered users",
+              value: stats?.users,
+              icon: Users,
+            }, {
+              label: "Registered organizers",
+              value: stats?.organizers,
+              icon: Building2,
+            }, {
+              label: "Tournaments hosted",
+              value: stats?.tournaments,
+              icon: Trophy,
+            }, {
+              label: "Communities",
+              value: stats?.communities,
+              icon: Sparkles,
+            }].map((s) => (
+              <div
+                key={s.label}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              >
+                <s.icon className="mb-2 h-4 w-4 text-neutral-400" />
+                <p className="text-2xl font-bold tabular-nums text-neutral-100">
+                  {s.value == null ? "—" : s.value.toLocaleString()}
+                </p>
+                <p className="text-xs text-neutral-500">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-white/5">
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <InstallNepArenaCard />
+        </div>
+      </section>
+
+      <section className="border-t border-white/5">
+        <div className="mx-auto max-w-3xl px-4 py-14">
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-8 text-center">
+            <h2 className="text-xl font-semibold text-neutral-100">
+              Explore organizers
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-neutral-400">
+              Organizers are separate communities on this platform. Open the
+              directory to browse verified organizers and their own pages.
+            </p>
+            <Button
+              asChild
+              size="lg"
+              className="mt-6 bg-gradient-to-r from-neutral-100 to-neutral-400 text-black hover:opacity-90"
+            >
+              <Link to="/organizers">
+                View Organizers
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
             </Button>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="mb-6 flex items-end justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-xl font-semibold">
-            <Building2 className="h-5 w-5 text-brand" /> Organizers
-          </h2>
-        </div>
-
-        {isLoading && (
-          <p className="text-sm text-muted-foreground">Loading organizers…</p>
-        )}
-
-        {!isLoading && organizers.length === 0 && (
-          <div className="glass rounded-2xl p-8 text-center text-muted-foreground">
-            <p>No active organizers yet.</p>
-            <p className="mt-2 text-xs">
-              Run SQL 11 + 12 in Supabase to seed eFootball Nepal, then refresh.
-            </p>
-          </div>
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {organizers.map((o) => (
-            <OrganizerCard key={o.id} id={o.id} slug={o.slug} name={o.name} tagline={o.tagline} logo={o.logo_url} verified={o.is_verified} />
-          ))}
-        </div>
-      </section>
+      <AdminChatFab />
     </PageShell>
   );
 }
 
-function OrganizerCard({
-  id,
-  slug,
-  name,
-  tagline,
-  logo,
-  verified,
+function ProfileBlock({
+  title,
+  icon: Icon,
+  children,
 }: {
-  id: string;
-  slug: string;
-  name: string;
-  tagline: string | null;
-  logo: string | null;
-  verified: boolean;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
 }) {
-  const { data: followers = 0 } = useQuery({
-    queryKey: ["org_followers", id],
-    queryFn: () => getFollowerCount(id),
-  });
+  return (
+    <div>
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
+        <Icon className="h-4 w-4 text-neutral-400" />
+        {title}
+      </h2>
+      <p className="mt-1.5 text-sm leading-relaxed text-neutral-400">{children}</p>
+    </div>
+  );
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+function InstallNepArenaCard() {
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [standalone, setStandalone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setStandalone(window.matchMedia("(display-mode: standalone)").matches);
+    const onBefore = (e: Event) => {
+      e.preventDefault();
+      setDeferred(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", onBefore);
+    return () => window.removeEventListener("beforeinstallprompt", onBefore);
+  }, []);
 
   return (
-    <Link
-      to="/o/$slug"
-      params={{ slug }}
-      className="glass group overflow-hidden rounded-2xl border border-border/50 transition hover:border-brand/40"
-    >
-      <div className="flex items-start gap-4 p-5">
-        {logo ? (
-          <img
-            src={logo}
-            alt=""
-            className="h-14 w-14 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
-          />
-        ) : (
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gradient-brand text-primary-foreground">
-            <Shield className="h-6 w-6" />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold group-hover:text-brand">{name}</h3>
-            {verified && (
-              <Badge variant="secondary" className="text-[10px]">
-                Verified
-              </Badge>
-            )}
-          </div>
-          {tagline && (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{tagline}</p>
-          )}
-          <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-            <Users className="h-3.5 w-3.5" />
-            {followers} followers · /o/{slug}
+    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex gap-4">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-400 text-black">
+          <Download className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-neutral-100">Install NepARENA</h2>
+          <p className="mt-1 text-sm text-neutral-400">
+            {standalone
+              ? "You are already running the installed app."
+              : "Add NepARENA to your home screen for a fast, app-like experience."}
           </p>
         </div>
       </div>
-    </Link>
+      {!standalone && (
+        <Button
+          className="shrink-0 bg-neutral-100 text-black hover:bg-white"
+          disabled={!deferred}
+          onClick={async () => {
+            if (!deferred) return;
+            await deferred.prompt();
+            await deferred.userChoice;
+            setDeferred(null);
+          }}
+        >
+          {deferred ? "Install app" : "Available in supported browsers"}
+        </Button>
+      )}
+    </div>
   );
 }
