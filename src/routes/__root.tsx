@@ -18,38 +18,33 @@ import { disablePWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold">404</h1>
-        <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Go home
-          </Link>
-        </div>
+        <h1 className="text-7xl font-bold text-black">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-black">Page not found</h2>
+        <Link
+          to="/"
+          className="mt-6 inline-flex rounded-md bg-black px-4 py-2 text-sm font-medium text-white"
+        >
+          Go home
+        </Link>
       </div>
     </div>
   );
 }
 
 function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  console.error("[SafeErrorComponent]", error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight">This page didn't load</h1>
-        <p className="mt-2 text-sm text-muted-foreground break-words">
+        <h1 className="text-xl font-semibold text-black">This page didn't load</h1>
+        <p className="mt-2 text-sm text-red-600 break-words">
           {error?.message || "Something went wrong."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -58,7 +53,7 @@ function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void 
             onClick={() => {
               window.location.href = "/";
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="rounded-md bg-black px-4 py-2 text-sm text-white"
           >
             Go home
           </button>
@@ -68,7 +63,7 @@ function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void 
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium"
+            className="rounded-md border border-black px-4 py-2 text-sm text-black"
           >
             Try again
           </button>
@@ -89,7 +84,7 @@ class ClientErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("ClientErrorBoundary", error, info.componentStack);
+    console.error("[ClientErrorBoundary]", error, info.componentStack);
     reportLovableError(error, {
       boundary: "client_error_boundary",
       stack: info.componentStack,
@@ -99,19 +94,14 @@ class ClientErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center">
-          <img
-            src="/neparena-logo.png"
-            alt="NepARENA"
-            className="h-16 w-16 rounded-2xl object-cover"
-          />
-          <h1 className="text-lg font-semibold">Something went wrong</h1>
-          <p className="max-w-sm text-sm text-muted-foreground break-words">
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white px-4 text-center">
+          <h1 className="text-lg font-semibold text-black">Something went wrong</h1>
+          <p className="max-w-sm text-sm text-red-600 break-words">
             {this.state.error.message}
           </p>
           <button
             type="button"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="rounded-md bg-black px-4 py-2 text-sm text-white"
             onClick={() => window.location.reload()}
           >
             Reload
@@ -132,15 +122,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "NepARENA is the multi-organizer esports tournament platform. Host, compete, and follow organizers across Nepal.",
+          "NepARENA is the multi-organizer esports tournament platform for Nepal.",
       },
       { name: "author", content: "NepARENA" },
-      { name: "theme-color", content: "#050505" },
+      { name: "theme-color", content: "#ffffff" },
       { name: "robots", content: "index, follow" },
-      {
-        name: "google-adsense-account",
-        content: "ca-pub-3033911443659343",
-      },
       { property: "og:title", content: "NepARENA — Tournament Platform" },
       {
         property: "og:description",
@@ -170,15 +156,15 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* DEBUG: pure white — if you only see white, React tree is empty (not dark bg covering) */}
         <style
           dangerouslySetInnerHTML={{
             __html:
-              "html,body{margin:0;min-height:100%;background:#050505;color:#f0f0f0}",
+              "html,body{margin:0;min-height:100%;background:#ffffff!important;color:#111111!important}",
           }}
         />
-        {/* AdSense is loaded AFTER hydrate in RootComponent — never in head during SSR */}
       </head>
-      <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
+      <body className="bg-white text-black antialiased" suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -186,26 +172,11 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function loadAdSense() {
-  if (typeof document === "undefined") return;
-  if (document.getElementById("neparena-adsense")) return;
-  const s = document.createElement("script");
-  s.id = "neparena-adsense";
-  s.async = true;
-  s.src =
-    "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343";
-  s.crossOrigin = "anonymous";
-  document.head.appendChild(s);
-}
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
     void disablePWA();
-    // Defer third-party scripts until after React has hydrated
-    const t = window.setTimeout(loadAdSense, 2500);
-    return () => window.clearTimeout(t);
   }, []);
 
   return (
