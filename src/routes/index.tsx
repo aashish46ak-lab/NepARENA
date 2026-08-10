@@ -5,7 +5,6 @@
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +22,6 @@ import {
   CheckCircle2,
   ArrowRight,
   Mail,
-  Download,
   Calendar,
 } from "lucide-react";
 
@@ -78,7 +76,7 @@ function PlatformProfilePage() {
             alt={PLATFORM_NAME}
             className="-mt-14 h-28 w-28 rounded-3xl object-cover shadow-2xl ring-4 ring-[#0a0a0a] sm:h-32 sm:w-32"
             onError={(e) => {
-              e.currentTarget.src = "/android-chrome-512x512.png";
+              e.currentTarget.src = "/pwa-192x192.png";
             }}
           />
 
@@ -101,7 +99,7 @@ function PlatformProfilePage() {
               </strong>{" "}
               Followers
             </Link>
-            <Link to="/organizers" className="hover:text-neutral-200">
+            <Link to="/following" className="hover:text-neutral-200">
               <strong className="text-neutral-100">
                 {stats?.organizers?.toLocaleString() ?? "—"}
               </strong>{" "}
@@ -257,12 +255,6 @@ function PlatformProfilePage() {
       </section>
 
       <section className="border-t border-white/5">
-        <div className="mx-auto max-w-3xl px-4 py-12">
-          <InstallNepArenaCard />
-        </div>
-      </section>
-
-      <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-14">
           <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-8 text-center">
             <h2 className="text-xl font-semibold text-neutral-100">
@@ -307,59 +299,6 @@ function ProfileBlock({
         {title}
       </h2>
       <p className="mt-1.5 text-sm leading-relaxed text-neutral-400">{children}</p>
-    </div>
-  );
-}
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
-
-function InstallNepArenaCard() {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [standalone, setStandalone] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setStandalone(window.matchMedia("(display-mode: standalone)").matches);
-    const onBefore = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", onBefore);
-    return () => window.removeEventListener("beforeinstallprompt", onBefore);
-  }, []);
-
-  return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex gap-4">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-400 text-black">
-          <Download className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="font-semibold text-neutral-100">Install NepARENA</h2>
-          <p className="mt-1 text-sm text-neutral-400">
-            {standalone
-              ? "You are already running the installed app."
-              : "Add NepARENA to your home screen for a fast, app-like experience."}
-          </p>
-        </div>
-      </div>
-      {!standalone && (
-        <Button
-          className="shrink-0 bg-neutral-100 text-black hover:bg-white"
-          disabled={!deferred}
-          onClick={async () => {
-            if (!deferred) return;
-            await deferred.prompt();
-            await deferred.userChoice;
-            setDeferred(null);
-          }}
-        >
-          {deferred ? "Install app" : "Available in supported browsers"}
-        </Button>
-      )}
     </div>
   );
 }
