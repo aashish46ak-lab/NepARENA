@@ -1,4 +1,17 @@
-/** PWA disabled — unregister only (no service worker registration). */
+/** Lightweight PWA register — static /sw.js (no vite-plugin-pwa build break). */
+export async function registerPWA() {
+  if (typeof window === "undefined") return;
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+    });
+    console.info("[NepARENA] PWA registered", reg.scope);
+  } catch (e) {
+    console.warn("[NepARENA] PWA register failed", e);
+  }
+}
+
 export async function disablePWA() {
   if (typeof window === "undefined") return;
   try {
@@ -9,16 +22,4 @@ export async function disablePWA() {
   } catch {
     /* ignore */
   }
-  try {
-    if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
-  } catch {
-    /* ignore */
-  }
-}
-
-export async function registerPWA() {
-  await disablePWA();
 }

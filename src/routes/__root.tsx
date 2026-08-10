@@ -7,12 +7,14 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, Component, type ErrorInfo, type ReactNode } from "react";
+import { useEffect, useState, Component, type ErrorInfo, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
+import { SplashScreen } from "@/components/SplashScreen";
+import { registerPWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
   return (
@@ -106,10 +108,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "NepARENA — Tournament Platform" },
       {
         name: "description",
-        content:
-          "NepARENA multi-organizer esports tournament platform for Nepal.",
+        content: "NepARENA multi-organizer esports tournament platform for Nepal.",
       },
       { name: "theme-color", content: "#0a0a0a" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "NepARENA" },
       { property: "og:site_name", content: "NepARENA" },
       { property: "og:url", content: "https://neparena.xyz" },
@@ -121,6 +123,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/neparena-logo.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/neparena-logo.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -151,11 +155,19 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    void registerPWA();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ClientErrorBoundary>
+          {!splashDone && (
+            <SplashScreen onDone={() => setSplashDone(true)} />
+          )}
           <RoleRedirect />
           <Outlet />
           <Toaster richColors position="top-right" />
