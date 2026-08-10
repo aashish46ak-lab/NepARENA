@@ -1,10 +1,6 @@
 /**
- * NepARENA multi-tenant helpers (neparena-dev only).
- * Production (main) stays single-tenant until Deploy Now.
- *
- * ARCHITECTURE:
- *   NepARENA = PLATFORM
- *   eFootball Nepal = FIRST ORGANIZER only (not a rename)
+ * NepARENA multi-tenant helpers (neparena-dev).
+ * ARCHITECTURE: NepARENA = PLATFORM; eFootball Nepal = first ORGANIZER only.
  */
 import { supabase } from "./supabase";
 
@@ -40,6 +36,7 @@ export interface Organizer {
   discord_url?: string | null;
   created_at: string;
   updated_at: string;
+  follower_count?: number;
 }
 
 export interface OrganizerMember {
@@ -142,6 +139,15 @@ export async function unfollowOrganizer(organizerId: string, userId: string) {
     .eq("user_id", userId);
 }
 
+export async function listFollowedOrganizerIds(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("organizer_followers")
+    .select("organizer_id")
+    .eq("user_id", userId);
+  if (error) return [];
+  return (data ?? []).map((r: { organizer_id: string }) => r.organizer_id);
+}
+
 export async function isFollowing(
   organizerId: string,
   userId: string,
@@ -163,14 +169,12 @@ export async function getPlatformStats() {
   const { count: playerCount } = await supabase
     .from("profiles")
     .select("id", { count: "exact", head: true });
-
   const byStatus = {
     active: organizers.filter((o) => o.status === "active").length,
     pending: organizers.filter((o) => o.status === "pending").length,
     suspended: organizers.filter((o) => o.status === "suspended").length,
     verified: organizers.filter((o) => o.is_verified).length,
   };
-
   return {
     organizers: organizers.length,
     tournaments: tournamentCount ?? 0,
@@ -190,11 +194,9 @@ export async function inviteOrganizer(params: {
   const email = params.email.trim().toLowerCase();
   const name = params.name.trim();
   if (!email || !name) return { ok: false, error: "Email and name required" };
-
   let slug = slugify(name);
   const existing = await getOrganizerBySlug(slug);
   if (existing) slug = `${slug}-${Date.now().toString(36)}`;
-
   const { data: org, error: orgErr } = await supabase
     .from("organizers")
     .insert({
@@ -207,7 +209,6 @@ export async function inviteOrganizer(params: {
     .select("id")
     .single();
   if (orgErr || !org) return { ok: false, error: orgErr?.message ?? "Failed" };
-
   const token = randomToken();
   const { error: invErr } = await supabase.from("organizer_invitations").insert({
     email,
@@ -225,4 +226,84 @@ export async function setOrganizerStatus(
   status: OrganizerStatus,
 ) {
   return supabase.from("organizers").update({ status }).eq("id", organizerId);
+}
+
+export async function ensureEfootballNepalAdmin(userId: string) {
+  const org = await getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
+  if (!org) return { ok: false as const, error: "Organizer missing — run SQL 11" };
+  const { error } = await supabase.from("organizer_members").upsert(
+    {
+      organizer_id: org.id,
+      user_id: userId,
+      role: "owner",
+    },
+    { onConflict: "organizer_id,user_id" },
+  );
+  if (error) return { ok: false as const, error: error.message };
+  await supabase
+    .from("organizers")
+    .update({ owner_user_id: userId, status: "active", is_verified: true })
+    .eq("id", org.id);
+  return { ok: true as const, organizerId: org.id };
+}
+
+export async function getInvitationByToken(token: string) {
+  const { data, error } = await supabase
+    .from("organizer_invitations")
+    .select("*, organizer:organizers(*)")
+    .eq("token", token)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as OrganizerInvitation & {
+    organizer?: Organizer | null;
+    status: string;
+  };
+}
+
+export async function acceptInvitation(params: {
+  token: string;
+  userId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const inv = await getInvitationByToken(params.token);
+  if (!inv || inv.status !== "pending") {
+    return { ok: false, error: "Invitation not found or already used" };
+  }
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) {
+    return { ok: false, error: "Invitation expired" };
+  }
+  const organizerId = inv.organizer_id;
+  if (!organizerId) return { ok: false, error: "No organizer on invitation" };
+  const { error: memErr } = await supabase.from("organizer_members").upsert(
+    {
+      organizer_id: organizerId,
+      user_id: params.userId,
+      role: "owner",
+    },
+    { onConflict: "organizer_id,user_id" },
+  );
+  if (memErr) return { ok: false, error: memErr.message };
+  await supabase
+    .from("organizers")
+    .update({ owner_user_id: params.userId, status: "active" })
+    .eq("id", organizerId);
+  await supabase
+    .from("organizer_invitations")
+    .update({ status: "accepted" })
+    .eq("token", params.token);
+  return { ok: true };
+}
+
+export async function getDefaultOrganizer(): Promise<Organizer | null> {
+  return getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
+}
+
+export async function listOrganizerMemberships(
+  userId: string,
+): Promise<(OrganizerMember & { organizer?: Organizer })[]> {
+  const { data, error } = await supabase
+    .from("organizer_members")
+    .select("*, organizer:organizers(*)")
+    .eq("user_id", userId);
+  if (error) return [];
+  return (data ?? []) as (OrganizerMember & { organizer?: Organizer })[];
 }
