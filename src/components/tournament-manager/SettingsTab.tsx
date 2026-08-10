@@ -68,13 +68,19 @@ export function SettingsTab({
     try {
       if (status === "completed" && tournament.status !== "completed") {
         const result = await archiveTournamentToHistory(tournament);
-        toast.success(
-          "Tournament ended. Winner: " +
-            result.winner +
-            " (" +
-            result.count +
-            " on podium)",
-        );
+        if (result.warning) {
+          toast.warning(
+            "Tournament ended. " + result.warning + " Winner: " + result.winner,
+          );
+        } else {
+          toast.success(
+            "Tournament ended. Winner: " +
+              result.winner +
+              " (" +
+              result.count +
+              " on podium → History + Hall of Fame)",
+          );
+        }
       }
 
       const nextRegOpen =
@@ -113,25 +119,21 @@ export function SettingsTab({
         return;
       }
 
-      // --- Notifications ---
       const link = "/tournaments/" + tournament.id;
 
-      // Registration opened
       if (nextRegOpen && !tournament.registration_open) {
         try {
           await notifyTournamentPlayers(
             tournament.id,
             "Registration open",
-            tournament.name +
-              " — registration is now open. Request to join!",
+            tournament.name + " — registration is now open. Request to join!",
             link,
           );
         } catch {
-          // ignore
+          /* ignore */
         }
       }
 
-      // Registration closed
       if (tournament.registration_open && !nextRegOpen) {
         try {
           await notifyTournamentPlayers(
@@ -141,11 +143,10 @@ export function SettingsTab({
             link,
           );
         } catch {
-          // ignore
+          /* ignore */
         }
       }
 
-      // Tournament went live / ongoing
       if (
         (status === "live" || status === "ongoing") &&
         tournament.status !== "live" &&
@@ -160,11 +161,10 @@ export function SettingsTab({
             link,
           );
         } catch {
-          // ignore
+          /* ignore */
         }
       }
 
-      // Tournament completed
       if (status === "completed" && tournament.status !== "completed") {
         try {
           await notifyTournamentPlayers(
@@ -175,7 +175,7 @@ export function SettingsTab({
             link,
           );
         } catch {
-          // ignore
+          /* ignore */
         }
       }
 
@@ -352,4 +352,4 @@ export function SettingsTab({
       </Button>
     </div>
   );
-    }
+}
