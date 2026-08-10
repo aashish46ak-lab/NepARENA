@@ -14,6 +14,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen } from "@/components/SplashScreen";
+import { InstallFAB } from "@/components/InstallFAB";
 import { registerPWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
@@ -170,6 +171,7 @@ function RootComponent() {
           )}
           <RoleRedirect />
           <Outlet />
+          <InstallFAB />
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
       </AuthProvider>
