@@ -26,7 +26,6 @@ import { isSuperAdminEmail, PLATFORM_NAME } from "@/lib/organizers";
 const PLATFORM_NAV = [
   { to: "/" as const, label: "Home" },
   { to: "/organizers" as const, label: "Organizers" },
-  { to: "/ownership" as const, label: "Ownership" },
 ];
 
 const ORGANIZER_PUBLIC_NAV = [
@@ -96,19 +95,24 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
       }
     >
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
-        <Link to={mode === "platform" ? "/" : "/o/efootball-nepal"} className="flex items-center gap-2">
-          <img
-            src={brandLogo}
-            alt=""
-            className="h-8 w-8 rounded-lg object-cover"
-            onError={(e) => {
-              e.currentTarget.src = "/android-chrome-512x512.png";
-            }}
-          />
+        <Link
+          to={mode === "platform" ? "/" : "/o/efootball-nepal"}
+          className="flex shrink-0 items-center gap-2.5"
+        >
+          <span className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-neutral-900 shadow-md ring-1 ring-white/25">
+            <img
+              src={brandLogo}
+              alt={brandName}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = "/pwa-192x192.png";
+              }}
+            />
+          </span>
           <span
             className={
               mode === "platform"
-                ? "font-semibold tracking-tight text-neutral-100"
+                ? "text-base font-semibold tracking-tight text-neutral-100"
                 : "font-semibold text-gradient-brand"
             }
           >
