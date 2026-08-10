@@ -2,21 +2,22 @@ import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PLATFORM_NAME } from "@/lib/organizers";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import {
+  onInstallPromptChange,
+  triggerInstall,
+  type BeforeInstallPromptEvent,
+} from "@/lib/pwa-register";
 
 const DISMISS_KEY = "neparena-install-fab-dismissed";
 
-/** Always-visible floating install (bottom-left). */
+/** Floating Install NepARENA with logo — opens native install when available. */
 export function InstallFAB() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [open, setOpen] = useState(false);
   const [standalone, setStandalone] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -27,32 +28,43 @@ export function InstallFAB() {
     setStandalone(alone);
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
     if (localStorage.getItem(DISMISS_KEY) === "1") setHidden(true);
-
-    const onBefore = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", onBefore);
-    window.addEventListener("appinstalled", () => {
-      setDeferred(null);
-      setStandalone(true);
-      setOpen(false);
-    });
-    return () => window.removeEventListener("beforeinstallprompt", onBefore);
+    return onInstallPromptChange(setDeferred);
   }, []);
 
   if (standalone || hidden) return null;
+
+  const runInstall = async () => {
+    setBusy(true);
+    const result = await triggerInstall();
+    setBusy(false);
+    if (result === "accepted") {
+      setOpen(false);
+      setStandalone(true);
+    } else if (result === "unavailable") {
+      setOpen(true);
+    } else {
+      setOpen(false);
+    }
+  };
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 left-5 z-50 flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-neutral-100 to-neutral-300 px-4 text-sm font-semibold text-black shadow-2xl ring-1 ring-white/30"
+        onClick={() => void runInstall()}
+        className="fixed bottom-5 left-5 z-50 flex h-14 max-w-[min(100vw-2.5rem,280px)] items-center gap-2.5 rounded-full border border-white/20 bg-[#111]/95 pl-1.5 pr-4 text-sm font-semibold text-neutral-100 shadow-2xl backdrop-blur-md"
         aria-label={`Install ${PLATFORM_NAME}`}
       >
-        <Download className="h-5 w-5" />
-        <span className="pr-1">Install</span>
+        <img
+          src="/neparena-logo.png"
+          alt=""
+          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-white/25"
+          onError={(e) => {
+            e.currentTarget.src = "/pwa-192x192.png";
+          }}
+        />
+        <span className="truncate">Install {PLATFORM_NAME}</span>
+        <Download className="h-4 w-4 shrink-0 text-neutral-400" />
       </button>
 
       {open && (
@@ -73,7 +85,7 @@ export function InstallFAB() {
                     Install {PLATFORM_NAME}
                   </p>
                   <p className="mt-1 text-sm text-neutral-400">
-                    Add to your home screen for a fast, app-like experience.
+                    Add to your home screen — works offline-friendly like a native app.
                   </p>
                 </div>
               </div>
@@ -89,38 +101,44 @@ export function InstallFAB() {
             <div className="space-y-3 px-5 pb-5">
               {deferred ? (
                 <Button
+                  disabled={busy}
                   className="w-full bg-neutral-100 text-black hover:bg-white"
-                  onClick={async () => {
-                    await deferred.prompt();
-                    await deferred.userChoice;
-                    setOpen(false);
-                  }}
+                  onClick={() => void runInstall()}
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Download / Install now
+                  Install now
                 </Button>
               ) : isIOS ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-300">
                   <p className="font-medium text-neutral-100">iPhone / iPad</p>
-                  <ol className="mt-2 list-decimal space-y-1 pl-4 text-neutral-400">
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-neutral-400">
                     <li>
-                      Tap the <Share className="inline h-3.5 w-3.5" /> Share button
+                      Tap <Share className="inline h-3.5 w-3.5" /> <strong>Share</strong>
                     </li>
-                    <li>Choose “Add to Home Screen”</li>
-                    <li>Tap Add</li>
+                    <li>
+                      Scroll and tap <strong>Add to Home Screen</strong>
+                    </li>
+                    <li>
+                      Tap <strong>Add</strong>
+                    </li>
                   </ol>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-400">
-                  <p className="font-medium text-neutral-100">Browser install</p>
-                  <p className="mt-1">
-                    Open the browser menu (⋮) and choose{" "}
-                    <strong className="text-neutral-200">Install app</strong> or{" "}
-                    <strong className="text-neutral-200">Add to Home screen</strong>.
-                  </p>
-                  <p className="mt-2 text-xs">
-                    Chrome / Edge on Android usually show an install option after a
-                    short visit.
+                  <p className="font-medium text-neutral-100">Install from browser menu</p>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4">
+                    <li>
+                      Open the <strong className="text-neutral-200">⋮</strong> (three dots) menu
+                    </li>
+                    <li>
+                      Tap <strong className="text-neutral-200">Install app</strong> or{" "}
+                      <strong className="text-neutral-200">Add to Home screen</strong>
+                    </li>
+                  </ol>
+                  <p className="mt-3 text-xs text-neutral-500">
+                    Chrome / Edge on Android: visit the site once, then install appears.
+                    Use HTTPS (neparena.xyz). If you dismissed install earlier, clear site
+                    data and reopen.
                   </p>
                 </div>
               )}

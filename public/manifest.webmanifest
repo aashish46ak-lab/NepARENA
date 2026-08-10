@@ -1,12 +1,17 @@
 {
+  "id": "/",
   "name": "NepARENA",
   "short_name": "NepARENA",
   "description": "Multi-organizer esports tournament platform for Nepal",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["sports", "games", "social"],
   "icons": [
     {
       "src": "/pwa-192x192.png",
@@ -31,6 +36,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/neparena-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
