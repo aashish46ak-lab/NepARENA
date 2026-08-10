@@ -113,6 +113,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "theme-color", content: "#0a0a0a" },
       { name: "mobile-web-app-capable", content: "yes" },
+      { name: "application-name", content: "NepARENA" },
+      { name: "apple-mobile-web-app-title", content: "NepARENA" },
       { property: "og:title", content: "NepARENA" },
       { property: "og:site_name", content: "NepARENA" },
       { property: "og:url", content: "https://neparena.xyz" },
@@ -123,7 +125,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/neparena-logo.png", type: "image/png" },
+      { rel: "icon", href: "/neparena-logo.png", type: "image/png", sizes: "any" },
       { rel: "apple-touch-icon", href: "/neparena-logo.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
