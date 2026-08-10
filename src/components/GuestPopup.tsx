@@ -11,28 +11,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
-const KEY = "efn-guest-dismissed";
+const KEY = "neparena-guest-dismissed";
 
+/** Twitter-style welcome sheet for first visit as guest. */
 export function GuestPopup() {
   const { user, loading } = useAuth();
-  // TEMPORARY: disable GuestPopup mounting during debugging of homepage hydration.
-  // Prevents the component from rendering or running effects while we test.
-  if (true) return null;
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (loading || user) return;
     if (typeof window === "undefined") return;
-    if (sessionStorage.getItem(KEY)) return;
-
-    const t = setTimeout(() => setOpen(true), 600);
+    try {
+      if (sessionStorage.getItem(KEY)) return;
+    } catch {
+      /* ignore */
+    }
+    const t = setTimeout(() => setOpen(true), 400);
     return () => clearTimeout(t);
   }, [user, loading]);
 
   const dismiss = () => {
     try {
       sessionStorage.setItem(KEY, "1");
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     setOpen(false);
   };
 
@@ -48,39 +51,39 @@ export function GuestPopup() {
     >
       <DialogContent className="glass sm:max-w-md border-border/60">
         <DialogHeader>
-          <div className="mx-auto mb-2 h-16 w-16 overflow-hidden rounded-2xl glow-brand">
+          <div className="mx-auto mb-2 h-16 w-16 overflow-hidden rounded-2xl ring-1 ring-white/15">
             <img
-              src="/android-chrome-512x512.png"
-              alt="eFootball Nepal"
+              src="/neparena-logo.png"
+              alt="NepARENA"
               className="h-full w-full object-cover"
             />
           </div>
           <DialogTitle className="text-center text-xl">
-            Welcome to eFootball Nepal
+            Welcome to NepARENA
           </DialogTitle>
           <DialogDescription className="text-center">
-            Sign in to join tournaments, submit results, and climb the rankings.
+            Browse organizers, follow communities, and compete. Sign in to join
+            tournaments and submit results.
           </DialogDescription>
         </DialogHeader>
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button
             asChild
-            className="w-full bg-gradient-brand text-primary-foreground hover:opacity-90"
+            className="w-full bg-gradient-brand text-primary-foreground"
             onClick={dismiss}
           >
             <Link to="/auth">Log in</Link>
           </Button>
-          <Button
-            asChild
-            variant="outline"
-            className="w-full border-brand/40"
-            onClick={dismiss}
-          >
+          <Button asChild variant="outline" className="w-full" onClick={dismiss}>
             <Link to="/auth">Sign up</Link>
           </Button>
-          <Button variant="ghost" onClick={dismiss} className="w-full text-muted-foreground">
-            Continue as Guest
+          <Button
+            variant="ghost"
+            onClick={dismiss}
+            className="w-full text-muted-foreground"
+          >
+            Continue as guest
           </Button>
         </DialogFooter>
       </DialogContent>

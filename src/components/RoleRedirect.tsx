@@ -1,14 +1,17 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
-import { isSuperAdminEmail } from "@/lib/organizers";
+import {
+  ensureEfootballNepalAdmin,
+  isSuperAdminEmail,
+} from "@/lib/organizers";
 import { toast } from "sonner";
 
 /**
- * After sign-in on auth screens only:
- * Super Admin → /platform
- * Organizer admin/mod → /dashboard (existing reusable template)
- * Member → /profile
+ * After sign-in on /auth:
+ * - Super admins (aashish46ak + baralk851) → /platform
+ * - Organizer admin → /dashboard
+ * - Member → /profile (Twitter-style)
  */
 export function RoleRedirect() {
   const { user, loading, isAdmin, profile, signOut } = useAuth();
@@ -22,10 +25,16 @@ export function RoleRedirect() {
       return;
     }
     if (profile?.is_suspended) {
-      toast.error("Your account has been suspended. Contact the admins for help.");
-      signOut();
+      toast.error("Your account has been suspended.");
+      void signOut();
       return;
     }
+
+    // Grant eFootball Nepal owner to super admins (idempotent)
+    if (isSuperAdminEmail(user.email)) {
+      void ensureEfootballNepalAdmin(user.id);
+    }
+
     if (handled.current === user.id) return;
     const onAuthScreen = pathname === "/auth" || pathname.startsWith("/auth/");
     if (!onAuthScreen) return;
