@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { PLATFORM_NAME } from "@/lib/organizers";
 import { supabase } from "@/lib/supabase";
 import { AdminChatFab } from "@/components/AdminChatFab";
+import { PlatformPulse } from "@/components/PlatformPulse";
 import {
   Users,
   Building2,
@@ -86,7 +87,7 @@ function PlatformHomePage() {
             </span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-neutral-400 sm:text-lg">
-            Nepal&apos;s Multi-Organizer eFootball Platform where verified
+            Nepal's Multi-Organizer eFootball Platform where verified
             tournament organizers can build and manage their own esports
             communities.
           </p>
@@ -167,6 +168,8 @@ function PlatformHomePage() {
           ))}
         </div>
       </section>
+
+      <PlatformPulse />
 
       <section className="mx-auto max-w-5xl px-4 pb-14">
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-transparent">
