@@ -4,10 +4,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* DEBUG THEME: pure white to test bg-cover theory.
-   If screen is empty white → content not rendered (JS crash).
-   If black text / cards visible → content is fine, old dark theme was not "covering".
-   Restore black+silver after test. */
+/* DEBUG: transparent backgrounds — theme must not paint a solid full-screen cover */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -54,24 +51,24 @@
 
 :root {
   --radius: 0.75rem;
-  --background: #ffffff;
+  --background: transparent;
   --foreground: #111111;
-  --card: #f7f7f7;
+  --card: #ffffff;
   --card-foreground: #111111;
   --popover: #ffffff;
   --popover-foreground: #111111;
   --primary: #111111;
   --primary-foreground: #ffffff;
-  --secondary: #eeeeee;
+  --secondary: #f3f3f3;
   --secondary-foreground: #111111;
-  --muted: #f0f0f0;
+  --muted: #f5f5f5;
   --muted-foreground: #555555;
-  --accent: #e8e8e8;
+  --accent: #eeeeee;
   --accent-foreground: #111111;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
   --border: #dddddd;
-  --input: #eeeeee;
+  --input: #f0f0f0;
   --ring: #111111;
   --brand: #333333;
   --brand-glow: #666666;
@@ -95,12 +92,14 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    background: transparent !important;
+    color: var(--foreground);
+    @apply antialiased;
   }
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
@@ -119,4 +118,9 @@
 
 .glow-brand {
   box-shadow: 0 0 16px rgba(0, 0, 0, 0.12);
+}
+
+/* PageShell must not force a solid full-screen paint during debug */
+.min-h-screen {
+  background: transparent;
 }
