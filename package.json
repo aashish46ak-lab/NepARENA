@@ -1,7 +1,16 @@
 {
   "name": "neparena",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss",
+    "**/*.sass",
+    "**/*.less",
+    "src/styles.css",
+    "src/client.tsx",
+    "src/router.tsx",
+    "src/routeTree.gen.ts"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite dev",
