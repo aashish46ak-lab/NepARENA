@@ -1,6 +1,6 @@
 /**
- * Public organizer page — /o/efootball-nepal , /o/fifa-nepal , …
- * Members see this organizer's branding + tournaments only.
+ * Organizer public profile — social style.
+ * Details first; tournaments via View / Join (opens tournament portal).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -12,10 +12,19 @@ import {
   getOrganizerBySlug,
   isFollowing,
   unfollowOrganizer,
+  getFollowerCount,
 } from "@/lib/organizers";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Trophy, Users, Bell, BellOff } from "lucide-react";
+import {
+  Loader2,
+  Trophy,
+  Users,
+  Bell,
+  BellOff,
+  ArrowRight,
+  Calendar,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -23,7 +32,10 @@ export const Route = createFileRoute("/o/$slug")({
   head: ({ params }) => ({
     meta: [
       { title: `${params.slug} — NepARENA` },
-      { name: "description", content: `Tournaments and community for ${params.slug}` },
+      {
+        name: "description",
+        content: `Organizer profile for ${params.slug} on NepARENA`,
+      },
     ],
   }),
   component: OrganizerPublicPage,
@@ -45,34 +57,71 @@ function OrganizerPublicPage() {
     queryFn: () => isFollowing(organizer!.id, user!.id),
   });
 
+  const { data: followers = 0 } = useQuery({
+    queryKey: ["org_followers", organizer?.id],
+    enabled: !!organizer?.id,
+    queryFn: () => getFollowerCount(organizer!.id),
+  });
+
+  const { data: memberCount = 0 } = useQuery({
+    queryKey: ["org_members_count", organizer?.id],
+    enabled: !!organizer?.id,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("organizer_members")
+        .select("id", { count: "exact", head: true })
+        .eq("organizer_id", organizer!.id);
+      return count ?? 0;
+    },
+  });
+
+  const { data: site } = useQuery({
+    queryKey: ["site_settings_public"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      return data as {
+        logo_url?: string | null;
+        hero_image_url?: string | null;
+        site_name?: string;
+        tagline?: string;
+        about_short?: string;
+      } | null;
+    },
+  });
+
   const { data: tournaments = [] } = useQuery({
     queryKey: ["org-tournaments", organizer?.id],
     enabled: !!organizer?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const withOrg = await supabase
         .from("tournaments")
-        .select("id, name, slug, status, banner_url, prize_pool, participants_count, is_published")
+        .select(
+          "id, name, slug, status, banner_url, prize_pool, participants_count, is_published, registration_open",
+        )
         .eq("organizer_id", organizer!.id)
         .eq("is_published", true)
         .order("created_at", { ascending: false })
         .limit(24);
-      // Fallback: if no organizer_id linked yet, show global published (legacy)
-      if (!data?.length) {
-        const { data: legacy } = await supabase
-          .from("tournaments")
-          .select("id, name, slug, status, banner_url, prize_pool, participants_count, is_published")
-          .eq("is_published", true)
-          .order("created_at", { ascending: false })
-          .limit(12);
-        return legacy ?? [];
-      }
-      return data;
+      if (withOrg.data?.length) return withOrg.data;
+      const { data } = await supabase
+        .from("tournaments")
+        .select(
+          "id, name, slug, status, banner_url, prize_pool, participants_count, is_published, registration_open",
+        )
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(24);
+      return data ?? [];
     },
   });
 
   const toggleFollow = async () => {
     if (!user) {
-      toast.message("Sign in to follow this organizer");
+      toast.message("Sign in to follow organizers");
       return;
     }
     if (!organizer) return;
@@ -82,7 +131,7 @@ function OrganizerPublicPage() {
       toast.success("Unfollowed");
     } else {
       await followOrganizer(organizer.id, user.id);
-      toast.success("Following — their events will be prioritized");
+      toast.success("Following");
     }
     setFollowBusy(false);
     void refetchFollow();
@@ -90,7 +139,7 @@ function OrganizerPublicPage() {
 
   if (isLoading) {
     return (
-      <PageShell>
+      <PageShell force="organizer">
         <div className="grid min-h-[50vh] place-items-center">
           <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
@@ -100,12 +149,12 @@ function OrganizerPublicPage() {
 
   if (!organizer || organizer.status === "suspended") {
     return (
-      <PageShell>
+      <PageShell force="organizer">
         <div className="py-20 text-center text-muted-foreground">
           Organizer not found
           <div className="mt-4">
             <Link to="/" className="text-brand">
-              Home
+              Back to NepARENA
             </Link>
           </div>
         </div>
@@ -113,100 +162,170 @@ function OrganizerPublicPage() {
     );
   }
 
+  const banner = organizer.banner_url || site?.hero_image_url || null;
+  const logo = organizer.logo_url || site?.logo_url || null;
+  const description =
+    organizer.description ||
+    organizer.tagline ||
+    site?.about_short ||
+    site?.tagline ||
+    "Competitive esports community on NepARENA.";
+
   return (
-    <PageShell>
-      <div className="relative overflow-hidden">
-        {organizer.banner_url ? (
-          <img
-            src={organizer.banner_url}
-            alt=""
-            className="h-40 w-full object-cover md:h-56 opacity-80"
-          />
+    <PageShell force="organizer">
+      <div className="relative">
+        {banner ? (
+          <img src={banner} alt="" className="h-44 w-full object-cover sm:h-56" />
         ) : (
           <div
-            className="h-40 md:h-56 w-full"
+            className="h-44 w-full sm:h-56"
             style={{
-              background: `linear-gradient(135deg, ${organizer.primary_color ?? "#2563eb"}, ${organizer.secondary_color ?? "#dc2626"})`,
+              background: `linear-gradient(135deg, ${organizer.primary_color ?? "#1a1a1a"}, ${organizer.secondary_color ?? "#333"})`,
             }}
           />
         )}
-        <div className="max-w-7xl mx-auto px-4 -mt-12 relative pb-12">
-          <div className="glass rounded-2xl p-5 md:p-6 flex flex-col sm:flex-row gap-4 items-start">
-            {organizer.logo_url ? (
-              <img
-                src={organizer.logo_url}
-                alt={organizer.name}
-                className="h-20 w-20 rounded-2xl object-cover ring-2 ring-border"
-              />
-            ) : (
-              <div className="h-20 w-20 rounded-2xl bg-gradient-brand grid place-items-center text-2xl font-bold text-white">
-                {organizer.name.slice(0, 2).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl md:text-3xl font-bold">{organizer.name}</h1>
-                {organizer.is_verified && (
-                  <Badge className="bg-emerald-500/20 text-emerald-300">Verified</Badge>
-                )}
-              </div>
-              {organizer.tagline && (
-                <p className="text-muted-foreground mt-1">{organizer.tagline}</p>
-              )}
-              {organizer.description && (
-                <p className="text-sm mt-3 whitespace-pre-wrap">{organizer.description}</p>
-              )}
-            </div>
-            <Button
-              onClick={toggleFollow}
-              disabled={followBusy}
-              variant={following ? "outline" : "default"}
-              className={!following ? "bg-gradient-brand text-primary-foreground" : undefined}
-            >
-              {following ? (
-                <>
-                  <BellOff className="h-4 w-4 mr-1.5" /> Following
-                </>
+        <div className="relative mx-auto max-w-3xl -mt-14 px-4 pb-16">
+          <div className="rounded-3xl border border-border/60 bg-background/95 p-5 shadow-xl backdrop-blur sm:p-7">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              {logo ? (
+                <img
+                  src={logo}
+                  alt={organizer.name}
+                  className="h-24 w-24 rounded-2xl object-cover ring-4 ring-background"
+                />
               ) : (
-                <>
-                  <Bell className="h-4 w-4 mr-1.5" /> Follow
-                </>
+                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-gradient-to-br from-neutral-200 to-neutral-600 text-2xl font-bold text-black ring-4 ring-background">
+                  {organizer.name.slice(0, 2).toUpperCase()}
+                </div>
               )}
-            </Button>
-          </div>
-
-          <h2 className="text-xl font-bold mt-10 mb-4 flex items-center gap-2">
-            <Trophy className="h-5 w-5" /> Tournaments
-          </h2>
-          {tournaments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No published tournaments yet.</p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {tournaments.map((t: {
-                id: string;
-                name: string;
-                status: string;
-                prize_pool: string | null;
-                participants_count: number;
-              }) => (
-                <Link
-                  key={t.id}
-                  to="/tournaments/$id"
-                  params={{ id: t.id }}
-                  className="glass rounded-2xl p-4 hover:ring-1 hover:ring-brand/40 transition"
-                >
-                  <div className="text-xs text-brand-glow uppercase">{t.status}</div>
-                  <div className="font-semibold mt-1">{t.name}</div>
-                  <div className="text-xs text-muted-foreground mt-2 flex gap-3">
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3 w-3" /> {t.participants_count}
-                    </span>
-                    {t.prize_pool && <span>{t.prize_pool}</span>}
-                  </div>
-                </Link>
-              ))}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold sm:text-3xl">{organizer.name}</h1>
+                  {organizer.is_verified && (
+                    <Badge className="bg-sky-500/20 text-sky-300">Verified</Badge>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  @{organizer.slug} · Organizer
+                </p>
+                <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span>
+                    <strong className="text-foreground">{followers}</strong> Followers
+                  </span>
+                  <span>
+                    <strong className="text-foreground">{memberCount || "—"}</strong>{" "}
+                    Members
+                  </span>
+                  <span>
+                    <strong className="text-foreground">{tournaments.length}</strong>{" "}
+                    Tournaments
+                  </span>
+                </div>
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                  {description}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Button
+                    disabled={followBusy}
+                    variant={following ? "outline" : "default"}
+                    onClick={() => void toggleFollow()}
+                  >
+                    {following ? (
+                      <>
+                        <BellOff className="mr-1.5 h-4 w-4" /> Following
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="mr-1.5 h-4 w-4" /> Follow
+                      </>
+                    )}
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to="/">NepARENA Home</Link>
+                  </Button>
+                </div>
+              </div>
             </div>
-          )}
+
+            <div className="mt-10">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <Trophy className="h-5 w-5" /> Tournaments
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Open a tournament portal to view fixtures, standings and register.
+              </p>
+
+              {tournaments.length === 0 ? (
+                <p className="mt-6 text-sm text-muted-foreground">
+                  No published tournaments yet.
+                </p>
+              ) : (
+                <ul className="mt-6 space-y-4">
+                  {tournaments.map(
+                    (t: {
+                      id: string;
+                      name: string;
+                      status: string;
+                      prize_pool: string | null;
+                      participants_count: number;
+                      registration_open?: boolean | null;
+                    }) => (
+                      <li
+                        key={t.id}
+                        className="rounded-2xl border border-border/60 bg-card/40 p-4"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-semibold">{t.name}</h3>
+                              <Badge variant="secondary" className="text-[10px] uppercase">
+                                {t.status?.replaceAll("_", " ")}
+                              </Badge>
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                              <span className="inline-flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {t.participants_count ?? 0} players
+                              </span>
+                              {t.prize_pool && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Trophy className="h-3 w-3" />
+                                  {t.prize_pool}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Portal ready
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 flex-wrap gap-2">
+                            <Button asChild size="sm" variant="outline">
+                              <Link to="/tournaments/$id" params={{ id: t.id }}>
+                                View tournament
+                              </Link>
+                            </Button>
+                            <Button
+                              asChild
+                              size="sm"
+                              className="bg-gradient-brand text-primary-foreground"
+                            >
+                              <Link to="/tournaments/$id" params={{ id: t.id }}>
+                                {t.registration_open || t.status === "registration_open"
+                                  ? "Join tournament"
+                                  : "Open portal"}
+                                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </li>
+                    ),
+                  )}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </PageShell>
