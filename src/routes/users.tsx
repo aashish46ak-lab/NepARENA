@@ -1,5 +1,5 @@
 /**
- * Platform registered users (Followers list on platform profile).
+ * Platform Followers — signed-up users.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ import { Users } from "lucide-react";
 
 export const Route = createFileRoute("/users")({
   head: () => ({
-    meta: [{ title: `Users — ${PLATFORM_NAME}` }],
+    meta: [{ title: `Followers — ${PLATFORM_NAME}` }],
   }),
   component: PlatformUsersPage,
 });
@@ -32,10 +32,10 @@ function PlatformUsersPage() {
     <PageShell force="platform">
       <div className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Users className="h-6 w-6" /> Registered users
+          <Users className="h-6 w-6" /> Followers
         </h1>
         <p className="mt-1 text-sm text-neutral-500">
-          Everyone signed up on {PLATFORM_NAME}
+          Signed-up users on {PLATFORM_NAME}
         </p>
         {isLoading && (
           <p className="mt-8 text-sm text-neutral-500">Loading…</p>
@@ -71,6 +71,9 @@ function PlatformUsersPage() {
             </li>
           ))}
         </ul>
+        {!isLoading && users.length === 0 && (
+          <p className="mt-6 text-sm text-neutral-500">No users yet.</p>
+        )}
       </div>
     </PageShell>
   );

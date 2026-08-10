@@ -3,6 +3,7 @@ export function isPlatformPath(pathname: string): boolean {
   if (pathname === "/") return true;
   const platformPrefixes = [
     "/organizers",
+    "/following",
     "/platform",
     "/users",
     "/ownership",
