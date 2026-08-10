@@ -1,9 +1,9 @@
 /**
- * Organizer public profile — social style.
- * Details first; tournaments via View / Join (opens tournament portal).
+ * Organizer public profile — share link uses organizer logo as OG image.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,10 @@ import {
   unfollowOrganizer,
   getFollowerCount,
 } from "@/lib/organizers";
+import {
+  setOrganizerContext,
+  organizerShareUrl,
+} from "@/lib/organizer-context";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -24,20 +28,51 @@ import {
   BellOff,
   ArrowRight,
   Calendar,
+  Share2,
+  Link2,
 } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/o/$slug")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.slug} — NepARENA` },
-      {
-        name: "description",
-        content: `Organizer profile for ${params.slug} on NepARENA`,
-      },
-    ],
-  }),
+  loader: async ({ params }) => {
+    const org = await getOrganizerBySlug(params.slug);
+    return { org };
+  },
+  head: ({ params, loaderData }) => {
+    const org = loaderData?.org as
+      | {
+          name?: string;
+          description?: string | null;
+          tagline?: string | null;
+          logo_url?: string | null;
+          banner_url?: string | null;
+        }
+      | null
+      | undefined;
+    const name = org?.name ?? params.slug;
+    const desc =
+      org?.description ||
+      org?.tagline ||
+      `${name} — organizer on NepARENA`;
+    const image =
+      org?.logo_url || org?.banner_url || "https://neparena.xyz/neparena-logo.png";
+    const url = `https://neparena.xyz/o/${params.slug}`;
+    return {
+      meta: [
+        { title: `${name} — NepARENA` },
+        { name: "description", content: desc },
+        { property: "og:title", content: name },
+        { property: "og:description", content: desc },
+        { property: "og:image", content: image },
+        { property: "og:url", content: url },
+        { property: "og:type", content: "website" },
+        { property: "og:site_name", content: "NepARENA" },
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: name },
+        { name: "twitter:image", content: image },
+      ],
+    };
+  },
   component: OrganizerPublicPage,
 });
 
@@ -50,6 +85,16 @@ function OrganizerPublicPage() {
     queryKey: ["organizer", slug],
     queryFn: () => getOrganizerBySlug(slug),
   });
+
+  useEffect(() => {
+    if (!organizer) return;
+    setOrganizerContext({
+      slug: organizer.slug,
+      id: organizer.id,
+      name: organizer.name,
+      logo_url: organizer.logo_url,
+    });
+  }, [organizer]);
 
   const { data: following, refetch: refetchFollow } = useQuery({
     queryKey: ["following", organizer?.id, user?.id],
@@ -76,7 +121,7 @@ function OrganizerPublicPage() {
   });
 
   const { data: site } = useQuery({
-    queryKey: ["site_settings_public"],
+    queryKey: ["site_settings_public", organizer?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("site_settings")
@@ -86,7 +131,6 @@ function OrganizerPublicPage() {
       return data as {
         logo_url?: string | null;
         hero_image_url?: string | null;
-        site_name?: string;
         tagline?: string;
         about_short?: string;
       } | null;
@@ -107,15 +151,18 @@ function OrganizerPublicPage() {
         .order("created_at", { ascending: false })
         .limit(24);
       if (withOrg.data?.length) return withOrg.data;
-      const { data } = await supabase
-        .from("tournaments")
-        .select(
-          "id, name, slug, status, banner_url, prize_pool, participants_count, is_published, registration_open",
-        )
-        .eq("is_published", true)
-        .order("created_at", { ascending: false })
-        .limit(24);
-      return data ?? [];
+      if (slug === "efootball-nepal") {
+        const { data } = await supabase
+          .from("tournaments")
+          .select(
+            "id, name, slug, status, banner_url, prize_pool, participants_count, is_published, registration_open",
+          )
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
+          .limit(24);
+        return data ?? [];
+      }
+      return [];
     },
   });
 
@@ -135,6 +182,30 @@ function OrganizerPublicPage() {
     }
     setFollowBusy(false);
     void refetchFollow();
+  };
+
+  const share = async () => {
+    const url = organizerShareUrl(slug);
+    const title = organizer?.name ?? slug;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title,
+          url,
+          text: `Join ${title} on NepARENA`,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied");
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied");
+      } catch {
+        toast.message(url);
+      }
+    }
   };
 
   if (isLoading) {
@@ -206,7 +277,7 @@ function OrganizerPublicPage() {
                   )}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  @{organizer.slug} · Organizer
+                  @{organizer.slug} · Organizer on NepARENA
                 </p>
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <span>
@@ -240,8 +311,21 @@ function OrganizerPublicPage() {
                       </>
                     )}
                   </Button>
-                  <Button asChild variant="outline">
-                    <Link to="/">NepARENA Home</Link>
+                  <Button type="button" variant="outline" onClick={() => void share()}>
+                    <Share2 className="mr-1.5 h-4 w-4" /> Share link
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(organizerShareUrl(slug));
+                      toast.success("Link copied");
+                    }}
+                  >
+                    <Link2 className="mr-1 h-3.5 w-3.5" />
+                    Copy URL
                   </Button>
                 </div>
               </div>
@@ -252,7 +336,7 @@ function OrganizerPublicPage() {
                 <Trophy className="h-5 w-5" /> Tournaments
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Open a tournament portal to view fixtures, standings and register.
+                Open a tournament portal for fixtures, standings and registration.
               </p>
 
               {tournaments.length === 0 ? (
