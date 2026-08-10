@@ -10,11 +10,9 @@ import {
 import { useEffect, Component, type ErrorInfo, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
-import { disablePWA } from "@/lib/pwa-register";
 
 function NotFoundComponent() {
   return (
@@ -34,36 +32,30 @@ function NotFoundComponent() {
 }
 
 function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error("[SafeErrorComponent]", error);
+  console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4">
-      <div className="max-w-md rounded-xl border border-red-500/50 bg-[#111] p-6 text-center text-white">
-        <h1 className="text-xl font-semibold">This page didn't load</h1>
-        <p className="mt-2 text-sm text-red-400 break-words">
-          {error?.message || "Something went wrong."}
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 text-white">
+      <div className="max-w-md text-center">
+        <h1 className="text-xl font-semibold">Something went wrong</h1>
+        <p className="mt-2 text-sm text-red-400 break-words">{error.message}</p>
+        <div className="mt-6 flex justify-center gap-2">
           <button
             type="button"
+            className="rounded-md bg-white px-4 py-2 text-sm text-black"
             onClick={() => {
               window.location.href = "/";
             }}
-            className="rounded-md bg-white px-4 py-2 text-sm text-black"
           >
             Go home
           </button>
           <button
             type="button"
+            className="rounded-md border border-white/30 px-4 py-2 text-sm"
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="rounded-md border border-white/30 px-4 py-2 text-sm text-white"
           >
             Try again
           </button>
@@ -78,34 +70,27 @@ class ClientErrorBoundary extends Component<
   { error: Error | null }
 > {
   state: { error: Error | null } = { error: null };
-
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
-
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[ClientErrorBoundary]", error, info.componentStack);
-    reportLovableError(error, {
-      boundary: "client_error_boundary",
-      stack: info.componentStack,
-    });
+    console.error(error, info.componentStack);
   }
-
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0a0a0a] px-4 text-center text-white">
-          <h1 className="text-lg font-semibold">Something went wrong</h1>
-          <p className="max-w-sm text-sm text-red-400 break-words">
-            {this.state.error.message}
-          </p>
-          <button
-            type="button"
-            className="rounded-md bg-white px-4 py-2 text-sm text-black"
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </button>
+        <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 text-center text-white">
+          <div>
+            <h1 className="text-lg font-semibold">Something went wrong</h1>
+            <p className="mt-2 text-sm text-red-400">{this.state.error.message}</p>
+            <button
+              type="button"
+              className="mt-4 rounded-md bg-white px-4 py-2 text-sm text-black"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </button>
+          </div>
         </div>
       );
     }
@@ -122,10 +107,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "NepARENA is the multi-organizer esports tournament platform for Nepal.",
+          "NepARENA multi-organizer esports tournament platform for Nepal.",
       },
       { name: "theme-color", content: "#0a0a0a" },
-      { property: "og:title", content: "NepARENA — Tournament Platform" },
+      { property: "og:title", content: "NepARENA" },
       { property: "og:site_name", content: "NepARENA" },
       { property: "og:url", content: "https://neparena.xyz" },
       {
@@ -166,10 +151,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
-  useEffect(() => {
-    void disablePWA();
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

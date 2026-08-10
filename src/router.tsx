@@ -7,31 +7,25 @@ import {
 import { routeTree } from "./routeTree.gen";
 
 /**
- * Boot error was:
- *   Cannot read properties of undefined (reading 'get')
- * from hydrateStart():
- *   if (!router.stores.ids.get().length) await hydrate(router)
- *
- * createRouter() only builds `router.stores` when a history + latestLocation exist.
- * In production client builds, history sometimes was not ready → stores undefined → .get crash.
- * Explicit history fixes that (localhost vite path often differed).
+ * Single router factory used by client boot.
+ * Existing Supabase schema / SQL is unchanged — only the JS boot path is new.
  */
-export const getRouter = () => {
+export function getRouter() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: 1,
         refetchOnWindowFocus: false,
+        staleTime: 30_000,
       },
     },
   });
 
+  // Always attach history so router.stores is created (required by TanStack hydrate).
   const history =
     typeof document !== "undefined"
       ? createBrowserHistory()
-      : createMemoryHistory({
-          initialEntries: ["/"],
-        });
+      : createMemoryHistory({ initialEntries: ["/"] });
 
   const router = createRouter({
     routeTree,
@@ -41,8 +35,17 @@ export const getRouter = () => {
     defaultPreloadStaleTime: 0,
   });
 
+  // Guarantee stores exist before any hydrateStart / hydrate() call.
+  const r = router as unknown as {
+    stores?: { ids: { get: () => unknown[] } };
+    update: (o?: object) => void;
+  };
+  if (!r.stores) {
+    r.update({});
+  }
+
   return router;
-};
+}
 
 declare module "@tanstack/react-router" {
   interface Register {
