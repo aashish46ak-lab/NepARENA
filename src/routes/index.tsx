@@ -163,20 +163,17 @@ function PlatformProfilePage() {
   return (
     <PageShell force="platform">
       <section className="relative overflow-hidden">
-        <div className="relative h-40 overflow-hidden bg-[linear-gradient(135deg,#050505_0%,#0c1929_40%,#1e293b_70%,#0a0a0a_100%)] sm:h-52">
+        <div className="relative h-44 overflow-hidden bg-white sm:h-56">
           <img
-            src="/neparena-cover.jpg"
-            alt=""
+            src="/neparena-cover.svg"
+            alt="NepARENA cover"
             className="absolute inset-0 h-full w-full object-cover object-center"
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = "/neparena-logo.png";
-              e.currentTarget.className =
-                "absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-3xl object-contain opacity-25 sm:h-36 sm:w-36";
+              e.currentTarget.src = "/neparena-cover.jpg";
             }}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(56,189,248,0.15),transparent_50%)]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
         </div>
 
         <div className="relative mx-auto max-w-3xl px-4 pb-10">
@@ -221,7 +218,7 @@ function PlatformProfilePage() {
           </div>
 
           <p className="mt-6 text-base leading-relaxed text-neutral-300">
-            Nepal&apos;s Multi-Organizer eFootball Platform where verified
+            Nepal's Multi-Organizer eFootball Platform where verified
             tournament organizers build and manage their own esports communities —
             each with independent branding, members, and tournaments.
           </p>
