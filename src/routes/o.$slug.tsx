@@ -2,7 +2,7 @@
  * Organizer public profile — theme-aware cover, join cards, share isolation.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
@@ -90,6 +90,7 @@ export const Route = createFileRoute("/o/$slug")({
 function OrganizerPublicPage() {
   const { slug } = Route.useParams();
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [followBusy, setFollowBusy] = useState(false);
 
   const { data: organizer, isLoading } = useQuery({
@@ -258,6 +259,8 @@ function OrganizerPublicPage() {
     }
     setFollowBusy(false);
     void refetchFollow();
+    void qc.invalidateQueries({ queryKey: ["org_followers", organizer.id] });
+    void qc.invalidateQueries({ queryKey: ["home_following_orgs"] });
   };
 
   const share = async () => {
@@ -474,63 +477,6 @@ function OrganizerPublicPage() {
               {description}
             </p>
 
-            {(organizer.website_url ||
-              organizer.contact_email ||
-              organizer.facebook_url ||
-              organizer.instagram_url ||
-              organizer.discord_url) && (
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                {organizer.website_url && (
-                  <a
-                    href={organizer.website_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-muted-foreground hover:text-foreground"
-                  >
-                    <Globe className="h-3 w-3" /> Website
-                  </a>
-                )}
-                {organizer.contact_email && (
-                  <a
-                    href={`mailto:${organizer.contact_email}`}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-muted-foreground hover:text-foreground"
-                  >
-                    Contact
-                  </a>
-                )}
-                {organizer.facebook_url && (
-                  <a
-                    href={organizer.facebook_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-muted-foreground hover:text-foreground"
-                  >
-                    Facebook
-                  </a>
-                )}
-                {organizer.instagram_url && (
-                  <a
-                    href={organizer.instagram_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-muted-foreground hover:text-foreground"
-                  >
-                    Instagram
-                  </a>
-                )}
-                {organizer.discord_url && (
-                  <a
-                    href={organizer.discord_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-muted-foreground hover:text-foreground"
-                  >
-                    Discord
-                  </a>
-                )}
-              </div>
-            )}
-
             {!organizer.is_verified && (
               <p className="mt-2 text-xs text-amber-400/90">
                 Organize more tournaments to get verified by NepARENA.
@@ -570,9 +516,6 @@ function OrganizerPublicPage() {
                         <p className="mt-1 text-sm leading-relaxed text-muted-foreground line-clamp-3">
                           {a.body}
                         </p>
-                        <p className="mt-1.5 text-[11px] text-muted-foreground/70">
-                          {new Date(a.created_at).toLocaleDateString()}
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -611,98 +554,6 @@ function OrganizerPublicPage() {
               ))}
             </div>
           </section>
-
-          {tournaments.length > 0 && (
-            <div className="mt-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">
-                  Live tournaments
-                </h2>
-                <Link
-                  to="/tournaments"
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  View all
-                </Link>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {tournaments.slice(0, 6).map(
-                  (t: {
-                    id: string;
-                    name: string;
-                    status?: string | null;
-                    banner_url?: string | null;
-                    participants_count?: number | null;
-                    registration_open?: boolean | null;
-                  }) => {
-                    const st = joinStatus(t.id);
-                    return (
-                      <div
-                        key={t.id}
-                        className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
-                      >
-                        {t.banner_url ? (
-                          <img
-                            src={t.banner_url}
-                            alt=""
-                            className="h-32 w-full object-cover sm:h-36"
-                          />
-                        ) : (
-                          <div
-                            className="h-32 w-full sm:h-36"
-                            style={{ background: theme.cover }}
-                          />
-                        )}
-                        <div className="space-y-3 p-4">
-                          <div>
-                            <p className="font-semibold leading-snug">{t.name}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {(t.status ?? "").replaceAll("_", " ")} ·{" "}
-                              {t.participants_count ?? 0} players
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              asChild
-                              size="sm"
-                              variant="outline"
-                              className="border-white/15"
-                            >
-                              <Link to="/tournaments/$id" params={{ id: t.id }}>
-                                Open portal
-                              </Link>
-                            </Button>
-                            {st === "approved" || st === "registered" ? (
-                              <Button size="sm" variant="secondary" disabled>
-                                Already joined
-                              </Button>
-                            ) : st === "pending" ? (
-                              <Button size="sm" variant="secondary" disabled>
-                                Request pending
-                              </Button>
-                            ) : t.registration_open ||
-                              t.status === "registration_open" ? (
-                              <Button
-                                size="sm"
-                                className="bg-neutral-100 text-black hover:bg-white"
-                                onClick={() => void requestJoin(t.id)}
-                              >
-                                Request to join
-                              </Button>
-                            ) : (
-                              <Button size="sm" variant="secondary" disabled>
-                                Registration closed
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </PageShell>
