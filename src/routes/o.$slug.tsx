@@ -1,5 +1,5 @@
 /**
- * Organizer public profile — share link uses organizer logo as OG image.
+ * Organizer public profile — theme-aware cover, join cards, share isolation.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
+import { getTheme } from "@/lib/themes";
 
 export const Route = createFileRoute("/o/$slug")({
   loader: async ({ params }) => {
@@ -172,6 +173,46 @@ function OrganizerPublicPage() {
     },
   });
 
+  const { data: myJoins = [], refetch: refetchJoins } = useQuery({
+    queryKey: [
+      "my_joins",
+      user?.id,
+      (tournaments as { id: string }[]).map((x) => x.id).join(","),
+    ],
+    enabled: !!user?.id && (tournaments as { id: string }[]).length > 0,
+    queryFn: async () => {
+      const ids = (tournaments as { id: string }[]).map((x) => x.id);
+      const { data } = await supabase
+        .from("tournament_participants")
+        .select("tournament_id, status")
+        .eq("user_id", user!.id)
+        .in("tournament_id", ids);
+      return (data ?? []) as { tournament_id: string; status: string }[];
+    },
+  });
+
+  const joinStatus = (tid: string) =>
+    myJoins.find((j) => j.tournament_id === tid)?.status ?? null;
+
+  const requestJoin = async (tournamentId: string) => {
+    if (!user) {
+      toast.message("Sign in to request joining");
+      return;
+    }
+    const { error } = await supabase.from("tournament_participants").insert({
+      tournament_id: tournamentId,
+      user_id: user.id,
+      player_name: user.email?.split("@")[0] ?? "Player",
+      status: "pending",
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Join request sent");
+    void refetchJoins();
+  };
+
   const toggleFollow = async () => {
     if (!user) {
       toast.message("Sign in to follow organizers");
@@ -239,6 +280,7 @@ function OrganizerPublicPage() {
     );
   }
 
+  const theme = getTheme((organizer as { theme_id?: string | null }).theme_id);
   const banner = organizer.banner_url || site?.hero_image_url || null;
   const logo = organizer.logo_url || site?.logo_url || null;
   const description =
@@ -295,163 +337,210 @@ function OrganizerPublicPage() {
 
   return (
     <PageShell force="organizer">
-      {/* 1. Cover + logo + profile first */}
-      <div className="relative">
-        {banner ? (
-          <img src={banner} alt="" className="h-36 w-full object-cover sm:h-44" />
-        ) : (
-          <div className="h-36 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 sm:h-44" />
-        )}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/30 to-transparent sm:h-44" />
+      <div className="min-h-screen" style={{ backgroundImage: theme.pageBg }}>
+        <div className="relative">
+          {banner ? (
+            <img src={banner} alt="" className="h-40 w-full object-cover sm:h-52" />
+          ) : (
+            <div className="h-40 w-full sm:h-52" style={{ background: theme.cover }} />
+          )}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/50 via-black/20 to-transparent sm:h-52" />
 
-        <div className="relative mx-auto max-w-3xl px-4 pb-6">
-          <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-end gap-3">
-              {logo ? (
-                <img
-                  src={logo}
-                  alt={organizer.name}
-                  className="h-24 w-24 rounded-2xl object-cover shadow-xl ring-4 ring-background sm:h-28 sm:w-28"
-                />
-              ) : (
-                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-gradient-to-br from-neutral-200 to-neutral-500 text-2xl font-bold text-black shadow-xl ring-4 ring-background sm:h-28 sm:w-28">
-                  {organizer.name.slice(0, 2).toUpperCase()}
-                </div>
-              )}
-              <div className="pb-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                    {organizer.name}
-                  </h1>
-                  {organizer.is_verified && (
-                    <Badge className="bg-sky-500/20 text-sky-300 hover:bg-sky-500/20">
-                      Verified
-                    </Badge>
+          <div className="relative mx-auto max-w-3xl px-4 pb-6">
+            <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex items-end gap-3">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt={organizer.name}
+                    className="h-24 w-24 rounded-2xl object-cover shadow-xl ring-4 ring-background sm:h-28 sm:w-28"
+                  />
+                ) : (
+                  <div className="grid h-24 w-24 place-items-center rounded-2xl bg-gradient-to-br from-neutral-200 to-neutral-500 text-2xl font-bold text-black shadow-xl ring-4 ring-background sm:h-28 sm:w-28">
+                    {organizer.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div className="pb-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1
+                      className="text-2xl font-bold tracking-tight text-white sm:text-3xl"
+                      style={{ textShadow: theme.nameShadow }}
+                    >
+                      {organizer.name}
+                    </h1>
+                    {organizer.is_verified ? (
+                      <Badge className="bg-sky-500/25 text-sky-200 hover:bg-sky-500/25">
+                        Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Unverified
+                      </Badge>
+                    )}
+                  </div>
+                  {organizer.tagline && (
+                    <p className="mt-0.5 text-sm text-white/80">{organizer.tagline}</p>
                   )}
                 </div>
-                {organizer.tagline && (
-                  <p className="mt-0.5 text-sm text-muted-foreground">{organizer.tagline}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}>
+                  <Share2 className="mr-1.5 h-3.5 w-3.5" />
+                  Share
+                </Button>
+                <Button
+                  size="sm"
+                  className={
+                    following
+                      ? "bg-white/10 text-foreground hover:bg-white/15"
+                      : "bg-neutral-100 text-black hover:bg-white"
+                  }
+                  disabled={followBusy}
+                  onClick={() => void toggleFollow()}
+                >
+                  {followBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : following ? (
+                    <>
+                      <BellOff className="mr-1.5 h-3.5 w-3.5" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="mr-1.5 h-3.5 w-3.5" />
+                      Follow
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+              <span>
+                <strong className="text-foreground">{followers}</strong> followers
+              </span>
+              <span>
+                <strong className="text-foreground">{memberCount}</strong> members
+              </span>
+              <span>
+                <strong className="text-foreground">{tournaments.length}</strong> tournaments
+              </span>
+            </div>
+
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-3">
+              {description}
+            </p>
+            {!organizer.is_verified && (
+              <p className="mt-2 text-xs text-amber-400/90">
+                Organize more tournaments to get verified by NepARENA.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <PendingMatchesPanel />
+
+        <div className="mx-auto max-w-3xl px-4 pb-14">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Explore {organizer.name}
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`group flex items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br ${item.accent} p-5 transition hover:border-white/25 hover:bg-white/[0.04]`}
+              >
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-black/40 ring-1 ring-white/10">
+                  <item.icon className="h-5 w-5 text-neutral-100" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-semibold text-foreground">{item.label}</span>
+                  <span className="block text-xs text-muted-foreground">{item.desc}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </Link>
+            ))}
+          </div>
+
+          {tournaments.length > 0 && (
+            <div className="mt-12">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-foreground">Live tournaments</h2>
+                <Link to="/tournaments" className="text-xs text-muted-foreground hover:text-foreground">
+                  View all
+                </Link>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {tournaments.slice(0, 6).map(
+                  (t: {
+                    id: string;
+                    name: string;
+                    status?: string | null;
+                    banner_url?: string | null;
+                    participants_count?: number | null;
+                    registration_open?: boolean | null;
+                  }) => {
+                    const st = joinStatus(t.id);
+                    return (
+                      <div
+                        key={t.id}
+                        className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
+                      >
+                        {t.banner_url ? (
+                          <img
+                            src={t.banner_url}
+                            alt=""
+                            className="h-32 w-full object-cover sm:h-36"
+                          />
+                        ) : (
+                          <div className="h-32 w-full sm:h-36" style={{ background: theme.cover }} />
+                        )}
+                        <div className="space-y-3 p-4">
+                          <div>
+                            <p className="font-semibold leading-snug">{t.name}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {(t.status ?? "").replaceAll("_", " ")} · {t.participants_count ?? 0}{" "}
+                              players
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button asChild size="sm" variant="outline" className="border-white/15">
+                              <Link to="/tournaments/$id" params={{ id: t.id }}>
+                                Open portal
+                              </Link>
+                            </Button>
+                            {st === "approved" || st === "registered" ? (
+                              <Button size="sm" variant="secondary" disabled>
+                                Already joined
+                              </Button>
+                            ) : st === "pending" ? (
+                              <Button size="sm" variant="secondary" disabled>
+                                Request pending
+                              </Button>
+                            ) : t.registration_open || t.status === "registration_open" ? (
+                              <Button
+                                size="sm"
+                                className="bg-neutral-100 text-black hover:bg-white"
+                                onClick={() => void requestJoin(t.id)}
+                              >
+                                Request to join
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="secondary" disabled>
+                                Registration closed
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  },
                 )}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}>
-                <Share2 className="mr-1.5 h-3.5 w-3.5" />
-                Share
-              </Button>
-              <Button
-                size="sm"
-                className={
-                  following
-                    ? "bg-white/10 text-foreground hover:bg-white/15"
-                    : "bg-neutral-100 text-black hover:bg-white"
-                }
-                disabled={followBusy}
-                onClick={() => void toggleFollow()}
-              >
-                {followBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : following ? (
-                  <>
-                    <BellOff className="mr-1.5 h-3.5 w-3.5" />
-                    Following
-                  </>
-                ) : (
-                  <>
-                    <Bell className="mr-1.5 h-3.5 w-3.5" />
-                    Follow
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
-            <span>
-              <strong className="text-foreground">{followers}</strong> followers
-            </span>
-            <span>
-              <strong className="text-foreground">{memberCount}</strong> members
-            </span>
-            <span>
-              <strong className="text-foreground">{tournaments.length}</strong> tournaments
-            </span>
-          </div>
-
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-3">
-            {description}
-          </p>
+          )}
         </div>
-      </div>
-
-      {/* 2. Pending matches under cover + logo */}
-      <PendingMatchesPanel />
-
-      {/* 3. Big nav buttons */}
-      <div className="mx-auto max-w-3xl px-4 pb-14">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Explore {organizer.name}
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`group flex items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br ${item.accent} p-5 transition hover:border-white/25 hover:bg-white/[0.04]`}
-            >
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-black/40 ring-1 ring-white/10">
-                <item.icon className="h-5 w-5 text-neutral-100" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-base font-semibold text-foreground">{item.label}</span>
-                <span className="block text-xs text-muted-foreground">{item.desc}</span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </Link>
-          ))}
-        </div>
-
-        {tournaments.length > 0 && (
-          <div className="mt-10">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Active tournaments</h2>
-              <Link to="/tournaments" className="text-xs text-muted-foreground hover:text-foreground">
-                View all
-              </Link>
-            </div>
-            <ul className="space-y-2">
-              {tournaments.slice(0, 4).map(
-                (t: {
-                  id: string;
-                  name: string;
-                  status?: string | null;
-                  participants_count?: number | null;
-                  registration_open?: boolean | null;
-                }) => (
-                  <li key={t.id}>
-                    <Link
-                      to="/tournaments/$id"
-                      params={{ id: t.id }}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 transition hover:border-white/20 hover:bg-white/[0.04]"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{t.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(t.status ?? "").replaceAll("_", " ")} · {t.participants_count ?? 0}{" "}
-                          players
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-xs font-medium text-neutral-300">
-                        {t.registration_open || t.status === "registration_open" ? "Join" : "Open"}
-                        <ArrowRight className="ml-1 inline h-3 w-3" />
-                      </span>
-                    </Link>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
-        )}
       </div>
     </PageShell>
   );
