@@ -33,9 +33,12 @@ import {
   Swords,
   Medal,
   Globe,
+  Megaphone,
+  Pin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
+import { OrganizerChatFab } from "@/components/OrganizerChatFab";
 import { getTheme } from "@/lib/themes";
 
 export const Route = createFileRoute("/o/$slug")({
@@ -189,6 +192,31 @@ function OrganizerPublicPage() {
         .eq("user_id", user!.id)
         .in("tournament_id", ids);
       return (data ?? []) as { tournament_id: string; status: string }[];
+    },
+  });
+
+  const { data: announcements = [] } = useQuery({
+    queryKey: ["org_announcements", organizer?.id],
+    enabled: !!organizer?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("id, title, body, image_url, is_pinned, created_at")
+        .order("is_pinned", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) {
+        console.warn(error.message);
+        return [];
+      }
+      return (data ?? []) as {
+        id: string;
+        title: string;
+        body: string;
+        image_url: string | null;
+        is_pinned: boolean;
+        created_at: string;
+      }[];
     },
   });
 
@@ -386,7 +414,12 @@ function OrganizerPublicPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <OrganizerChatFab
+                    organizerId={organizer.id}
+                    organizerName={organizer.name}
+                    organizerLogo={logo}
+                  />
                   <Button
                     size="sm"
                     variant="outline"
@@ -506,37 +539,81 @@ function OrganizerPublicPage() {
           </div>
         </div>
 
-        <PendingMatchesPanel />
+        <div className="mx-auto max-w-3xl space-y-6 px-4 pb-14 pt-4">
+          {announcements.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                <Megaphone className="h-3.5 w-3.5" />
+                Announcements
+              </h2>
+              <div className="space-y-2">
+                {announcements.map((a) => (
+                  <div
+                    key={a.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      {a.image_url && (
+                        <img
+                          src={a.image_url}
+                          alt=""
+                          className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {a.is_pinned && (
+                            <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                          )}
+                          <p className="font-semibold text-foreground">{a.title}</p>
+                        </div>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+                          {a.body}
+                        </p>
+                        <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+                          {new Date(a.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-        <div className="mx-auto max-w-3xl px-4 pb-14">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Explore {organizer.name}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`group flex items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br ${item.accent} p-5 transition hover:border-white/25 hover:bg-white/[0.04]`}
-              >
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-black/40 ring-1 ring-white/10">
-                  <item.icon className="h-5 w-5 text-neutral-100" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-base font-semibold text-foreground">
-                    {item.label}
+          <PendingMatchesPanel />
+
+          <section>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Explore {organizer.name}
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {navItems.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`group relative flex aspect-square flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br ${item.accent} p-4 transition hover:border-white/30 hover:scale-[1.02]`}
+                  style={{ backgroundColor: "rgba(0,0,0,0.25)" }}
+                >
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-black/50 ring-1 ring-white/15">
+                    <item.icon className="h-5 w-5 text-neutral-100" />
                   </span>
-                  <span className="block text-xs text-muted-foreground">
-                    {item.desc}
+                  <span>
+                    <span className="block text-sm font-semibold text-foreground sm:text-base">
+                      {item.label}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground line-clamp-2">
+                      {item.desc}
+                    </span>
                   </span>
-                </span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </Link>
-            ))}
-          </div>
+                  <ArrowRight className="absolute right-3 top-3 h-4 w-4 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                </Link>
+              ))}
+            </div>
+          </section>
 
           {tournaments.length > 0 && (
-            <div className="mt-12">
+            <div className="mt-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-foreground">
                   Live tournaments
