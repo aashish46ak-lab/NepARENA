@@ -1,11 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildSeoHead } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
 import { useTournamentHistory } from "@/hooks/useContent";
 import { Trophy } from "lucide-react";
 import { SmartImage } from "@/components/SmartImage";
 
 export const Route = createFileRoute("/history")({
-  head: () => ({ meta: [{ title: "Tournament History — eFootball Nepal" }, { name: "description", content: "Every season, every winner. The full history of eFootball Nepal tournaments." }] }),
+  head: () => ({
+    ...buildSeoHead({
+      title: "History",
+      description:
+        "Past seasons and tournament history on NepARENA.",
+      path: "/history",
+    }),
+  }),
   component: () => {
     const { data: list = [], isLoading } = useTournamentHistory();
     return (
