@@ -14,6 +14,7 @@ import { getOrganizerContext } from "@/lib/organizer-context";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { AdminChatFab } from "@/components/AdminChatFab";
+import { buildSeoHead } from "@/lib/seo";
 import {
   Users,
   Building2,
@@ -29,16 +30,12 @@ import {
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      { title: `${PLATFORM_NAME} — Multi-Organizer eFootball Platform` },
-      {
-        name: "description",
-        content:
-          "NepARENA is Nepal's multi-organizer eFootball platform. Verified organizers build independent esports communities.",
-      },
-      { property: "og:title", content: PLATFORM_NAME },
-      { property: "og:site_name", content: PLATFORM_NAME },
-    ],
+    ...buildSeoHead({
+      title: "NepARENA – Nepal's Multi Organizer Esports Platform",
+      description:
+        "NepARENA is Nepal's multi-organizer esports platform where tournament organizers manage competitions, members, communities and events.",
+      path: "/",
+    }),
   }),
   component: PlatformProfilePage,
 });
