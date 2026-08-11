@@ -34,7 +34,7 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
         <img
           src="/neparena-logo.png"
           alt={PLATFORM_NAME}
-          className="h-24 w-24 rounded-3xl object-cover shadow-[0_0_60px_rgba(255,255,255,0.12)] ring-1 ring-white/20"
+          className="h-24 w-24 rounded-3xl object-contain bg-black shadow-[0_0_60px_rgba(255,255,255,0.12)] ring-1 ring-white/20 p-1"
           onError={(e) => {
             e.currentTarget.src = "/android-chrome-512x512.png";
           }}
