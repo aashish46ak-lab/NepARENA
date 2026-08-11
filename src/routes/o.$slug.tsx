@@ -295,8 +295,7 @@ function OrganizerPublicPage() {
 
   return (
     <PageShell force="organizer">
-      <PendingMatchesPanel />
-
+      {/* 1. Cover + logo + profile first */}
       <div className="relative">
         {banner ? (
           <img src={banner} alt="" className="h-36 w-full object-cover sm:h-44" />
@@ -385,6 +384,10 @@ function OrganizerPublicPage() {
         </div>
       </div>
 
+      {/* 2. Pending matches under cover + logo */}
+      <PendingMatchesPanel />
+
+      {/* 3. Big nav buttons */}
       <div className="mx-auto max-w-3xl px-4 pb-14">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Explore {organizer.name}
