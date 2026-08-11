@@ -22,16 +22,19 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Loader2,
-  Trophy,
   Users,
   Bell,
   BellOff,
   ArrowRight,
-  Calendar,
   Share2,
-  Link2,
+  History,
+  Image,
+  Info,
+  Swords,
+  Medal,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
 
 export const Route = createFileRoute("/o/$slug")({
   loader: async ({ params }) => {
@@ -54,8 +57,11 @@ export const Route = createFileRoute("/o/$slug")({
       org?.description ||
       org?.tagline ||
       `${name} — organizer on NepARENA`;
-    const image =
+    const rawImg =
       org?.logo_url || org?.banner_url || "https://neparena.xyz/neparena-logo.png";
+    const image = rawImg.startsWith("http")
+      ? rawImg
+      : `https://neparena.xyz${rawImg.startsWith("/") ? "" : "/"}${rawImg}`;
     const url = `https://neparena.xyz/o/${params.slug}`;
     return {
       meta: [
@@ -242,175 +248,207 @@ function OrganizerPublicPage() {
     site?.tagline ||
     "Competitive esports community on NepARENA.";
 
+  const navItems = [
+    {
+      label: "Tournaments",
+      desc: "Fixtures, standings & registration",
+      to: "/tournaments" as const,
+      icon: Swords,
+      accent: "from-amber-500/25 to-transparent",
+    },
+    {
+      label: "Hall of Fame",
+      desc: "Champions & legends",
+      to: "/hall-of-fame" as const,
+      icon: Medal,
+      accent: "from-sky-500/25 to-transparent",
+    },
+    {
+      label: "History",
+      desc: "Past seasons & winners",
+      to: "/history" as const,
+      icon: History,
+      accent: "from-violet-500/25 to-transparent",
+    },
+    {
+      label: "Gallery",
+      desc: "Photos & highlights",
+      to: "/gallery" as const,
+      icon: Image,
+      accent: "from-emerald-500/25 to-transparent",
+    },
+    {
+      label: "Members",
+      desc: "Players in this community",
+      to: "/members" as const,
+      icon: Users,
+      accent: "from-rose-500/25 to-transparent",
+    },
+    {
+      label: "About",
+      desc: "Story & contact",
+      to: "/about" as const,
+      icon: Info,
+      accent: "from-neutral-500/25 to-transparent",
+    },
+  ];
+
   return (
     <PageShell force="organizer">
+      <PendingMatchesPanel />
+
       <div className="relative">
         {banner ? (
-          <img src={banner} alt="" className="h-44 w-full object-cover sm:h-56" />
+          <img src={banner} alt="" className="h-36 w-full object-cover sm:h-44" />
         ) : (
-          <div
-            className="h-44 w-full sm:h-56"
-            style={{
-              background: `linear-gradient(135deg, ${organizer.primary_color ?? "#1a1a1a"}, ${organizer.secondary_color ?? "#333"})`,
-            }}
-          />
+          <div className="h-36 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 sm:h-44" />
         )}
-        <div className="relative mx-auto max-w-3xl -mt-14 px-4 pb-16">
-          <div className="rounded-3xl border border-border/60 bg-background/95 p-5 shadow-xl backdrop-blur sm:p-7">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/30 to-transparent sm:h-44" />
+
+        <div className="relative mx-auto max-w-3xl px-4 pb-6">
+          <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-end gap-3">
               {logo ? (
                 <img
                   src={logo}
                   alt={organizer.name}
-                  className="h-24 w-24 rounded-2xl object-cover ring-4 ring-background"
+                  className="h-24 w-24 rounded-2xl object-cover shadow-xl ring-4 ring-background sm:h-28 sm:w-28"
                 />
               ) : (
-                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-gradient-to-br from-neutral-200 to-neutral-600 text-2xl font-bold text-black ring-4 ring-background">
+                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-gradient-to-br from-neutral-200 to-neutral-500 text-2xl font-bold text-black shadow-xl ring-4 ring-background sm:h-28 sm:w-28">
                   {organizer.name.slice(0, 2).toUpperCase()}
                 </div>
               )}
-              <div className="min-w-0 flex-1">
+              <div className="pb-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold sm:text-3xl">{organizer.name}</h1>
+                  <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                    {organizer.name}
+                  </h1>
                   {organizer.is_verified && (
-                    <Badge className="bg-sky-500/20 text-sky-300">Verified</Badge>
+                    <Badge className="bg-sky-500/20 text-sky-300 hover:bg-sky-500/20">
+                      Verified
+                    </Badge>
                   )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  @{organizer.slug} · Organizer on NepARENA
-                </p>
-                <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <span>
-                    <strong className="text-foreground">{followers}</strong> Followers
-                  </span>
-                  <span>
-                    <strong className="text-foreground">{memberCount || "—"}</strong>{" "}
-                    Members
-                  </span>
-                  <span>
-                    <strong className="text-foreground">{tournaments.length}</strong>{" "}
-                    Tournaments
-                  </span>
-                </div>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                  {description}
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button
-                    disabled={followBusy}
-                    variant={following ? "outline" : "default"}
-                    onClick={() => void toggleFollow()}
-                  >
-                    {following ? (
-                      <>
-                        <BellOff className="mr-1.5 h-4 w-4" /> Following
-                      </>
-                    ) : (
-                      <>
-                        <Bell className="mr-1.5 h-4 w-4" /> Follow
-                      </>
-                    )}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => void share()}>
-                    <Share2 className="mr-1.5 h-4 w-4" /> Share link
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-muted-foreground"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(organizerShareUrl(slug));
-                      toast.success("Link copied");
-                    }}
-                  >
-                    <Link2 className="mr-1 h-3.5 w-3.5" />
-                    Copy URL
-                  </Button>
-                </div>
+                {organizer.tagline && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{organizer.tagline}</p>
+                )}
               </div>
             </div>
-
-            <div className="mt-10">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <Trophy className="h-5 w-5" /> Tournaments
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Open a tournament portal for fixtures, standings and registration.
-              </p>
-
-              {tournaments.length === 0 ? (
-                <p className="mt-6 text-sm text-muted-foreground">
-                  No published tournaments yet.
-                </p>
-              ) : (
-                <ul className="mt-6 space-y-4">
-                  {tournaments.map(
-                    (t: {
-                      id: string;
-                      name: string;
-                      status: string;
-                      prize_pool: string | null;
-                      participants_count: number;
-                      registration_open?: boolean | null;
-                    }) => (
-                      <li
-                        key={t.id}
-                        className="rounded-2xl border border-border/60 bg-card/40 p-4"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-semibold">{t.name}</h3>
-                              <Badge variant="secondary" className="text-[10px] uppercase">
-                                {t.status?.replaceAll("_", " ")}
-                              </Badge>
-                            </div>
-                            <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                              <span className="inline-flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {t.participants_count ?? 0} players
-                              </span>
-                              {t.prize_pool && (
-                                <span className="inline-flex items-center gap-1">
-                                  <Trophy className="h-3 w-3" />
-                                  {t.prize_pool}
-                                </span>
-                              )}
-                              <span className="inline-flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                Portal ready
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 flex-wrap gap-2">
-                            <Button asChild size="sm" variant="outline">
-                              <Link to="/tournaments/$id" params={{ id: t.id }}>
-                                View tournament
-                              </Link>
-                            </Button>
-                            <Button
-                              asChild
-                              size="sm"
-                              className="bg-gradient-brand text-primary-foreground"
-                            >
-                              <Link to="/tournaments/$id" params={{ id: t.id }}>
-                                {t.registration_open || t.status === "registration_open"
-                                  ? "Join tournament"
-                                  : "Open portal"}
-                                <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </li>
-                    ),
-                  )}
-                </ul>
-              )}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}>
+                <Share2 className="mr-1.5 h-3.5 w-3.5" />
+                Share
+              </Button>
+              <Button
+                size="sm"
+                className={
+                  following
+                    ? "bg-white/10 text-foreground hover:bg-white/15"
+                    : "bg-neutral-100 text-black hover:bg-white"
+                }
+                disabled={followBusy}
+                onClick={() => void toggleFollow()}
+              >
+                {followBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : following ? (
+                  <>
+                    <BellOff className="mr-1.5 h-3.5 w-3.5" />
+                    Following
+                  </>
+                ) : (
+                  <>
+                    <Bell className="mr-1.5 h-3.5 w-3.5" />
+                    Follow
+                  </>
+                )}
+              </Button>
             </div>
           </div>
+
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              <strong className="text-foreground">{followers}</strong> followers
+            </span>
+            <span>
+              <strong className="text-foreground">{memberCount}</strong> members
+            </span>
+            <span>
+              <strong className="text-foreground">{tournaments.length}</strong> tournaments
+            </span>
+          </div>
+
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-3">
+            {description}
+          </p>
         </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl px-4 pb-14">
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Explore {organizer.name}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`group flex items-center gap-4 rounded-2xl border border-white/10 bg-gradient-to-br ${item.accent} p-5 transition hover:border-white/25 hover:bg-white/[0.04]`}
+            >
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-black/40 ring-1 ring-white/10">
+                <item.icon className="h-5 w-5 text-neutral-100" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-semibold text-foreground">{item.label}</span>
+                <span className="block text-xs text-muted-foreground">{item.desc}</span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </Link>
+          ))}
+        </div>
+
+        {tournaments.length > 0 && (
+          <div className="mt-10">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Active tournaments</h2>
+              <Link to="/tournaments" className="text-xs text-muted-foreground hover:text-foreground">
+                View all
+              </Link>
+            </div>
+            <ul className="space-y-2">
+              {tournaments.slice(0, 4).map(
+                (t: {
+                  id: string;
+                  name: string;
+                  status?: string | null;
+                  participants_count?: number | null;
+                  registration_open?: boolean | null;
+                }) => (
+                  <li key={t.id}>
+                    <Link
+                      to="/tournaments/$id"
+                      params={{ id: t.id }}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 transition hover:border-white/20 hover:bg-white/[0.04]"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{t.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(t.status ?? "").replaceAll("_", " ")} · {t.participants_count ?? 0}{" "}
+                          players
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-medium text-neutral-300">
+                        {t.registration_open || t.status === "registration_open" ? "Join" : "Open"}
+                        <ArrowRight className="ml-1 inline h-3 w-3" />
+                      </span>
+                    </Link>
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        )}
       </div>
     </PageShell>
   );
