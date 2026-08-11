@@ -1,15 +1,16 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LEGEND_PLAYERS } from "@/components/AllTimeXi";
-import { Download, Play, RotateCcw, Share2, Trophy } from "lucide-react";
+import { playerPhotoUrl } from "@/lib/player-photos";
+import { ChevronDown, Download, Play, RotateCcw, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type RankPlayer = {
   name: string;
   overall: number;
-  color: string;
   positions: string[];
+  photo: string;
 };
 
 type Phase = "setup" | "play" | "done";
@@ -23,126 +24,69 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
 }
 
-/** Premium eFootball-style card face (gradient + OVR + initials as visual) */
-function PlayerCardFace({
-  player,
-  size = "lg",
-  rank,
+export function BlindRankGame({
+  compact = false,
 }: {
-  player: RankPlayer;
-  size?: "sm" | "md" | "lg";
-  rank?: number;
+  /** homepage teaser — show CTA only */
+  compact?: boolean;
 }) {
-  const dims =
-    size === "lg"
-      ? "h-56 w-40 sm:h-64 sm:w-44"
-      : size === "md"
-        ? "h-20 w-14"
-        : "h-14 w-10";
-  return (
-    <div
-      className={cn(
-        "relative flex shrink-0 flex-col overflow-hidden rounded-xl border border-white/30 bg-gradient-to-b shadow-[0_0_30px_rgba(56,189,248,0.2)]",
-        dims,
-        player.color,
-      )}
-    >
-      <div className="flex items-start justify-between px-2 pt-2">
-        <span className="text-[10px] font-bold uppercase tracking-wide text-white/80">
-          {player.positions[0] ?? "—"}
-        </span>
-        <span className="rounded bg-black/40 px-1.5 py-0.5 text-xs font-black text-amber-300 tabular-nums">
-          {player.overall}
-        </span>
-      </div>
-      <div className="flex flex-1 items-center justify-center">
-        <span
-          className={cn(
-            "font-black text-white/90 drop-shadow-lg",
-            size === "lg" ? "text-5xl" : size === "md" ? "text-lg" : "text-xs",
-          )}
-        >
-          {initials(player.name)}
-        </span>
-      </div>
-      <div className="bg-black/50 px-1.5 py-1.5 text-center backdrop-blur-sm">
-        <p
-          className={cn(
-            "truncate font-semibold leading-tight text-white",
-            size === "lg" ? "text-sm" : "text-[9px]",
-          )}
-        >
-          {player.name}
-        </p>
-      </div>
-      {rank != null && (
-        <span className="absolute left-1.5 top-8 grid h-6 w-6 place-items-center rounded-full bg-sky-500 text-[10px] font-black text-white shadow">
-          #{rank}
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function BlindRankGame() {
   const [phase, setPhase] = useState<Phase>("setup");
   const [size, setSize] = useState(5);
+  const [sizeOpen, setSizeOpen] = useState(false);
   const [deck, setDeck] = useState<RankPlayer[]>([]);
   const [cursor, setCursor] = useState(0);
   const [slots, setSlots] = useState<(RankPlayer | null)[]>([]);
-  const [placing, setPlacing] = useState(false);
-  const shareRef = useRef<HTMLDivElement>(null);
+  const [awaitingNext, setAwaitingNext] = useState(false);
 
-  const current = phase === "play" ? deck[cursor] ?? null : null;
+  const current = phase === "play" && !awaitingNext ? deck[cursor] ?? null : null;
   const filled = slots.filter(Boolean).length;
-  const emptyIndexes = useMemo(
-    () => slots.map((s, i) => (s ? -1 : i)).filter((i) => i >= 0),
-    [slots],
-  );
 
   const start = () => {
     const pool = shuffle(
       LEGEND_PLAYERS.map((p) => ({
         name: p.name,
         overall: p.overall,
-        color: p.color,
         positions: p.positions,
+        photo: playerPhotoUrl(p.name),
       })),
     );
-    const pick = pool.slice(0, size);
-    setDeck(pick);
+    setDeck(pool.slice(0, size));
     setSlots(Array.from({ length: size }, () => null));
     setCursor(0);
+    setAwaitingNext(false);
     setPhase("play");
+    setSizeOpen(false);
   };
 
   const place = (index: number) => {
-    if (!current || slots[index] || placing) return;
-    setPlacing(true);
+    if (!current || slots[index] || awaitingNext) return;
     setSlots((prev) => {
       const next = [...prev];
       next[index] = current;
       return next;
     });
-    window.setTimeout(() => {
-      const nextCursor = cursor + 1;
-      if (nextCursor >= size) {
-        setPhase("done");
-      } else {
-        setCursor(nextCursor);
-      }
-      setPlacing(false);
-    }, 280);
+    if (cursor + 1 >= size) {
+      setPhase("done");
+      setAwaitingNext(false);
+    } else {
+      setAwaitingNext(true);
+    }
+  };
+
+  const nextPlayer = () => {
+    if (!awaitingNext) return;
+    setCursor((c) => c + 1);
+    setAwaitingNext(false);
   };
 
   const reset = () => {
@@ -150,6 +94,7 @@ export function BlindRankGame() {
     setDeck([]);
     setSlots([]);
     setCursor(0);
+    setAwaitingNext(false);
   };
 
   const exportPng = async () => {
@@ -162,88 +107,85 @@ export function BlindRankGame() {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // background
       const bg = ctx.createLinearGradient(0, 0, 0, H);
       bg.addColorStop(0, "#020617");
-      bg.addColorStop(0.5, "#0c1a3a");
+      bg.addColorStop(0.45, "#0c1a3a");
       bg.addColorStop(1, "#020617");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // glow orbs
-      ctx.fillStyle = "rgba(56,189,248,0.12)";
-      ctx.beginPath();
-      ctx.arc(200, 200, 280, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(244,63,94,0.1)";
-      ctx.beginPath();
-      ctx.arc(900, 1100, 260, 0, Math.PI * 2);
-      ctx.fill();
+      // logo
+      const logo = await loadImage("/neparena-logo.png");
+      if (logo) {
+        ctx.drawImage(logo, W / 2 - 48, 36, 96, 96);
+      }
 
       ctx.fillStyle = "#e0f2fe";
-      ctx.font = "bold 48px system-ui, sans-serif";
+      ctx.font = "bold 44px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("MY BLIND RANKING TEST", W / 2, 90);
+      ctx.fillText("MY BLIND RANKING TEST", W / 2, 170);
+      ctx.fillStyle = "rgba(148,163,184,0.95)";
+      ctx.font = "26px system-ui, sans-serif";
+      ctx.fillText("Powered by NepARENA", W / 2, 210);
 
-      ctx.fillStyle = "rgba(148,163,184,0.9)";
-      ctx.font = "28px system-ui, sans-serif";
-      ctx.fillText("Powered by NepARENA", W / 2, 140);
+      const rowH = Math.min(96, Math.floor((H - 300) / size) - 10);
+      const startY = 240;
 
-      const cardH = Math.min(100, Math.floor((H - 280) / size) - 12);
-      const startY = 190;
+      for (let i = 0; i < slots.length; i++) {
+        const p = slots[i];
+        if (!p) continue;
+        const y = startY + i * (rowH + 10);
 
-      slots.forEach((p, i) => {
-        if (!p) return;
-        const y = startY + i * (cardH + 12);
-        // row bg
-        ctx.fillStyle = "rgba(15,23,42,0.85)";
-        roundRect(ctx, 80, y, W - 160, cardH, 18);
+        ctx.fillStyle = "rgba(15,23,42,0.9)";
+        roundRect(ctx, 64, y, W - 128, rowH, 16);
         ctx.fill();
-        ctx.strokeStyle = "rgba(56,189,248,0.35)";
+        ctx.strokeStyle = "rgba(56,189,248,0.4)";
         ctx.lineWidth = 2;
-        roundRect(ctx, 80, y, W - 160, cardH, 18);
+        roundRect(ctx, 64, y, W - 128, rowH, 16);
         ctx.stroke();
 
-        // rank circle
+        // rank
         ctx.fillStyle = "#0ea5e9";
         ctx.beginPath();
-        ctx.arc(140, y + cardH / 2, 28, 0, Math.PI * 2);
+        ctx.arc(120, y + rowH / 2, 26, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 26px system-ui";
+        ctx.font = "bold 24px system-ui";
         ctx.textAlign = "center";
-        ctx.fillText(`#${i + 1}`, 140, y + cardH / 2 + 9);
+        ctx.fillText(`#${i + 1}`, 120, y + rowH / 2 + 8);
 
-        // mini card
-        const cx = 230;
-        const cy = y + 12;
-        const cw = 56;
-        const ch = cardH - 24;
-        const g = ctx.createLinearGradient(cx, cy, cx, cy + ch);
-        g.addColorStop(0, "#38bdf8");
-        g.addColorStop(1, "#1e3a8a");
-        ctx.fillStyle = g;
-        roundRect(ctx, cx, cy, cw, ch, 10);
-        ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 18px system-ui";
-        ctx.fillText(initials(p.name), cx + cw / 2, cy + ch / 2 + 6);
+        // photo
+        const photo = await loadImage(p.photo);
+        const px = 170;
+        const py = y + 10;
+        const ph = rowH - 20;
+        const pw = ph * 0.75;
+        if (photo) {
+          ctx.save();
+          roundRect(ctx, px, py, pw, ph, 10);
+          ctx.clip();
+          ctx.drawImage(photo, px, py, pw, ph);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = "#1e3a8a";
+          roundRect(ctx, px, py, pw, ph, 10);
+          ctx.fill();
+        }
 
-        // name + ovr
         ctx.textAlign = "left";
         ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 32px system-ui";
-        ctx.fillText(p.name, 310, y + cardH / 2 + 4);
+        ctx.font = "bold 30px system-ui";
+        ctx.fillText(p.name, px + pw + 24, y + rowH / 2 + 6);
         ctx.fillStyle = "#fbbf24";
-        ctx.font = "bold 24px system-ui";
+        ctx.font = "bold 22px system-ui";
         ctx.textAlign = "right";
-        ctx.fillText(String(p.overall), W - 120, y + cardH / 2 + 8);
-      });
+        ctx.fillText(`OVR ${p.overall}`, W - 100, y + rowH / 2 + 8);
+      }
 
       ctx.textAlign = "center";
-      ctx.fillStyle = "rgba(148,163,184,0.8)";
+      ctx.fillStyle = "rgba(148,163,184,0.85)";
       ctx.font = "22px system-ui";
-      ctx.fillText("neparena.xyz", W / 2, H - 40);
+      ctx.fillText("neparena.xyz/games/blind-ranking", W / 2, H - 40);
 
       const url = canvas.toDataURL("image/png");
       const a = document.createElement("a");
@@ -257,108 +199,121 @@ export function BlindRankGame() {
   };
 
   const share = async () => {
+    const url = `${window.location.origin}/games/blind-ranking`;
     try {
-      await exportPng();
       if (navigator.share) {
         await navigator.share({
-          title: "My Blind Ranking — NepARENA",
-          text: "I just finished a Blind Ranking test on NepARENA!",
-          url: "https://neparena.xyz",
+          title: "Blind Ranking — NepARENA",
+          text: "Play the Blind Ranking test on NepARENA!",
+          url,
         });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied");
       }
     } catch {
-      /* user cancelled share */
+      /* cancel */
     }
   };
 
+  if (compact) {
+    return (
+      <div className="rounded-3xl border border-sky-500/20 bg-gradient-to-br from-slate-950 to-[#0a1628] p-5 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-sky-400">
+          Viral game
+        </p>
+        <h3 className="mt-1 text-lg font-bold text-white">Blind Ranking</h3>
+        <p className="mt-1 text-xs text-slate-400">
+          Rank legends one by one — no peeking ahead
+        </p>
+        <Button
+          asChild
+          className="mt-4 bg-sky-500 font-semibold text-white hover:bg-sky-400"
+        >
+          <a href="/games/blind-ranking">
+            <Play className="mr-2 h-4 w-4" /> Play now
+          </a>
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-hidden rounded-3xl border border-sky-500/20 bg-gradient-to-b from-slate-950 via-[#0a1628] to-black p-4 sm:p-6">
-      <div className="mb-5 flex items-start gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-500/20 ring-1 ring-sky-400/40">
-          <Trophy className="h-5 w-5 text-sky-300" />
-        </div>
+    <div className="mx-auto max-w-lg overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-b from-slate-950 via-[#0a1628] to-black">
+      <div className="flex items-center justify-between border-b border-white/5 px-3 py-2.5">
         <div>
-          <h2 className="text-lg font-bold text-white">Blind Ranking</h2>
-          <p className="mt-0.5 text-xs text-slate-400">
-            Viral ranking test · one player at a time · lock forever
-          </p>
+          <p className="text-sm font-bold text-white">Blind Ranking</p>
+          <p className="text-[10px] text-slate-500">NepARENA</p>
         </div>
+        {phase === "setup" && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSizeOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-slate-200"
+            >
+              Top {size}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition", sizeOpen && "rotate-180")} />
+            </button>
+            {sizeOpen && (
+              <div className="absolute right-0 z-20 mt-1 max-h-40 w-28 overflow-y-auto rounded-xl border border-white/15 bg-slate-900 py-1 shadow-xl">
+                {[5, 6, 7, 8, 9, 10].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => {
+                      setSize(n);
+                      setSizeOpen(false);
+                    }}
+                    className={cn(
+                      "block w-full px-3 py-1.5 text-left text-xs",
+                      size === n ? "bg-sky-500/20 text-sky-200" : "text-slate-300 hover:bg-white/5",
+                    )}
+                  >
+                    Top {n}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {phase === "play" && (
+          <span className="text-[11px] tabular-nums text-slate-400">
+            {filled}/{size}
+          </span>
+        )}
       </div>
 
-      {/* SETUP */}
       {phase === "setup" && (
-        <div className="space-y-5">
-          <p className="text-sm text-slate-300">Choose ranking size</p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {[5, 6, 7, 8, 9, 10].map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => setSize(n)}
-                className={cn(
-                  "rounded-xl border py-3 text-sm font-semibold transition",
-                  size === n
-                    ? "border-sky-400 bg-sky-500/20 text-sky-100 shadow-[0_0_20px_rgba(56,189,248,0.25)]"
-                    : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/25",
-                )}
-              >
-                Top {n}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-2">
+        <div className="space-y-3 p-3">
+          <div className="space-y-1.5">
             {Array.from({ length: size }, (_, i) => (
               <div
                 key={i}
-                className="flex h-14 items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-3"
+                className="flex h-9 items-center gap-2 rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-2.5"
               >
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-800 text-xs font-bold text-slate-400">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-slate-800 text-[10px] font-bold text-slate-400">
                   #{i + 1}
                 </span>
-                <span className="text-sm text-slate-600">Empty slot</span>
+                <span className="text-xs text-slate-600">Empty</span>
               </div>
             ))}
           </div>
-
           <Button
-            size="lg"
             onClick={start}
-            className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-base font-bold text-white shadow-[0_0_30px_rgba(56,189,248,0.35)] hover:from-sky-400 hover:to-blue-500"
+            className="w-full bg-sky-500 font-semibold text-white hover:bg-sky-400"
           >
-            <Play className="mr-2 h-5 w-5" />
-            Start Blind Ranking
+            <Play className="mr-2 h-4 w-4" /> Start
           </Button>
         </div>
       )}
 
-      {/* PLAY */}
-      {phase === "play" && current && (
-        <div className="space-y-5">
-          <div className="text-center">
-            <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-sky-400/80">
-              Place this player · {filled + 1}/{size}
-            </p>
-            <div className="mt-4 flex justify-center">
-              <div
-                key={current.name}
-                className="animate-[cardIn_0.35s_ease-out]"
-              >
-                <PlayerCardFace player={current} size="lg" />
-              </div>
-            </div>
-            <p className="mt-3 text-xl font-bold text-white">{current.name}</p>
-            <p className="text-xs text-slate-400">
-              {current.positions.join(" · ")} · OVR {current.overall}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Tap an empty rank slot below — locked once placed
-            </p>
-          </div>
-
-          <div className="space-y-2">
+      {phase === "play" && (
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-2 p-2.5">
+          {/* LEFT ranks */}
+          <div className="max-h-[58vh] space-y-1.5 overflow-y-auto pr-0.5">
             {slots.map((p, i) => {
-              const open = !p && !placing;
+              const open = !p && !!current && !awaitingNext;
               return (
                 <button
                   key={i}
@@ -366,108 +321,125 @@ export function BlindRankGame() {
                   disabled={!open}
                   onClick={() => place(i)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition",
+                    "flex w-full items-center gap-1.5 rounded-lg border px-1.5 py-1 text-left transition",
                     p
                       ? "border-sky-500/30 bg-sky-500/10"
                       : open
-                        ? "border-sky-400/40 bg-sky-500/5 hover:bg-sky-500/15 animate-pulse"
-                        : "border-white/10 bg-white/[0.02] opacity-50",
+                        ? "border-sky-400/50 bg-sky-500/5 animate-pulse"
+                        : "border-white/10 bg-white/[0.02] opacity-60",
                   )}
                 >
                   <span
                     className={cn(
-                      "grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-black",
+                      "grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-black",
                       p ? "bg-sky-500 text-white" : "bg-slate-800 text-slate-400",
                     )}
                   >
-                    #{i + 1}
+                    {i + 1}
                   </span>
                   {p ? (
                     <>
-                      <PlayerCardFace player={p} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-white">{p.name}</p>
-                        <p className="text-[11px] text-slate-400">
-                          OVR {p.overall} · locked
-                        </p>
-                      </div>
+                      <img
+                        src={p.photo}
+                        alt=""
+                        className="h-8 w-6 rounded object-cover object-top"
+                        onError={(e) => {
+                          e.currentTarget.src = playerPhotoUrl(p.name);
+                        }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-white">
+                        {p.name.split(" ").slice(-1)[0]}
+                      </span>
                     </>
                   ) : (
-                    <span className="text-sm text-slate-500">Tap to place here</span>
+                    <span className="text-[10px] text-slate-500">Tap</span>
                   )}
                 </button>
               );
             })}
           </div>
 
-          <p className="text-center text-[11px] text-slate-600">
-            {emptyIndexes.length} slots left · upcoming players hidden
-          </p>
+          {/* RIGHT current player */}
+          <div className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-black/30 p-2">
+            {awaitingNext ? (
+              <>
+                <p className="text-center text-xs text-slate-400">Slot locked</p>
+                <Button
+                  size="sm"
+                  onClick={nextPlayer}
+                  className="mt-3 bg-sky-500 font-bold text-white hover:bg-sky-400"
+                >
+                  Next player →
+                </Button>
+              </>
+            ) : current ? (
+              <>
+                <img
+                  key={current.name}
+                  src={current.photo}
+                  alt={current.name}
+                  className="h-36 w-28 rounded-xl object-cover object-top shadow-lg ring-1 ring-white/20 sm:h-40 sm:w-32"
+                  onError={(e) => {
+                    e.currentTarget.src = playerPhotoUrl(current.name);
+                  }}
+                />
+                <p className="mt-2 text-center text-sm font-bold leading-tight text-white">
+                  {current.name}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {current.positions[0]} · {current.overall}
+                </p>
+                <p className="mt-1 text-center text-[10px] text-slate-500">
+                  Tap a rank on the left
+                </p>
+              </>
+            ) : null}
+          </div>
         </div>
       )}
 
-      {/* DONE */}
       {phase === "done" && (
-        <div className="space-y-5" ref={shareRef}>
-          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-4 text-center">
-            <p className="text-lg font-bold text-sky-100">
-              Your Blind Ranking is Complete!
-            </p>
-            <p className="mt-1 text-xs text-slate-400">Share your ranking with friends</p>
-          </div>
-
-          <div className="space-y-2">
+        <div className="space-y-3 p-3">
+          <p className="text-center text-sm font-bold text-sky-200">
+            Your Blind Ranking is Complete!
+          </p>
+          <div className="max-h-[50vh] space-y-1.5 overflow-y-auto">
             {slots.map((p, i) =>
               p ? (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5"
+                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5"
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-500 text-xs font-black text-white">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-sky-500 text-[10px] font-black text-white">
                     #{i + 1}
                   </span>
-                  <PlayerCardFace player={p} size="sm" rank={i + 1} />
+                  <img
+                    src={p.photo}
+                    alt=""
+                    className="h-9 w-7 rounded object-cover object-top"
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-white">{p.name}</p>
-                    <p className="text-[11px] text-slate-400">
-                      {p.positions[0]} · OVR {p.overall}
-                    </p>
+                    <p className="truncate text-xs font-semibold text-white">{p.name}</p>
+                    <p className="text-[10px] text-slate-500">OVR {p.overall}</p>
                   </div>
                 </div>
               ) : null,
             )}
           </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <Button
-              onClick={() => void exportPng()}
-              className="bg-sky-500 font-semibold text-white hover:bg-sky-400"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download PNG
+          <div className="grid grid-cols-3 gap-1.5">
+            <Button size="sm" className="bg-sky-500 text-white hover:bg-sky-400" onClick={() => void exportPng()}>
+              <Download className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              variant="outline"
-              className="border-white/15"
-              onClick={() => void share()}
-            >
-              <Share2 className="mr-2 h-4 w-4" />
-              Share
+            <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}>
+              <Share2 className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="outline" className="border-white/15" onClick={reset}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Play Again
+            <Button size="sm" variant="outline" className="border-white/15" onClick={reset}>
+              <RotateCcw className="h-3.5 w-3.5" />
             </Button>
           </div>
+          <p className="text-center text-[10px] text-slate-500">Download · Share · Play again</p>
         </div>
       )}
-
-      <style>{`
-        @keyframes cardIn {
-          from { opacity: 0; transform: translateY(16px) scale(0.92); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </div>
   );
 }
