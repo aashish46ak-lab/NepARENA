@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { AdminChatFab } from "@/components/AdminChatFab";
 import { BlindRankGame } from "@/components/BlindRankGame";
+import { GoatVoteBooth } from "@/components/GoatVoteBooth";
 import { buildSeoHead } from "@/lib/seo";
 import {
   Users,
@@ -327,60 +328,55 @@ function PlatformProfilePage() {
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {followingOrgs.map((o) => (
-                <Link
+                <div
                   key={o.id}
-                  to="/o/$slug"
-                  params={{ slug: o.slug }}
-                  className="group overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] transition hover:border-sky-500/40 hover:shadow-[0_0_24px_rgba(56,189,248,0.12)]"
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
                 >
-                  <div className="relative h-28 overflow-hidden sm:h-32">
+                  <div className="aspect-[21/9] bg-neutral-900">
                     {o.banner_url ? (
-                      <img
-                        src={o.banner_url}
-                        alt=""
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                      />
+                      <img src={o.banner_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="h-full w-full bg-gradient-to-br from-sky-900 via-slate-900 to-violet-950" />
+                      <div className="grid h-full place-items-center bg-gradient-to-br from-sky-950 via-slate-900 to-violet-950 text-neutral-600">
+                        <Building2 className="h-8 w-8" />
+                      </div>
                     )}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-black/20" />
                   </div>
-                  <div className="relative px-4 pb-4 pt-0">
-                    <div className="-mt-8 mb-2 flex items-end gap-3">
+                  <div className="p-4">
+                    <div className="flex gap-3">
                       {o.logo_url ? (
                         <img
                           src={o.logo_url}
                           alt=""
-                          className="h-14 w-14 rounded-2xl object-cover shadow-lg ring-2 ring-[#0a0a0a]"
+                          className="h-12 w-12 rounded-xl object-cover ring-1 ring-white/10"
                         />
                       ) : (
-                        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-neutral-200 to-neutral-600 text-base font-bold text-black shadow-lg ring-2 ring-[#0a0a0a]">
+                        <div className="grid h-12 w-12 place-items-center rounded-xl bg-neutral-800 text-sm font-bold">
                           {o.name.slice(0, 2).toUpperCase()}
                         </div>
                       )}
-                      <div className="min-w-0 flex-1 pb-0.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="truncate text-base font-semibold text-neutral-50">
-                            {o.name}
-                          </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate font-semibold text-neutral-100">{o.name}</p>
                           {o.is_verified && (
-                            <span className="shrink-0 rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
-                              Verified
-                            </span>
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-400" />
                           )}
                         </div>
-                        <p className="truncate text-xs text-neutral-500">@{o.slug}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-neutral-400">
+                          {o.tagline || "Organizer on NepARENA"}
+                        </p>
                       </div>
                     </div>
-                    {o.tagline ? (
-                      <p className="line-clamp-2 text-xs leading-relaxed text-neutral-400">
-                        {o.tagline}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-neutral-600">Organizer on NepARENA</p>
-                    )}
+                    <Button
+                      asChild
+                      size="sm"
+                      className="mt-3 w-full bg-neutral-100 text-black hover:bg-white"
+                    >
+                      <Link to="/o/$slug" params={{ slug: o.slug }}>
+                        Open profile
+                      </Link>
+                    </Button>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </div>
@@ -412,15 +408,28 @@ function PlatformProfilePage() {
       </section>
 
       <section className="border-t border-white/5">
-        <div className="mx-auto max-w-3xl px-4 py-12">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-            Games
-          </h2>
-          <p className="mt-1 text-sm text-neutral-400">
-            Blind ranking test — one player at a time, lock ranks, share your card.
-          </p>
-          <div className="mt-5">
-            <BlindRankGame />
+        <div className="mx-auto max-w-3xl space-y-8 px-4 py-12">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+              Vote your GOAT
+            </h2>
+            <p className="mt-1 text-sm text-neutral-400">
+              Messi or Ronaldo — community decides.
+            </p>
+            <div className="mt-4">
+              <GoatVoteBooth />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+              Games
+            </h2>
+            <p className="mt-1 text-sm text-neutral-400">
+              Shareable Blind Ranking — opens on its own page.
+            </p>
+            <div className="mt-4">
+              <BlindRankGame compact />
+            </div>
           </div>
         </div>
       </section>
