@@ -10,8 +10,11 @@ export const Route = createFileRoute("/auth/verify")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Verify email — eFootball Nepal" },
-      { name: "description", content: "Enter the 6-digit verification code sent to your email." },
+      { title: "Verify email — NepARENA" },
+      {
+        name: "description",
+        content: "Enter the 6-digit verification code sent to your email.",
+      },
     ],
   }),
   component: VerifyPage,
@@ -20,14 +23,19 @@ export const Route = createFileRoute("/auth/verify")({
 type OtpType = "signup" | "recovery" | "email";
 
 function storedType(): OtpType {
-  const t = sessionStorage.getItem("efn-otp-type");
+  const t =
+    sessionStorage.getItem("neparena-otp-type") ||
+    sessionStorage.getItem("efn-otp-type");
   return t === "signup" || t === "recovery" || t === "email" ? t : "email";
 }
 
 function VerifyPage() {
   const router = useRouter();
 
-  const email = sessionStorage.getItem("efn-email") || "";
+  const email =
+    sessionStorage.getItem("neparena-email") ||
+    sessionStorage.getItem("efn-email") ||
+    "";
   const otpType = storedType();
 
   const [code, setCode] = useState("");
@@ -47,8 +55,11 @@ function VerifyPage() {
       .eq("user_id", user.id);
     const roles = (roleData ?? []).map((r: { role: string }) => r.role);
     const isOwner =
-      user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() || roles.includes("owner");
-    router.navigate({ to: isOwner || roles.includes("moderator") ? "/dashboard" : "/" });
+      user.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() ||
+      roles.includes("owner");
+    router.navigate({
+      to: isOwner || roles.includes("moderator") ? "/dashboard" : "/",
+    });
   };
 
   const verify = async (e: React.FormEvent) => {
@@ -77,22 +88,30 @@ function VerifyPage() {
         return;
       }
 
-      // First-time signup: save the display name onto the new profile.
       if (otpType === "signup") {
-        const fullName = sessionStorage.getItem("efn-fullname");
+        const fullName =
+          sessionStorage.getItem("neparena-fullname") ||
+          sessionStorage.getItem("efn-fullname");
         if (fullName && data.user) {
-          await supabase.from("profiles").update({ full_name: fullName }).eq("id", data.user.id);
+          await supabase
+            .from("profiles")
+            .update({ full_name: fullName })
+            .eq("id", data.user.id);
         }
+        sessionStorage.removeItem("neparena-fullname");
         sessionStorage.removeItem("efn-fullname");
-        toast.success("Account verified — welcome to eFootball Nepal!");
+        toast.success("Account verified — welcome to NepARENA!");
       } else {
         toast.success("Login successful!");
       }
 
+      sessionStorage.removeItem("neparena-otp-type");
       sessionStorage.removeItem("efn-otp-type");
       await redirectByRole();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Invalid verification code.");
+      toast.error(
+        err instanceof Error ? err.message : "Invalid verification code.",
+      );
     } finally {
       setLoading(false);
     }
@@ -124,11 +143,16 @@ function VerifyPage() {
       <div className="w-full max-w-md animate-enter">
         <Link to="/" className="mb-6 flex flex-col items-center gap-3">
           <img
-            src="/android-chrome-512x512.png"
-            alt="eFootball Nepal logo"
-            className="h-20 w-20 rounded-2xl shadow-lg glow-brand"
+            src="/neparena-logo.png"
+            alt="NepARENA logo"
+            className="h-20 w-20 rounded-2xl object-cover shadow-lg ring-1 ring-white/15"
+            onError={(e) => {
+              e.currentTarget.src = "/pwa-192x192.png";
+            }}
           />
-          <span className="text-2xl font-bold text-gradient-brand">eFootball Nepal</span>
+          <span className="text-2xl font-bold tracking-tight text-neutral-100">
+            NepARENA
+          </span>
         </Link>
 
         <div className="glass rounded-2xl p-6 md:p-8">
@@ -190,7 +214,10 @@ function VerifyPage() {
               </p>
             </form>
           ) : (
-            <Button asChild className="mt-6 w-full bg-gradient-brand text-primary-foreground">
+            <Button
+              asChild
+              className="mt-6 w-full bg-gradient-brand text-primary-foreground"
+            >
               <Link to="/auth">Back to sign in</Link>
             </Button>
           )}
