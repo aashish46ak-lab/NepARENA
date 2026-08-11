@@ -12,6 +12,7 @@ import { PLATFORM_NAME } from "@/lib/organizers";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { AdminChatFab } from "@/components/AdminChatFab";
+import { BlindRankGame } from "@/components/BlindRankGame";
 import { buildSeoHead } from "@/lib/seo";
 import {
   Users,
@@ -113,7 +114,7 @@ function PlatformProfilePage() {
       if (ids.length === 0) return [];
       const { data: orgs } = await supabase
         .from("organizers")
-        .select("id, name, slug, logo_url, is_verified, status")
+        .select("id, name, slug, logo_url, banner_url, is_verified, status")
         .in("id", ids)
         .eq("status", "active");
       return (orgs ?? []) as {
@@ -121,6 +122,7 @@ function PlatformProfilePage() {
         name: string;
         slug: string;
         logo_url: string | null;
+        banner_url: string | null;
         is_verified: boolean;
       }[];
     },
@@ -165,12 +167,12 @@ function PlatformProfilePage() {
       <section className="relative overflow-hidden">
         <div className="relative h-44 overflow-hidden bg-white sm:h-56">
           <img
-            src="/neparena-cover.svg"
+            src="/neparena-cover.png"
             alt="NepARENA cover"
             className="absolute inset-0 h-full w-full object-cover object-center"
             onError={(e) => {
               e.currentTarget.onerror = null;
-              e.currentTarget.src = "/neparena-cover.jpg";
+              e.currentTarget.src = "/neparena-cover.svg";
             }}
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
@@ -328,26 +330,31 @@ function PlatformProfilePage() {
                   key={o.id}
                   to="/o/$slug"
                   params={{ slug: o.slug }}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/25 hover:bg-white/[0.06]"
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-white/25"
                 >
-                  {o.logo_url ? (
-                    <img
-                      src={o.logo_url}
-                      alt=""
-                      className="h-12 w-12 rounded-xl object-cover"
-                    />
+                  {o.banner_url ? (
+                    <img src={o.banner_url} alt="" className="h-20 w-full object-cover" />
                   ) : (
-                    <div className="grid h-12 w-12 place-items-center rounded-xl bg-neutral-700 text-sm font-bold">
-                      {o.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    <div className="h-20 w-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
                   )}
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-neutral-100">
-                      {o.name}
-                    </p>
-                    {o.is_verified && (
-                      <span className="text-[11px] text-sky-400">Verified</span>
+                  <div className="flex items-center gap-3 p-3">
+                    {o.logo_url ? (
+                      <img
+                        src={o.logo_url}
+                        alt=""
+                        className="-mt-8 h-12 w-12 rounded-xl object-cover ring-2 ring-[#0a0a0a]"
+                      />
+                    ) : (
+                      <div className="-mt-8 grid h-12 w-12 place-items-center rounded-xl bg-neutral-700 text-sm font-bold ring-2 ring-[#0a0a0a]">
+                        {o.name.slice(0, 2).toUpperCase()}
+                      </div>
                     )}
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-neutral-100">{o.name}</p>
+                      {o.is_verified && (
+                        <span className="text-[11px] text-sky-400">Verified</span>
+                      )}
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -376,6 +383,20 @@ function PlatformProfilePage() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-white/5">
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+            Games
+          </h2>
+          <p className="mt-1 text-sm text-neutral-400">
+            Blind rank footballers into an XI — rotate, place, save as PNG.
+          </p>
+          <div className="mt-5">
+            <BlindRankGame />
           </div>
         </div>
       </section>
