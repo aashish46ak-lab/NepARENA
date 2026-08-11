@@ -104,7 +104,7 @@ function PlatformProfilePage() {
     enabled: !!user?.id,
     queryFn: async () => {
       const { data: follows } = await supabase
-        .from("organizer_follows")
+        .from("organizer_followers")
         .select("organizer_id")
         .eq("user_id", user!.id);
       const ids = (follows ?? []).map(
@@ -126,32 +126,64 @@ function PlatformProfilePage() {
     },
   });
 
+  const { data: followedTournaments = [] } = useQuery({
+    queryKey: ["home_followed_tournaments", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data: parts } = await supabase
+        .from("tournament_participants")
+        .select("tournament_id, status")
+        .eq("user_id", user!.id)
+        .in("status", ["approved", "registered", "pending"]);
+      const ids = [
+        ...new Set(
+          (parts ?? []).map((p: { tournament_id: string }) => p.tournament_id),
+        ),
+      ];
+      if (ids.length === 0) return [];
+      const { data: tours } = await supabase
+        .from("tournaments")
+        .select("id, name, status, banner_url, is_published")
+        .in("id", ids)
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      return (tours ?? []) as {
+        id: string;
+        name: string;
+        status: string | null;
+        banner_url: string | null;
+      }[];
+    },
+  });
+
   const previewBlocks = ABOUT_BLOCKS.slice(0, 2);
   const restBlocks = ABOUT_BLOCKS.slice(2);
 
   return (
     <PageShell force="platform">
       <section className="relative overflow-hidden">
-        <div className="relative h-40 sm:h-52 overflow-hidden">
+        <div className="relative h-40 overflow-hidden bg-[linear-gradient(135deg,#050505_0%,#0c1929_40%,#1e293b_70%,#0a0a0a_100%)] sm:h-52">
           <img
             src="/neparena-cover.jpg"
-            alt="NepARENA cover"
+            alt=""
             className="absolute inset-0 h-full w-full object-cover object-center"
             onError={(e) => {
-              e.currentTarget.style.display = "none";
-              e.currentTarget.parentElement!.classList.add(
-                "bg-[linear-gradient(135deg,#0a0a0a_0%,#1f1f1f_50%,#2a2a2a_100%)]",
-              );
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/neparena-logo.png";
+              e.currentTarget.className =
+                "absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-3xl object-contain opacity-25 sm:h-36 sm:w-36";
             }}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(56,189,248,0.15),transparent_50%)]" />
         </div>
 
         <div className="relative mx-auto max-w-3xl px-4 pb-10">
           <img
             src="/neparena-logo.png"
             alt={PLATFORM_NAME}
-            className="-mt-14 h-28 w-28 rounded-3xl object-cover shadow-2xl ring-4 ring-[#0a0a0a] sm:h-32 sm:w-32"
+            className="-mt-14 h-28 w-28 rounded-3xl object-contain bg-black p-1 shadow-2xl ring-4 ring-[#0a0a0a] sm:h-32 sm:w-32"
             onError={(e) => {
               e.currentTarget.src = "/pwa-192x192.png";
             }}
@@ -189,7 +221,7 @@ function PlatformProfilePage() {
           </div>
 
           <p className="mt-6 text-base leading-relaxed text-neutral-300">
-            Nepal's Multi-Organizer eFootball Platform where verified
+            Nepal&apos;s Multi-Organizer eFootball Platform where verified
             tournament organizers build and manage their own esports communities —
             each with independent branding, members, and tournaments.
           </p>
@@ -248,6 +280,44 @@ function PlatformProfilePage() {
           </div>
         </div>
       </section>
+
+      {user && followedTournaments.length > 0 && (
+        <section className="border-t border-white/5">
+          <div className="mx-auto max-w-3xl px-4 py-10">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+              Followed tournaments
+            </h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {followedTournaments.map((tour) => (
+                <Link
+                  key={tour.id}
+                  to="/tournaments/$id"
+                  params={{ id: tour.id }}
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-white/25"
+                >
+                  {tour.banner_url ? (
+                    <img
+                      src={tour.banner_url}
+                      alt=""
+                      className="h-24 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-24 w-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
+                  )}
+                  <div className="p-3">
+                    <p className="truncate font-medium text-neutral-100">
+                      {tour.name}
+                    </p>
+                    <p className="text-xs capitalize text-neutral-500">
+                      {(tour.status ?? "").replaceAll("_", " ")}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {followingOrgs.length > 0 && (
         <section className="border-t border-white/5">
