@@ -1,11 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { buildSeoHead } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
 import { PLATFORM_NAME } from "@/lib/organizers";
 import { Mail, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/ownership")({
   head: () => ({
-    meta: [{ title: `Creators — ${PLATFORM_NAME}` }],
+    ...buildSeoHead({
+      title: "Creators",
+      description:
+        "Meet the founders of NepARENA — Nepal's multi-organizer esports platform. Founder: Ashish Khadka.",
+      path: "/ownership",
+    }),
   }),
   component: OwnershipPage,
 });
