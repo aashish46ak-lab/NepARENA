@@ -1,4 +1,13 @@
+# NepARENA — https://neparena.xyz
 User-agent: *
 Allow: /
 
-Sitemap: /sitemap.xml
+# Private / app areas
+Disallow: /dashboard
+Disallow: /platform
+Disallow: /profile
+Disallow: /auth
+Disallow: /reset-password
+Disallow: /admin
+
+Sitemap: https://neparena.xyz/sitemap.xml
