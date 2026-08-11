@@ -86,6 +86,38 @@ function slugify(name: string): string {
   );
 }
 
+async function brandFromSiteSettings(): Promise<{
+  logo_url: string | null;
+  banner_url: string | null;
+  tagline: string | null;
+}> {
+  const { data } = await supabase
+    .from("site_settings")
+    .select("logo_url, hero_image_url, tagline")
+    .limit(1)
+    .maybeSingle();
+  return {
+    logo_url: (data as { logo_url?: string | null } | null)?.logo_url ?? null,
+    banner_url:
+      (data as { hero_image_url?: string | null } | null)?.hero_image_url ?? null,
+    tagline: (data as { tagline?: string | null } | null)?.tagline ?? null,
+  };
+}
+
+function withSiteBrand(org: Organizer, brand: {
+  logo_url: string | null;
+  banner_url: string | null;
+  tagline: string | null;
+}): Organizer {
+  if (org.slug !== DEFAULT_ORGANIZER_SLUG) return org;
+  return {
+    ...org,
+    logo_url: org.logo_url || brand.logo_url,
+    banner_url: org.banner_url || brand.banner_url,
+    tagline: org.tagline || brand.tagline,
+  };
+}
+
 export async function listActiveOrganizers(): Promise<Organizer[]> {
   const { data, error } = await supabase
     .from("organizers")
@@ -96,7 +128,13 @@ export async function listActiveOrganizers(): Promise<Organizer[]> {
     console.error(error);
     return [];
   }
-  return (data ?? []) as Organizer[];
+  const list = (data ?? []) as Organizer[];
+  const needsBrand = list.some(
+    (o) => o.slug === DEFAULT_ORGANIZER_SLUG && (!o.logo_url || !o.banner_url),
+  );
+  if (!needsBrand) return list;
+  const brand = await brandFromSiteSettings();
+  return list.map((o) => withSiteBrand(o, brand));
 }
 
 export async function listAllOrganizers(): Promise<Organizer[]> {
@@ -114,8 +152,13 @@ export async function getOrganizerBySlug(slug: string): Promise<Organizer | null
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
-  if (error) return null;
-  return (data as Organizer) ?? null;
+  if (error || !data) return null;
+  let org = data as Organizer;
+  if (org.slug === DEFAULT_ORGANIZER_SLUG && (!org.logo_url || !org.banner_url)) {
+    const brand = await brandFromSiteSettings();
+    org = withSiteBrand(org, brand);
+  }
+  return org;
 }
 
 export async function getFollowerCount(organizerId: string): Promise<number> {
