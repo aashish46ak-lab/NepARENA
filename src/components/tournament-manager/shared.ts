@@ -131,7 +131,6 @@ export async function recomputeStandings(
     const { error } = await supabase.from("tournament_standings").insert(rows);
     if (error) {
       console.error("standings insert", error);
-      // continue with in-memory rows even if DB write fails (RLS etc.)
     }
   }
 
@@ -188,14 +187,18 @@ export async function archiveTournamentToHistory(
     third = top3[2] ? display(top3[2]) : null;
   }
 
-  // Upsert-style: remove same name+year then insert
+  await supabase
+    .from("tournament_history")
+    .delete()
+    .eq("source_tournament_id", tournament.id);
+
   await supabase
     .from("tournament_history")
     .delete()
     .eq("tournament_name", tournament.name)
     .eq("year", year);
 
-  const { error: histErr } = await supabase.from("tournament_history").insert({
+  const histPayload: Record<string, unknown> = {
     tournament_name: tournament.name,
     winner,
     runner_up: runnerUp,
@@ -204,9 +207,20 @@ export async function archiveTournamentToHistory(
     banner_url: tournament.banner_url,
     prize_pool: tournament.prize_pool,
     sort_order: 0,
-  });
-  if (histErr) throw new Error("History save failed: " + histErr.message);
+    source_tournament_id: tournament.id,
+  };
 
+  const { error: histErr } = await supabase
+    .from("tournament_history")
+    .insert(histPayload);
+  if (histErr) {
+    const msg = histErr.message || "";
+    if (!/duplicate|unique|conflict/i.test(msg)) {
+      throw new Error("History save failed: " + msg);
+    }
+  }
+
+  await supabase.from("hall_of_fame").delete().eq("source_tournament_id", tournament.id);
   await supabase.from("hall_of_fame").delete().eq("tournament", tournament.name);
 
   if (top3.length > 0) {
@@ -217,9 +231,12 @@ export async function archiveTournamentToHistory(
       photo_url: photoOf(row),
       year,
       sort_order: i,
+      source_tournament_id: tournament.id,
     }));
     const { error: hofErr } = await supabase.from("hall_of_fame").insert(hofRows);
-    if (hofErr) throw new Error("Hall of Fame save failed: " + hofErr.message);
+    if (hofErr && !/duplicate|unique|conflict/i.test(hofErr.message || "")) {
+      throw new Error("Hall of Fame save failed: " + hofErr.message);
+    }
   }
 
   return { winner, count: top3.length, warning };
