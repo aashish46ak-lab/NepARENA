@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, type ElementType } from "react";
+import { useEffect, useState, type ElementType } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { PageShell } from "@/components/PageShell";
 import { cn } from "@/lib/utils";
 import {
   Shield, Loader2, Trophy, Users, Settings, LayoutDashboard, Megaphone,
-  Award, History, Images, Handshake, Link2, ShieldCheck, Flag,
+  Award, History, Images, Handshake, Link2, ShieldCheck, Flag, MessageCircle,
 } from "lucide-react";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
 import { TournamentsPanel } from "@/components/admin/TournamentsPanel";
@@ -19,6 +19,8 @@ import { CommunityLinksPanel } from "@/components/admin/CommunityLinksPanel";
 import { OwnerModeratorsPanel } from "@/components/admin/OwnerModeratorsPanel";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SiteSettingsPanel } from "@/components/admin/SiteSettingsPanel";
+import { MessagesInbox } from "@/components/MessagesInbox";
+import { getDefaultOrganizer } from "@/lib/organizers";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
@@ -27,7 +29,7 @@ export const Route = createFileRoute("/dashboard")({
   }),
   head: () => ({
     meta: [
-      { title: "Admin — eFootball Nepal" },
+      { title: "Admin — Organizer Dashboard" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -43,6 +45,7 @@ interface Section {
 
 const SECTIONS: Section[] = [
   { id: "dashboard", label: "Overview", icon: LayoutDashboard },
+  { id: "messages", label: "Messages", icon: MessageCircle },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "players", label: "Players", icon: Users, ownerOnly: true },
   { id: "reports", label: "Reports", icon: Flag },
@@ -56,20 +59,24 @@ const SECTIONS: Section[] = [
   { id: "settings", label: "Site Settings", icon: Settings },
 ];
 
-/** Moderators only get tournament management, reports and announcements. */
-const MOD_ALLOWED = new Set(["tournaments", "reports", "announcements"]);
+const MOD_ALLOWED = new Set(["tournaments", "reports", "announcements", "messages"]);
 
 function DashboardPage() {
   const { user, loading, isAdmin, isOwner, roles } = useAuth();
   const router = useRouter();
   const navigate = useNavigate({ from: "/dashboard" });
   const { t } = Route.useSearch();
+  const [orgId, setOrgId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       router.navigate({ to: "/auth" });
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    void getDefaultOrganizer().then((o) => setOrgId(o?.id ?? null));
+  }, []);
 
   if (loading || !user) {
     return (
@@ -98,7 +105,7 @@ function DashboardPage() {
   const isModeratorOnly =
     !isOwner && roles.includes("moderator") && !roles.includes("admin");
   const roleLabel = isOwner
-    ? "Super Admin"
+    ? "Owner"
     : roles.includes("admin")
       ? "Admin"
       : "Moderator";
@@ -118,7 +125,7 @@ function DashboardPage() {
             <Shield className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold md:text-3xl">Admin Dashboard</h1>
+            <h1 className="text-2xl font-bold md:text-3xl">Organizer Dashboard</h1>
             <p className="text-sm text-muted-foreground">
               {user.email} · {roleLabel}
             </p>
@@ -126,7 +133,6 @@ function DashboardPage() {
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row">
-          {/* Sidebar — desktop */}
           <aside className="hidden w-60 shrink-0 lg:block">
             <nav className="glass sticky top-20 space-y-1 rounded-2xl p-3">
               {visible.map((s) => (
@@ -148,7 +154,6 @@ function DashboardPage() {
             </nav>
           </aside>
 
-          {/* Section chips — mobile */}
           <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {visible.map((s) => (
               <button
@@ -170,6 +175,15 @@ function DashboardPage() {
 
           <main className="min-w-0 flex-1">
             {active === "dashboard" && <DashboardOverview />}
+            {active === "messages" && (
+              orgId ? (
+                <MessagesInbox mode="organizer" organizerId={orgId} />
+              ) : (
+                <div className="grid place-items-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )
+            )}
             {active === "tournaments" && <TournamentsPanel />}
             {active === "players" && isOwner && <UsersPanel />}
             {active === "reports" && <ReportsPanel />}
