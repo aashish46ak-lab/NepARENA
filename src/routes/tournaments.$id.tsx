@@ -13,7 +13,9 @@ import {
   Lock,
   GitBranch,
   Banknote,
+  ShieldAlert,
 } from "lucide-react";
+import { ReportForm } from "@/components/ReportForm";
 import { PageShell } from "@/components/PageShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,7 +53,7 @@ function TournamentDetailPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [tab, setTab] = useState<
-    "fixtures" | "standings" | "bracket" | "rules" | "players"
+    "fixtures" | "standings" | "bracket" | "rules" | "players" | "report"
   >("fixtures");
 
   const { data: tournament, isLoading: tLoading } = useQuery({
@@ -148,6 +150,7 @@ function TournamentDetailPage() {
       : []),
     { id: "players" as const, label: "Players", icon: Users },
     { id: "rules" as const, label: "Rules", icon: FileText },
+    { id: "report" as const, label: "Report", icon: ShieldAlert },
   ];
 
   return (
@@ -302,6 +305,11 @@ function TournamentDetailPage() {
                 Rules for this tournament haven't been published yet.
               </p>
             )}
+          </div>
+        )}
+        {tab === "report" && (
+          <div className="glass rounded-2xl p-4 sm:p-6">
+            <ReportForm tournament={tournament} players={players} />
           </div>
         )}
       </div>
