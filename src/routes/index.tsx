@@ -21,7 +21,6 @@ import {
   Rocket,
   CheckCircle2,
   ArrowRight,
-  Mail,
   Calendar,
 } from "lucide-react";
 
@@ -158,61 +157,25 @@ function PlatformProfilePage() {
 
       <section className="border-t border-white/5 bg-white/[0.015]">
         <div className="mx-auto max-w-3xl px-4 py-12">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-neutral-100">Founders</h2>
-            <Button asChild variant="outline" className="border-white/15">
-              <Link to="/ownership">View Ownership</Link>
-            </Button>
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-              <div className="flex gap-4">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-400 text-lg font-bold text-black">
-                  AK
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-neutral-500">
-                    Founder & CEO
-                  </p>
-                  <h3 className="text-lg font-semibold">Ashish Khadka</h3>
-                  <a
-                    href="mailto:aashish46ak@gmail.com"
-                    className="mt-1 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-200"
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    aashish46ak@gmail.com
-                  </a>
-                  <p className="mt-2 text-sm text-neutral-500">
-                    Platform creator, system architecture, product vision and
-                    roadmap.
-                  </p>
-                </div>
-              </div>
+          <Link
+            to="/ownership"
+            className="group flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-gradient-to-r from-white/[0.06] to-transparent px-6 py-5 transition hover:border-white/25 hover:from-white/[0.1]"
+          >
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-500">
+                The people behind NepARENA
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-neutral-100 sm:text-2xl">
+                View Creators
+              </h2>
+              <p className="mt-1 text-sm text-neutral-400">
+                Meet the founders who built this platform.
+              </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-              <div className="flex gap-4">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-neutral-400 to-neutral-700 text-lg font-bold text-white">
-                  AB
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-neutral-500">
-                    Co-Founder
-                  </p>
-                  <h3 className="text-lg font-semibold">Ashish Baral</h3>
-                  <a
-                    href="mailto:baralk851@gmail.com"
-                    className="mt-1 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-200"
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    baralk851@gmail.com
-                  </a>
-                  <p className="mt-2 text-sm text-neutral-500">
-                    Platform improvements, feedback, ideas, testing and strategy.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-black transition group-hover:scale-105">
+              <ArrowRight className="h-5 w-5" />
+            </span>
+          </Link>
         </div>
       </section>
 
