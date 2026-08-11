@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildSeoHead } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
 import { useOwnerInfo, useModerators } from "@/hooks/useContent";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -6,7 +7,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Crown, Shield, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/about")({
-  head: () => ({ meta: [{ title: "About — eFootball Nepal" }, { name: "description", content: "About eFootball Nepal, its ownership, and the moderator team." }] }),
+  head: () => ({
+    ...buildSeoHead({
+      title: "About",
+      description:
+        "About NepARENA and organizer communities — ownership, moderators, and the multi-organizer esports platform for Nepal.",
+      path: "/about",
+    }),
+  }),
   component: () => {
     const settings = useSiteSettings();
     const { data: owner } = useOwnerInfo();
