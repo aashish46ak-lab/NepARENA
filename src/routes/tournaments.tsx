@@ -5,6 +5,7 @@ import {
   useMatchRoute,
   useNavigate,
 } from "@tanstack/react-router";
+import { buildSeoHead } from "@/lib/seo";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { useTournaments } from "@/hooks/useContent";
@@ -25,14 +26,12 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/tournaments")({
   head: () => ({
-    meta: [
-      { title: "Tournaments — eFootball Nepal" },
-      {
-        name: "description",
-        content:
-          "Browse upcoming, ongoing, and completed eFootball tournaments in Nepal.",
-      },
-    ],
+    ...buildSeoHead({
+      title: "Tournaments",
+      description:
+        "Browse upcoming, ongoing, and completed esports tournaments on NepARENA — Nepal's multi-organizer platform.",
+      path: "/tournaments",
+    }),
   }),
   component: TournamentsLayout,
 });
@@ -53,7 +52,7 @@ function TournamentsList() {
       <div className="max-w-7xl mx-auto px-4 py-12 overflow-x-hidden">
         <h1 className="text-3xl md:text-4xl font-bold">Tournaments</h1>
         <p className="text-muted-foreground mt-2">
-          Every tournament run by eFootball Nepal.
+          Esports tournaments on NepARENA.
         </p>
 
         {isLoading && (
@@ -199,7 +198,6 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
         params={{ id: t.id }}
         className="flex gap-3 p-3 sm:p-4 min-w-0 cursor-pointer"
       >
-        {/* Fixed 100×100 thumbnail — never stretches */}
         <div className="h-[100px] w-[100px] shrink-0 rounded-xl overflow-hidden bg-secondary ring-1 ring-border/40">
           {thumb ? (
             <img
@@ -215,7 +213,6 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
           )}
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 py-0.5">
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge className="bg-brand/25 text-brand-glow capitalize text-[10px] sm:text-xs">
@@ -290,4 +287,4 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
       </div>
     </div>
   );
-            }
+}
