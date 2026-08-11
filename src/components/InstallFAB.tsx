@@ -58,7 +58,7 @@ export function InstallFAB() {
         <img
           src="/neparena-logo.png"
           alt=""
-          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-white/25"
+          className="h-11 w-11 shrink-0 rounded-full object-contain bg-black p-1 ring-1 ring-white/25"
           onError={(e) => {
             e.currentTarget.src = "/pwa-192x192.png";
           }}
@@ -75,7 +75,7 @@ export function InstallFAB() {
                 <img
                   src="/neparena-logo.png"
                   alt=""
-                  className="h-14 w-14 rounded-2xl object-cover ring-1 ring-white/20"
+                  className="h-14 w-14 rounded-2xl object-contain bg-black p-1.5 ring-1 ring-white/20"
                   onError={(e) => {
                     e.currentTarget.src = "/pwa-192x192.png";
                   }}
