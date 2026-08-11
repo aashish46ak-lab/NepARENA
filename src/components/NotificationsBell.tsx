@@ -41,11 +41,43 @@ export function NotificationsBell() {
           table: "notifications",
           filter: "user_id=eq." + user.id,
         },
-        () => {
+        (payload) => {
           void load();
+          const row = payload.new as {
+            title?: string;
+            body?: string | null;
+          } | null;
+          if (
+            row?.title &&
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted"
+          ) {
+            try {
+              const n = new Notification(row.title, {
+                body: row.body ?? "",
+                icon: "/pwa-192x192.png",
+                badge: "/pwa-192x192-maskable.png",
+                tag: "neparena-notif",
+              });
+              n.onclick = () => {
+                window.focus();
+                n.close();
+              };
+            } catch {
+              /* ignore */
+            }
+          }
         },
       )
       .subscribe();
+
+    if (
+      typeof Notification !== "undefined" &&
+      Notification.permission === "default"
+    ) {
+      void Notification.requestPermission();
+    }
+
     return () => {
       void supabase.removeChannel(channel);
     };
@@ -108,7 +140,7 @@ export function NotificationsBell() {
             No notifications
           </div>
         ) : (
-          <div className="max-h-[168px] overflow-y-auto">
+          <div className="max-h-[320px] overflow-y-auto">
             {items.map((n) => (
               <DropdownMenuItem
                 key={n.id}
@@ -130,8 +162,8 @@ export function NotificationsBell() {
                 )}
                 {n.link && (
                   <Link
-                    to={n.link.startsWith("/") ? n.link : "/"}
-                    className="text-xs text-brand-glow mt-0.5"
+                    to={n.link as "/"}
+                    className="text-[11px] text-brand-glow hover:underline"
                   >
                     Open
                   </Link>
@@ -143,5 +175,4 @@ export function NotificationsBell() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-    }
-                
+}
