@@ -5,13 +5,15 @@ import {
   ensureEfootballNepalAdmin,
   isSuperAdminEmail,
 } from "@/lib/organizers";
+import { getOrganizerContext } from "@/lib/organizer-context";
 import { toast } from "sonner";
 
 /**
- * After sign-in on /auth:
- * - Super admins (aashish46ak + baralk851) → /platform
+ * After sign-in:
+ * - Super admins → always /platform (never linger on public home)
  * - Organizer admin → /dashboard
- * - Member → /profile (Twitter-style)
+ * - Member with org context → /o/$slug
+ * - Member → /profile
  */
 export function RoleRedirect() {
   const { user, loading, isAdmin, profile, signOut } = useAuth();
@@ -30,9 +32,12 @@ export function RoleRedirect() {
       return;
     }
 
-    // Grant eFootball Nepal owner to super admins (idempotent)
     if (isSuperAdminEmail(user.email)) {
       void ensureEfootballNepalAdmin(user.id);
+      if (pathname === "/" || pathname === "/auth" || pathname.startsWith("/auth/")) {
+        router.navigate({ to: "/platform", replace: true });
+      }
+      return;
     }
 
     if (handled.current === user.id) return;
@@ -40,8 +45,9 @@ export function RoleRedirect() {
     if (!onAuthScreen) return;
     handled.current = user.id;
 
-    if (isSuperAdminEmail(user.email)) {
-      router.navigate({ to: "/platform", replace: true });
+    const ctx = getOrganizerContext();
+    if (ctx?.slug) {
+      router.navigate({ to: "/o/$slug", params: { slug: ctx.slug }, replace: true });
       return;
     }
     router.navigate({ to: isAdmin ? "/dashboard" : "/profile", replace: true });
