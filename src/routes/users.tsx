@@ -2,6 +2,7 @@
  * Platform Followers — signed-up users.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { buildSeoHead } from "@/lib/seo";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
 import { PLATFORM_NAME } from "@/lib/organizers";
@@ -10,7 +11,12 @@ import { Users } from "lucide-react";
 
 export const Route = createFileRoute("/users")({
   head: () => ({
-    meta: [{ title: `Followers — ${PLATFORM_NAME}` }],
+    ...buildSeoHead({
+      title: "Users",
+      description:
+        "Registered players and members on NepARENA — Nepal's multi-organizer esports platform.",
+      path: "/users",
+    }),
   }),
   component: PlatformUsersPage,
 });
