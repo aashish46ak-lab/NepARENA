@@ -3,12 +3,15 @@
  * NOT an organizer directory. No eFootball Nepal cards or tournament lists.
  * Organizers only after "View Organizers" → /organizers.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PLATFORM_NAME } from "@/lib/organizers";
+import { PLATFORM_NAME, isSuperAdminEmail } from "@/lib/organizers";
+import { getOrganizerContext } from "@/lib/organizer-context";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { AdminChatFab } from "@/components/AdminChatFab";
 import {
@@ -58,6 +61,20 @@ async function platformStats() {
 }
 
 function PlatformProfilePage() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user && isSuperAdminEmail(user.email)) {
+      router.navigate({ to: "/platform", replace: true });
+      return;
+    }
+    const ctx = getOrganizerContext();
+    if (ctx?.slug && !isSuperAdminEmail(user?.email)) {
+      router.navigate({ to: "/o/$slug", params: { slug: ctx.slug }, replace: true });
+    }
+  }, [user, router]);
+
   const { data: stats } = useQuery({
     queryKey: ["platform_home_stats"],
     queryFn: platformStats,
@@ -67,7 +84,7 @@ function PlatformProfilePage() {
     <PageShell force="platform">
       <section className="relative overflow-hidden">
         <div className="h-36 bg-[linear-gradient(135deg,#0a0a0a_0%,#1f1f1f_50%,#2a2a2a_100%)] sm:h-44" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[radial-gradient(ellipse_at_30%_0%,rgba(212,212,212,0.15),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 neparena-shimmer bg-[radial-gradient(ellipse_at_30%_0%,rgba(212,212,212,0.18),transparent_55%)]" />
 
         <div className="relative mx-auto max-w-3xl px-4 pb-10">
           <img
