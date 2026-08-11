@@ -27,7 +27,6 @@ import {
   UserPlus,
   Ban,
   CheckCircle,
-  Link2,
   LayoutDashboard,
   Activity,
   MessageSquare,
@@ -213,6 +212,11 @@ export function SuperAdminPanel() {
                   {stats?.pendingInvites?.length}
                 </span>
               )}
+              {t.id === "messages" && (stats?.messages ?? 0) > 0 && (
+                <span className="ml-1 rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white">
+                  {(stats?.messages ?? 0) > 99 ? "99+" : stats?.messages}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -221,15 +225,27 @@ export function SuperAdminPanel() {
           <div className="mt-8 grid gap-6 lg:grid-cols-5">
             <div className="space-y-6 lg:col-span-3">
               <Section title="Platform health" desc="Aggregate metrics only — no organizer insider details">
-                <div className="space-y-4">
-                  <Bar label="Users" value={stats?.players ?? 0} max={maxBar} />
-                  <Bar label="Tournaments" value={stats?.tournaments ?? 0} max={maxBar} />
-                  <Bar label="Matches played" value={stats?.matches ?? 0} max={maxBar} />
-                  <Bar label="Organizers" value={stats?.organizers ?? 0} max={maxBar} />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <BigBar label="Users" value={stats?.players ?? 0} max={maxBar} color="from-sky-400 to-sky-600" />
+                  <BigBar label="Tournaments" value={stats?.tournaments ?? 0} max={maxBar} color="from-amber-400 to-amber-600" />
+                  <BigBar label="Matches" value={stats?.matches ?? 0} max={maxBar} color="from-emerald-400 to-emerald-600" />
+                  <BigBar label="Organizers" value={stats?.organizers ?? 0} max={maxBar} color="from-violet-400 to-violet-600" />
+                </div>
+                <div className="mt-6 space-y-3">
+                  <Bar label="Users" value={stats?.players ?? 0} max={maxBar} tone="sky" />
+                  <Bar label="Tournaments" value={stats?.tournaments ?? 0} max={maxBar} tone="amber" />
+                  <Bar label="Matches played" value={stats?.matches ?? 0} max={maxBar} tone="emerald" />
+                  <Bar label="Organizers" value={stats?.organizers ?? 0} max={maxBar} tone="violet" />
                 </div>
               </Section>
               <Section title="Organizer status" desc="Active, pending, verified, suspended">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <StatusDonut
+                  active={stats?.byStatus.active ?? 0}
+                  pending={stats?.byStatus.pending ?? 0}
+                  verified={stats?.byStatus.verified ?? 0}
+                  suspended={stats?.byStatus.suspended ?? 0}
+                />
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <MiniStat label="Active" value={stats?.byStatus.active ?? 0} color="text-emerald-400" />
                   <MiniStat label="Pending" value={stats?.byStatus.pending ?? 0} color="text-amber-400" />
                   <MiniStat label="Verified" value={stats?.byStatus.verified ?? 0} color="text-sky-400" />
@@ -476,17 +492,126 @@ function MiniStat({ label, value, color = "text-neutral-100" }: { label: string;
   );
 }
 
-function Bar({ label, value, max }: { label: string; value: number; max: number }) {
+function Bar({
+  label,
+  value,
+  max,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  max: number;
+  tone?: "sky" | "amber" | "emerald" | "violet" | "neutral";
+}) {
   const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
+  const gradients: Record<string, string> = {
+    sky: "from-sky-500 to-sky-300",
+    amber: "from-amber-500 to-amber-300",
+    emerald: "from-emerald-500 to-emerald-300",
+    violet: "from-violet-500 to-violet-300",
+    neutral: "from-neutral-400 to-neutral-100",
+  };
   return (
     <div>
-      <div className="mb-1 flex justify-between text-xs text-neutral-500">
+      <div className="mb-1.5 flex justify-between text-xs text-neutral-500">
         <span>{label}</span>
-        <span className="tabular-nums text-neutral-300">{value}</span>
+        <span className="tabular-nums font-medium text-neutral-200">{value.toLocaleString()}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/5">
-        <div className="h-full rounded-full bg-gradient-to-r from-neutral-400 to-neutral-100 transition-all" style={{ width: `${pct}%` }} />
+      <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06] ring-1 ring-white/5">
+        <div
+          className={`h-full rounded-full bg-gradient-to-r ${gradients[tone]} shadow-[0_0_12px_rgba(255,255,255,0.15)] transition-all duration-700`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
+    </div>
+  );
+}
+
+function BigBar({
+  label,
+  value,
+  max,
+  color,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  color: string;
+}) {
+  const pct = Math.max(8, Math.min(100, Math.round((value / Math.max(max, 1)) * 100)));
+  return (
+    <div className="flex flex-col items-center rounded-2xl border border-white/10 bg-black/30 p-3">
+      <div className="relative flex h-28 w-full items-end justify-center">
+        <div className="absolute inset-x-3 bottom-0 top-0 rounded-lg bg-white/[0.03]" />
+        <div
+          className={`relative w-10 rounded-t-lg bg-gradient-to-t ${color} shadow-lg transition-all duration-700`}
+          style={{ height: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-2 text-lg font-bold tabular-nums text-neutral-100">{value.toLocaleString()}</p>
+      <p className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</p>
+    </div>
+  );
+}
+
+function StatusDonut({
+  active,
+  pending,
+  verified,
+  suspended,
+}: {
+  active: number;
+  pending: number;
+  verified: number;
+  suspended: number;
+}) {
+  const total = Math.max(active + pending + suspended, 1);
+  const segs = [
+    { v: active, c: "#34d399", label: "Active" },
+    { v: pending, c: "#fbbf24", label: "Pending" },
+    { v: suspended, c: "#f87171", label: "Suspended" },
+  ];
+  let acc = 0;
+  const stops: string[] = [];
+  for (const s of segs) {
+    const start = (acc / total) * 100;
+    acc += s.v;
+    const end = (acc / total) * 100;
+    stops.push(`${s.c} ${start}% ${end}%`);
+  }
+  const bg = `conic-gradient(${stops.join(", ")})`;
+  return (
+    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-8">
+      <div className="relative h-36 w-36 shrink-0">
+        <div
+          className="h-full w-full rounded-full shadow-[0_0_40px_rgba(52,211,153,0.15)]"
+          style={{ background: bg }}
+        />
+        <div className="absolute inset-4 grid place-items-center rounded-full bg-[#0a0a0a] ring-1 ring-white/10">
+          <div className="text-center">
+            <p className="text-2xl font-bold tabular-nums text-neutral-50">{total}</p>
+            <p className="text-[10px] uppercase tracking-wider text-neutral-500">Orgs</p>
+          </div>
+        </div>
+      </div>
+      <ul className="w-full space-y-2 text-sm">
+        {segs.map((s) => (
+          <li key={s.label} className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-2 text-neutral-300">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.c }} />
+              {s.label}
+            </span>
+            <span className="tabular-nums font-medium text-neutral-100">{s.v}</span>
+          </li>
+        ))}
+        <li className="flex items-center justify-between gap-3 border-t border-white/5 pt-2">
+          <span className="inline-flex items-center gap-2 text-neutral-300">
+            <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
+            Verified
+          </span>
+          <span className="tabular-nums font-medium text-sky-300">{verified}</span>
+        </li>
+      </ul>
     </div>
   );
 }
