@@ -22,6 +22,12 @@ import { Loader2, Save, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { archiveTournamentToHistory } from "./shared";
 import { notifyTournamentPlayers } from "@/lib/matches-pending";
+import {
+  TournamentThemeBuilder,
+  parseTournamentTheme,
+  serializeTheme,
+  type TournamentTheme,
+} from "@/components/TournamentThemeBuilder";
 
 const STATUSES: { value: TournamentStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -61,7 +67,30 @@ export function SettingsTab({
   );
   const [rulesText, setRulesText] = useState(tournament.rules_text ?? "");
   const [rulesUrl, setRulesUrl] = useState(tournament.rules_url ?? "");
+  const [theme, setTheme] = useState<TournamentTheme>(() =>
+    parseTournamentTheme(tournament.theme_color),
+  );
   const [saving, setSaving] = useState(false);
+  const [themeSaving, setThemeSaving] = useState(false);
+
+  const saveTheme = async () => {
+    setThemeSaving(true);
+    const { data: row, error } = await supabase
+      .from("tournaments")
+      .update({ theme_color: serializeTheme(theme) })
+      .eq("id", tournament.id)
+      .select()
+      .single();
+    setThemeSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Theme saved — applied on tournament page");
+    qc.invalidateQueries({ queryKey: ["tournament", tournament.id] });
+    qc.invalidateQueries({ queryKey: ["tournaments"] });
+    if (row) onPatched(row as Tournament);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -333,6 +362,13 @@ export function SettingsTab({
           />
         </div>
       </div>
+
+      <TournamentThemeBuilder
+        value={theme}
+        onChange={setTheme}
+        onSave={() => void saveTheme()}
+        saving={themeSaving}
+      />
 
       <Button
         onClick={save}
