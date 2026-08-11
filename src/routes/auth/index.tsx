@@ -5,7 +5,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Lock, User, Loader2, ArrowRight, Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  User,
+  Loader2,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
@@ -14,8 +24,12 @@ export const Route = createFileRoute("/auth/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — eFootball Nepal" },
-      { name: "description", content: "Sign in or create your eFootball Nepal account to join tournaments and the community." },
+      { title: "Sign in — NepARENA" },
+      {
+        name: "description",
+        content:
+          "Sign in or create your NepARENA account to join tournaments and communities.",
+      },
     ],
   }),
   component: AuthPage,
@@ -67,7 +81,6 @@ function AuthPage() {
       return;
     }
     toast.success("Welcome back!");
-    // RoleRedirect sends owners/moderators to the dashboard.
   };
 
   const signup = async () => {
@@ -99,6 +112,9 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
+    sessionStorage.setItem("neparena-email", parsed.data);
+    sessionStorage.setItem("neparena-fullname", trimmedName);
+    sessionStorage.setItem("neparena-otp-type", "signup");
     sessionStorage.setItem("efn-email", parsed.data);
     sessionStorage.setItem("efn-fullname", trimmedName);
     sessionStorage.setItem("efn-otp-type", "signup");
@@ -121,6 +137,8 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
+    sessionStorage.setItem("neparena-email", parsed.data);
+    sessionStorage.setItem("neparena-otp-type", "recovery");
     sessionStorage.setItem("efn-email", parsed.data);
     sessionStorage.setItem("efn-otp-type", "recovery");
     toast.success("Password reset code sent to your email.");
@@ -138,11 +156,16 @@ function AuthPage() {
       <div className="w-full max-w-md animate-enter">
         <Link to="/" className="mb-6 flex flex-col items-center gap-3">
           <img
-            src="/android-chrome-512x512.png"
-            alt="eFootball Nepal logo"
-            className="h-20 w-20 rounded-2xl shadow-lg glow-brand"
+            src="/neparena-logo.png"
+            alt="NepARENA logo"
+            className="h-20 w-20 rounded-2xl object-cover shadow-lg ring-1 ring-white/15"
+            onError={(e) => {
+              e.currentTarget.src = "/pwa-192x192.png";
+            }}
           />
-          <span className="text-2xl font-bold text-gradient-brand">eFootball Nepal</span>
+          <span className="text-2xl font-bold tracking-tight text-neutral-100">
+            NepARENA
+          </span>
         </Link>
 
         <div className="glass rounded-2xl p-6 md:p-8">
@@ -171,7 +194,7 @@ function AuthPage() {
           </div>
 
           <h1 className="text-center text-2xl font-bold">
-            {mode === "login" ? "Welcome back" : "Join the arena"}
+            {mode === "login" ? "Welcome back" : "Join NepARENA"}
           </h1>
           <p className="mt-1.5 text-center text-sm text-muted-foreground">
             {mode === "login"
@@ -236,7 +259,9 @@ function AuthPage() {
                   type={showPw ? "text" : "password"}
                   required
                   minLength={8}
-                  placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
+                  placeholder={
+                    mode === "signup" ? "At least 8 characters" : "Your password"
+                  }
                   className="px-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
