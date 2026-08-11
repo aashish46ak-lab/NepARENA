@@ -14,12 +14,10 @@ import {
   Clock,
   ImagePlus,
   Loader2,
-  ScanLine,
   Send,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export interface SubmitResultCardProps {
   matchId: string;
@@ -36,8 +34,8 @@ export interface SubmitResultCardProps {
 }
 
 /**
- * Expandable match card: Logo | Home vs Away | Logo + Submit Result.
- * Starts collapsed — expands only when user taps Submit Result.
+ * Match card for result submission.
+ * Always starts collapsed. Form opens only when user taps "Submit Result".
  */
 export function SubmitResultCard({
   matchId,
@@ -53,7 +51,7 @@ export function SubmitResultCard({
   const { user } = useAuth();
   const status = submission?.status;
 
-  // Always start collapsed; user expands via "Submit Result"
+  // Always start collapsed
   const [open, setOpen] = useState(false);
   const [hs, setHs] = useState(
     submission?.home_score != null ? String(submission.home_score) : "",
@@ -65,7 +63,6 @@ export function SubmitResultCard({
   const [proofUrl, setProofUrl] = useState(submission?.proof_url ?? "");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [scanning, setScanning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = async (file: File | null) => {
@@ -132,11 +129,8 @@ export function SubmitResultCard({
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card/40 overflow-hidden">
-      <button
-        type="button"
-        className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-white/[0.03]"
-        onClick={() => setOpen((v) => !v)}
-      >
+      {/* Collapsed header — logos + names only (no form) */}
+      <div className="flex w-full items-center gap-3 px-3 py-3">
         <Avatar className="h-9 w-9 shrink-0">
           {homePhoto ? <AvatarImage src={homePhoto} /> : null}
           <AvatarFallback className="text-[10px]">{homeLabel.slice(0, 2)}</AvatarFallback>
@@ -170,17 +164,35 @@ export function SubmitResultCard({
           {awayPhoto ? <AvatarImage src={awayPhoto} /> : null}
           <AvatarFallback className="text-[10px]">{awayLabel.slice(0, 2)}</AvatarFallback>
         </Avatar>
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition",
-            open && "rotate-180",
-          )}
-        />
-      </button>
+      </div>
+
+      {/* Explicit expand control — only this opens the form */}
+      {!open && status !== "approved" && (
+        <div className="border-t border-border/40 px-3 pb-3">
+          <Button
+            type="button"
+            size="sm"
+            className="w-full bg-gradient-brand text-primary-foreground"
+            onClick={() => setOpen(true)}
+          >
+            Submit Result
+            <ChevronDown className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {open && (
         <div className="border-t border-border/50 px-3 py-3 space-y-3">
-          <p className="text-xs font-medium text-muted-foreground">Submit Result</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Enter score & screenshot</p>
+            <button
+              type="button"
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+              onClick={() => setOpen(false)}
+            >
+              Collapse
+            </button>
+          </div>
           <div className="flex items-center justify-center gap-2">
             <Input
               inputMode="numeric"
