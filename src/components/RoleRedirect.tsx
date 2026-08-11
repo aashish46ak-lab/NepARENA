@@ -9,11 +9,14 @@ import { getOrganizerContext } from "@/lib/organizer-context";
 import { toast } from "sonner";
 
 /**
- * After sign-in:
- * - Super admins → always /platform (never linger on public home)
+ * After sign-in on /auth only:
+ * - Super admins → /platform
  * - Organizer admin → /dashboard
- * - Member with org context → /o/$slug
+ * - Member with org context → /o/$slug (share-link flow)
  * - Member → /profile
+ *
+ * Root URL `/` always stays the NepARENA platform homepage.
+ * Shared profile / org links must never hijack `/`.
  */
 export function RoleRedirect() {
   const { user, loading, isAdmin, profile, signOut } = useAuth();
@@ -32,14 +35,17 @@ export function RoleRedirect() {
       return;
     }
 
+    // Super admins: only leave public home/auth for /platform
     if (isSuperAdminEmail(user.email)) {
       void ensureEfootballNepalAdmin(user.id);
-      if (pathname === "/" || pathname === "/auth" || pathname.startsWith("/auth/")) {
+      if (pathname === "/auth" || pathname.startsWith("/auth/")) {
         router.navigate({ to: "/platform", replace: true });
       }
+      // Do NOT auto-redirect away from `/` — homepage is platform profile
       return;
     }
 
+    // Only run post-login redirects from auth screens
     if (handled.current === user.id) return;
     const onAuthScreen = pathname === "/auth" || pathname.startsWith("/auth/");
     if (!onAuthScreen) return;
@@ -47,7 +53,11 @@ export function RoleRedirect() {
 
     const ctx = getOrganizerContext();
     if (ctx?.slug) {
-      router.navigate({ to: "/o/$slug", params: { slug: ctx.slug }, replace: true });
+      router.navigate({
+        to: "/o/$slug",
+        params: { slug: ctx.slug },
+        replace: true,
+      });
       return;
     }
     router.navigate({ to: isAdmin ? "/dashboard" : "/profile", replace: true });
