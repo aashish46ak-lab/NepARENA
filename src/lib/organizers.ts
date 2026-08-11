@@ -104,11 +104,14 @@ async function brandFromSiteSettings(): Promise<{
   };
 }
 
-function withSiteBrand(org: Organizer, brand: {
-  logo_url: string | null;
-  banner_url: string | null;
-  tagline: string | null;
-}): Organizer {
+function withSiteBrand(
+  org: Organizer,
+  brand: {
+    logo_url: string | null;
+    banner_url: string | null;
+    tagline: string | null;
+  },
+): Organizer {
   if (org.slug !== DEFAULT_ORGANIZER_SLUG) return org;
   return {
     ...org,
@@ -208,12 +211,41 @@ export async function isFollowing(
 
 export async function getPlatformStats() {
   const organizers = await listAllOrganizers();
-  const { count: tournamentCount } = await supabase
-    .from("tournaments")
-    .select("id", { count: "exact", head: true });
-  const { count: playerCount } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true });
+
+  const [
+    tournamentCount,
+    playerCount,
+    matchCount,
+    liveTournaments,
+    completedTournaments,
+    recentUsers,
+    pendingInvites,
+    messagesCount,
+  ] = await Promise.all([
+    supabase.from("tournaments").select("id", { count: "exact", head: true }),
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase.from("matches").select("id", { count: "exact", head: true }),
+    supabase
+      .from("tournaments")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["live", "ongoing"]),
+    supabase
+      .from("tournaments")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "completed"),
+    supabase
+      .from("profiles")
+      .select("id, username, avatar_url, created_at, full_name")
+      .order("created_at", { ascending: false })
+      .limit(8),
+    supabase
+      .from("organizer_invitations")
+      .select("id, email, status, token, created_at, organizer_id")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase.from("platform_messages").select("id", { count: "exact", head: true }),
+  ]);
 
   const byStatus = {
     active: organizers.filter((o) => o.status === "active").length,
@@ -224,11 +256,37 @@ export async function getPlatformStats() {
 
   return {
     organizers: organizers.length,
-    tournaments: tournamentCount ?? 0,
-    players: playerCount ?? 0,
+    tournaments: tournamentCount.count ?? 0,
+    players: playerCount.count ?? 0,
+    matches: matchCount.count ?? 0,
+    liveTournaments: liveTournaments.count ?? 0,
+    completedTournaments: completedTournaments.count ?? 0,
+    messages: messagesCount.count ?? 0,
     byStatus,
     organizersList: organizers,
+    recentUsers: (recentUsers.data ?? []) as {
+      id: string;
+      username: string | null;
+      full_name?: string | null;
+      avatar_url: string | null;
+      created_at: string;
+    }[],
+    pendingInvites: (pendingInvites.data ?? []) as {
+      id: string;
+      email: string;
+      status: string;
+      token: string;
+      created_at: string;
+      organizer_id: string | null;
+    }[],
   };
+}
+
+export async function setOrganizerVerified(organizerId: string, verified: boolean) {
+  return supabase
+    .from("organizers")
+    .update({ is_verified: verified, updated_at: new Date().toISOString() })
+    .eq("id", organizerId);
 }
 
 export async function inviteOrganizer(params: {
