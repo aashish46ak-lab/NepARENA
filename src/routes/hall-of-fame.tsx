@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildSeoHead } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
 import { useHallOfFame } from "@/hooks/useContent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Route = createFileRoute("/hall-of-fame")({
-  head: () => ({ meta: [{ title: "Hall of Fame — eFootball Nepal" }, { name: "description", content: "Legendary champions of eFootball Nepal." }] }),
+  head: () => ({
+    ...buildSeoHead({
+      title: "Hall of Fame",
+      description:
+        "Champions and legends from tournaments on NepARENA.",
+      path: "/hall-of-fame",
+    }),
+  }),
   component: () => {
     const { data: list = [], isLoading } = useHallOfFame();
     return (
