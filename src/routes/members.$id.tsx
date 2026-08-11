@@ -10,12 +10,19 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AllTimeXiView, parseXi } from "@/components/AllTimeXi";
 import { Loader2, Trophy, ArrowLeft, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/members/$id")({
   head: () => ({
-    meta: [{ title: "Member — eFootball Nepal" }],
+    ...buildSeoHead({
+      title: "Member profile",
+      description: "Player profile on NepARENA",
+      path: "/members",
+      noIndex: true,
+    }),
   }),
   component: MemberProfilePage,
 });
@@ -128,7 +135,7 @@ function MemberProfilePage() {
   if (isLoading) {
     return (
       <PageShell>
-        <div className="min-h-[40vh] grid place-items-center">
+        <div className="grid min-h-[40vh] place-items-center">
           <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
       </PageShell>
@@ -138,16 +145,11 @@ function MemberProfilePage() {
   if (error || !data?.profile) {
     return (
       <PageShell>
-        <div className="max-w-lg mx-auto py-20 text-center space-y-3">
+        <div className="mx-auto max-w-lg space-y-3 py-20 text-center">
           <p className="text-muted-foreground">Member not found</p>
-          <p className="text-xs text-muted-foreground">
-            {error instanceof Error
-              ? error.message
-              : "Profile may be private (check RLS) or invalid link."}
-          </p>
           <Button asChild variant="outline">
             <Link to="/members">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Members
+              <ArrowLeft className="mr-1 h-4 w-4" /> Members
             </Link>
           </Button>
         </div>
@@ -168,6 +170,9 @@ function MemberProfilePage() {
     goalsAgainst: 0,
   };
 
+  const links = (profile.social_links ?? {}) as Record<string, string>;
+  const xi = parseXi(links.all_time_xi);
+
   const joinedTags = parts
     .map((p) => {
       const t = tourMap.get(p.tournament_id);
@@ -185,27 +190,27 @@ function MemberProfilePage() {
 
   return (
     <PageShell>
-      <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
+      <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link to="/members">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Members
+            <ArrowLeft className="mr-1 h-4 w-4" /> Members
           </Link>
         </Button>
 
-        <div className="glass rounded-2xl p-6 flex flex-col sm:flex-row items-center sm:items-start gap-5">
+        <div className="glass flex flex-col items-center gap-5 rounded-2xl p-6 sm:flex-row sm:items-start">
           <Avatar className="h-24 w-24 ring-2 ring-brand/30">
             <AvatarImage
               src={profile.avatar_url ?? undefined}
               className="object-cover"
             />
-            <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xl">
+            <AvatarFallback className="bg-gradient-brand text-xl text-primary-foreground">
               {displayName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="text-center sm:text-left space-y-2 min-w-0 flex-1">
-            <h1 className="text-2xl font-bold truncate">{displayName}</h1>
+          <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
+            <h1 className="truncate text-2xl font-bold">{displayName}</h1>
             {realName && realName !== displayName && (
-              <p className="text-sm text-muted-foreground truncate">{realName}</p>
+              <p className="truncate text-sm text-muted-foreground">{realName}</p>
             )}
             {profile.favourite_club && (
               <p className="text-sm text-brand-glow">{profile.favourite_club}</p>
@@ -216,8 +221,8 @@ function MemberProfilePage() {
 
             {joinedTags.length > 0 && (
               <div className="pt-2">
-                <p className="text-xs text-muted-foreground mb-1.5">Tournaments</p>
-                <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                <p className="mb-1.5 text-xs text-muted-foreground">Tournaments</p>
+                <div className="flex flex-wrap justify-center gap-1.5 sm:justify-start">
                   {joinedTags.map((tag) => (
                     <Link
                       key={tag.tournamentId}
@@ -240,7 +245,7 @@ function MemberProfilePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[
             { label: "Wins", value: stats.wins },
             { label: "Draws", value: stats.draws },
@@ -250,14 +255,22 @@ function MemberProfilePage() {
           ].map((s) => (
             <div key={s.label} className="glass rounded-xl p-3 text-center">
               <div className="text-xl font-bold text-gradient-brand">{s.value}</div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">{s.label}</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {s.label}
+              </div>
             </div>
           ))}
         </div>
 
+        {xi && xi.slots.some((s) => s.name) && (
+          <div className="glass rounded-2xl p-4">
+            <AllTimeXiView xi={xi} />
+          </div>
+        )}
+
         {achievements.length > 0 && (
           <div>
-            <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
               <Award className="h-5 w-5 text-amber-300" />
               Achievements
             </h2>
@@ -265,9 +278,9 @@ function MemberProfilePage() {
               {achievements.map((a) => (
                 <Badge
                   key={a.id}
-                  className="bg-amber-500/15 text-amber-300 border-amber-500/30"
+                  className="border-amber-500/30 bg-amber-500/15 text-amber-300"
                 >
-                  <Trophy className="h-3 w-3 mr-1" />
+                  <Trophy className="mr-1 h-3 w-3" />
                   {a.achievement}
                   {a.tournament ? " · " + a.tournament : ""}
                 </Badge>
@@ -277,7 +290,7 @@ function MemberProfilePage() {
         )}
 
         <div>
-          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
             <Trophy className="h-5 w-5 text-brand-glow" />
             Tournament history ({parts.length})
           </h2>
@@ -294,17 +307,17 @@ function MemberProfilePage() {
                     key={p.id}
                     to="/tournaments/$id"
                     params={{ id: p.tournament_id }}
-                    className="glass rounded-xl p-3 flex items-center justify-between gap-3 hover:bg-accent/30 transition"
+                    className="glass flex items-center justify-between gap-3 rounded-xl p-3 transition hover:bg-accent/30"
                   >
                     <div className="min-w-0">
-                      <div className="font-medium truncate">
+                      <div className="truncate font-medium">
                         {t?.name ?? "Tournament"}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">
+                      <div className="truncate text-xs text-muted-foreground">
                         {p.club || p.player_name}
                       </div>
                     </div>
-                    <Badge variant="outline" className="capitalize shrink-0">
+                    <Badge variant="outline" className="shrink-0 capitalize">
                       {p.status}
                     </Badge>
                   </Link>
