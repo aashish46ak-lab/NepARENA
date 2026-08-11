@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
 import { OrganizerChatFab } from "@/components/OrganizerChatFab";
 import { getTheme } from "@/lib/themes";
+import { PlatformIcon } from "@/lib/platforms";
 
 export const Route = createFileRoute("/o/$slug")({
   loader: async ({ params }) => {
@@ -217,6 +218,24 @@ function OrganizerPublicPage() {
         image_url: string | null;
         is_pinned: boolean;
         created_at: string;
+      }[];
+    },
+  });
+
+  const { data: communityLinks = [] } = useQuery({
+    queryKey: ["community_links_public", organizer?.id],
+    enabled: !!organizer?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("community_links")
+        .select("id, platform, label, url, sort_order")
+        .order("sort_order", { ascending: true })
+        .limit(24);
+      return (data ?? []) as {
+        id: string;
+        platform: string;
+        label: string;
+        url: string;
       }[];
     },
   });
@@ -579,6 +598,28 @@ function OrganizerPublicPage() {
                 })}
               </div>
             </div>
+          )}
+
+          {communityLinks.length > 0 && (
+            <section className="pt-2">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Community links
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {communityLinks.map((l) => (
+                  <a
+                    key={l.id}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 text-sm text-neutral-200 transition hover:border-white/25 hover:bg-white/[0.08]"
+                  >
+                    <PlatformIcon platform={l.platform} className="h-4 w-4" />
+                    {l.label || l.platform}
+                  </a>
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </div>
