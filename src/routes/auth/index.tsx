@@ -52,7 +52,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.navigate({ to: "/" });
+      router.navigate({ to: "/", replace: true });
     }
   }, [loading, user, router]);
 
@@ -115,9 +115,6 @@ function AuthPage() {
     sessionStorage.setItem("neparena-email", parsed.data);
     sessionStorage.setItem("neparena-fullname", trimmedName);
     sessionStorage.setItem("neparena-otp-type", "signup");
-    sessionStorage.setItem("efn-email", parsed.data);
-    sessionStorage.setItem("efn-fullname", trimmedName);
-    sessionStorage.setItem("efn-otp-type", "signup");
     toast.success("Verification code sent to your email.");
     router.navigate({ to: "/auth/verify" });
   };
@@ -139,8 +136,6 @@ function AuthPage() {
     }
     sessionStorage.setItem("neparena-email", parsed.data);
     sessionStorage.setItem("neparena-otp-type", "recovery");
-    sessionStorage.setItem("efn-email", parsed.data);
-    sessionStorage.setItem("efn-otp-type", "recovery");
     toast.success("Password reset code sent to your email.");
     router.navigate({ to: "/auth/verify" });
   };
@@ -151,6 +146,24 @@ function AuthPage() {
     void (mode === "login" ? login() : signup());
   };
 
+  if (loading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#0a0a0a]">
+        <div className="flex flex-col items-center gap-3">
+          <img
+            src="/neparena-logo.png"
+            alt=""
+            className="h-16 w-16 rounded-2xl object-contain opacity-90"
+            onError={(e) => {
+              e.currentTarget.src = "/pwa-192x192.png";
+            }}
+          />
+          <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-h-screen place-items-center bg-gradient-hero px-4 py-10">
       <div className="w-full max-w-md animate-enter">
@@ -158,7 +171,7 @@ function AuthPage() {
           <img
             src="/neparena-logo.png"
             alt="NepARENA logo"
-            className="h-20 w-20 rounded-2xl object-cover shadow-lg ring-1 ring-white/15"
+            className="h-20 w-20 rounded-2xl object-contain bg-black p-1 shadow-lg ring-1 ring-white/15"
             onError={(e) => {
               e.currentTarget.src = "/pwa-192x192.png";
             }}

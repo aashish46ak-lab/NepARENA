@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -132,7 +133,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "application-name", content: SITE_NAME },
       { name: "apple-mobile-web-app-title", content: SITE_NAME },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      // Open Graph
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: SITE_NAME },
       { property: "og:title", content: SITE_TITLE },
@@ -141,7 +141,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image", content: SITE_OG_IMAGE },
       { property: "og:image:alt", content: SITE_NAME },
       { property: "og:locale", content: "en_NP" },
-      // Twitter Card
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: SITE_TITLE },
       { name: "twitter:description", content: SITE_DESCRIPTION },
@@ -209,10 +208,24 @@ function RootComponent() {
           )}
           <RoleRedirect />
           <Outlet />
-          <InstallFAB />
+          <PlatformInstallFab />
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   );
+}
+
+/** Install FAB only on platform paths — hidden on organizer pages */
+function PlatformInstallFab() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const show =
+    pathname === "/" ||
+    pathname.startsWith("/organizers") ||
+    pathname.startsWith("/following") ||
+    pathname.startsWith("/users") ||
+    pathname.startsWith("/ownership") ||
+    pathname.startsWith("/platform");
+  if (!show) return null;
+  return <InstallFAB />;
 }
