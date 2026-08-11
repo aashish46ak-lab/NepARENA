@@ -14,16 +14,16 @@ import {
 } from "@/lib/organizers";
 import { supabase } from "@/lib/supabase";
 import { Building2, Shield, Users, Trophy, CheckCircle2 } from "lucide-react";
+import { buildSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/organizers")({
   head: () => ({
-    meta: [
-      { title: `Organizers — ${PLATFORM_NAME}` },
-      {
-        name: "description",
-        content: "Browse verified tournament organizers on NepARENA.",
-      },
-    ],
+    ...buildSeoHead({
+      title: "Organizers",
+      description:
+        "Browse verified tournament organizers on NepARENA — Nepal's multi-organizer esports platform.",
+      path: "/organizers",
+    }),
   }),
   component: OrganizersPage,
 });
