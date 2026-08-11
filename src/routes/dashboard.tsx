@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState, type ElementType } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { PageShell } from "@/components/PageShell";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SiteSettingsPanel } from "@/components/admin/SiteSettingsPanel";
 import { MessagesInbox } from "@/components/MessagesInbox";
 import { getDefaultOrganizer } from "@/lib/organizers";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
@@ -78,6 +80,21 @@ function DashboardPage() {
     void getDefaultOrganizer().then((o) => setOrgId(o?.id ?? null));
   }, []);
 
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["org_messages_unread_nav", orgId],
+    enabled: !!orgId,
+    refetchInterval: 20_000,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("organizer_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("organizer_id", orgId!)
+        .eq("is_from_organizer", false)
+        .eq("read_by_organizer", false);
+      return count ?? 0;
+    },
+  });
+
   if (loading || !user) {
     return (
       <PageShell>
@@ -117,6 +134,17 @@ function DashboardPage() {
     ? t
     : (visible[0]?.id ?? "dashboard");
 
+  const NavLabel = ({ id, label }: { id: string; label: string }) => (
+    <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+      <span className="truncate">{label}</span>
+      {id === "messages" && unreadCount > 0 && (
+        <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
+    </span>
+  );
+
   return (
     <PageShell>
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -148,7 +176,7 @@ function DashboardPage() {
                   )}
                 >
                   <s.icon className="h-4 w-4 shrink-0" />
-                  {s.label}
+                  <NavLabel id={s.id} label={s.label} />
                 </button>
               ))}
             </nav>
@@ -169,6 +197,11 @@ function DashboardPage() {
               >
                 <s.icon className="h-4 w-4" />
                 {s.label}
+                {s.id === "messages" && unreadCount > 0 && (
+                  <span className="grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </button>
             ))}
           </div>
