@@ -47,7 +47,6 @@ export function SiteSettingsPanel() {
       hero_title: row.hero_title, hero_subtitle: row.hero_subtitle, hero_image_url: row.hero_image_url,
       about_short: row.about_short, footer_text: row.footer_text,
     }).eq("id", row.id);
-    // Mirror branding onto the organizer public profile (eFootball Nepal)
     await supabase
       .from("organizers")
       .update({
@@ -62,11 +61,14 @@ export function SiteSettingsPanel() {
       .eq("slug", "efootball-nepal");
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Site settings saved");
+    toast.success("Site settings saved — theme applied to public page");
     qc.invalidateQueries({ queryKey: ["site_settings"] });
     qc.invalidateQueries({ queryKey: ["organizer"] });
     qc.invalidateQueries({ queryKey: ["active_organizers_page"] });
   };
+
+  const currentTheme =
+    (row as SiteSettings & { theme_id?: string | null }).theme_id ?? "black-silver";
 
   return (
     <AdminSection title="Site settings" description="Branding, hero, theme, and site-wide text.">
@@ -81,15 +83,43 @@ export function SiteSettingsPanel() {
         </div>
         <div className="space-y-4">
           <Field label="Theme">
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={(row as SiteSettings & { theme_id?: string | null }).theme_id ?? "black-silver"}
-              onChange={(e) => patch({ theme_id: e.target.value } as Partial<SiteSettings>)}
-            >
-              {ORGANIZER_THEMES.map((th) => (
-                <option key={th.id} value={th.id}>{th.label}</option>
-              ))}
-            </select>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {ORGANIZER_THEMES.map((th) => {
+                const selected = currentTheme === th.id;
+                return (
+                  <button
+                    key={th.id}
+                    type="button"
+                    onClick={() => patch({ theme_id: th.id } as Partial<SiteSettings>)}
+                    className={`aspect-square rounded-xl border-2 p-2 text-left transition ${
+                      selected
+                        ? "border-white ring-2 ring-white/30"
+                        : "border-white/10 hover:border-white/25"
+                    }`}
+                    style={{
+                      background:
+                        th.id === "midnight-blue"
+                          ? "linear-gradient(135deg,#1e3a8a,#60a5fa)"
+                          : th.id === "emerald"
+                            ? "linear-gradient(135deg,#047857,#34d399)"
+                            : th.id === "crimson"
+                              ? "linear-gradient(135deg,#b91c1c,#f87171)"
+                              : th.id === "royal-gold"
+                                ? "linear-gradient(135deg,#a16207,#fbbf24)"
+                                : th.id === "violet"
+                                  ? "linear-gradient(135deg,#6d28d9,#a78bfa)"
+                                  : th.id === "slate"
+                                    ? "linear-gradient(135deg,#334155,#94a3b8)"
+                                    : "linear-gradient(135deg,#0a0a0a,#d4d4d4)",
+                    }}
+                  >
+                    <span className="block text-[10px] font-semibold text-white drop-shadow">
+                      {th.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </Field>
           <Field label="Logo"><ImageUpload value={row.logo_url} onChange={(u) => patch({ logo_url: u })} folder="branding" aspect="square" /></Field>
           <Field label="Hero image"><ImageUpload value={row.hero_image_url} onChange={(u) => patch({ hero_image_url: u })} folder="branding" aspect="wide" /></Field>
