@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { buildSeoHead } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
 import { useGallery } from "@/hooks/useContent";
 import { SmartImage } from "@/components/SmartImage";
 
 export const Route = createFileRoute("/gallery")({
-  head: () => ({ meta: [{ title: "Gallery — eFootball Nepal" }, { name: "description", content: "Moments from eFootball Nepal tournaments and community events." }] }),
+  head: () => ({
+    ...buildSeoHead({
+      title: "Gallery",
+      description:
+        "Photos and highlights from NepARENA organizers and tournaments.",
+      path: "/gallery",
+    }),
+  }),
   component: () => {
     const { data: list = [], isLoading } = useGallery();
     return (
