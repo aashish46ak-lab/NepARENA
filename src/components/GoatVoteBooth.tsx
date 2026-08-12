@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { MESSI_PHOTO, RONALDO_PHOTO } from "@/lib/player-photos";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,6 @@ async function loadCounts(): Promise<Counts> {
   } catch {
     /* table may not exist yet */
   }
-  // local fallback aggregate (per-browser seed display)
   try {
     const raw = localStorage.getItem("neparena_goat_local_counts");
     if (raw) return JSON.parse(raw) as Counts;
@@ -44,10 +43,7 @@ async function castVote(option: "messi" | "ronaldo"): Promise<Counts> {
       { option, votes: next[option], updated_at: new Date().toISOString() },
       { onConflict: "option" },
     );
-    if (!error) {
-      // re-read authoritative
-      return loadCounts();
-    }
+    if (!error) return loadCounts();
   } catch {
     /* fall through to local */
   }
@@ -98,28 +94,59 @@ export function GoatVoteBooth() {
     }
   };
 
+  const sharePoll = async () => {
+    const url = `${window.location.origin}/vote/goat`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Vote Your GOAT — NepARENA",
+          text: "Messi or Ronaldo? Cast your vote on NepARENA",
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Poll link copied — share only this vote");
+      }
+    } catch {
+      /* cancel */
+    }
+  };
+
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-950 via-[#0b1220] to-black">
-      <div className="border-b border-white/5 px-4 py-4 text-center sm:px-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-400/90">
-          Community poll
-        </p>
-        <h2 className="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl">
-          VOTE YOUR GOAT
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
-          Messi vs Ronaldo · one vote per device
-        </p>
-        <p className="mt-2 text-sm font-medium text-slate-300">
-          Total votes:{" "}
-          <span className="tabular-nums text-white">
-            {isLoading ? "…" : total.toLocaleString()}
-          </span>
-        </p>
+    <div
+      id="goat-vote"
+      className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-950 via-[#0b1220] to-black"
+    >
+      <div className="flex items-start justify-between gap-2 border-b border-white/5 px-4 py-4 sm:px-6">
+        <div className="text-left sm:text-center sm:flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-400/90">
+            Community poll
+          </p>
+          <h2 className="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl">
+            VOTE YOUR GOAT
+          </h2>
+          <p className="mt-1 text-xs text-slate-400">
+            Messi vs Ronaldo · one vote per device
+          </p>
+          <p className="mt-2 text-sm font-medium text-slate-300">
+            Total votes:{" "}
+            <span className="tabular-nums text-white">
+              {isLoading ? "…" : total.toLocaleString()}
+            </span>
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0 border-white/15"
+          onClick={() => void sharePoll()}
+        >
+          <Share2 className="mr-1.5 h-3.5 w-3.5" />
+          Share
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-0">
-        {/* Messi */}
         <Side
           name="Messi"
           photo={MESSI_PHOTO}
@@ -132,7 +159,6 @@ export function GoatVoteBooth() {
           onVote={() => void vote("messi")}
           busy={busy}
         />
-        {/* Ronaldo */}
         <Side
           name="Ronaldo"
           photo={RONALDO_PHOTO}
@@ -147,7 +173,6 @@ export function GoatVoteBooth() {
         />
       </div>
 
-      {/* battle bar */}
       <div className="px-4 pb-4 pt-1 sm:px-6">
         <div className="flex h-3 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
           <div
