@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase, type Profile } from "@/lib/supabase";
@@ -16,7 +16,7 @@ import {
   type AllTimeXi,
 } from "@/components/AllTimeXi";
 import { toast } from "sonner";
-import { Loader2, Shield, UserCog } from "lucide-react";
+import { Building2, Loader2, Shield, UserCog } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({
   ssr: false,
@@ -70,6 +70,33 @@ function ProfilePage() {
         setXi(parseXi(links.all_time_xi) ?? emptyXi());
       });
   }, [user]);
+
+  const { data: followingOrgs = [] } = useQuery({
+    queryKey: ["my_following_orgs", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data: follows } = await supabase
+        .from("organizer_followers")
+        .select("organizer_id")
+        .eq("user_id", user!.id);
+      const ids = (follows ?? []).map(
+        (f: { organizer_id: string }) => f.organizer_id,
+      );
+      if (!ids.length) return [];
+      const { data: orgs } = await supabase
+        .from("organizers")
+        .select("id, name, slug, logo_url, is_verified")
+        .in("id", ids)
+        .eq("status", "active");
+      return (orgs ?? []) as {
+        id: string;
+        name: string;
+        slug: string;
+        logo_url: string | null;
+        is_verified: boolean;
+      }[];
+    },
+  });
 
   const save = async () => {
     if (!row || !user) return;
@@ -148,14 +175,53 @@ function ProfilePage() {
               )}
             </div>
           </div>
-          {isAdmin && (
-            <Button asChild variant="outline" className="border-brand/40">
-              <Link to="/dashboard">
-                <Shield className="mr-2 h-4 w-4" /> Admin dashboard
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/members/$id" params={{ id: user.id }}>
+                Public profile
               </Link>
             </Button>
-          )}
+            {isAdmin && (
+              <Button asChild variant="outline" className="border-brand/40">
+                <Link to="/dashboard">
+                  <Shield className="mr-2 h-4 w-4" /> Admin dashboard
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
+
+        {followingOrgs.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-neutral-400">
+              <Building2 className="h-3.5 w-3.5" /> Following organizers
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {followingOrgs.map((o) => (
+                <Link
+                  key={o.id}
+                  to="/o/$slug"
+                  params={{ slug: o.slug }}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] py-1 pl-1 pr-2.5 text-xs font-medium text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+                >
+                  {o.logo_url ? (
+                    <img
+                      src={o.logo_url}
+                      alt=""
+                      className="h-5 w-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-700 text-[9px] font-bold">
+                      {o.name.slice(0, 1)}
+                    </span>
+                  )}
+                  <span className="truncate">{o.name}</span>
+                  {o.is_verified && <span className="text-sky-400">✓</span>}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="glass space-y-8 rounded-2xl p-6">
           <div>
