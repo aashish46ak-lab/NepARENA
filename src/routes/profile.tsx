@@ -36,6 +36,7 @@ function ProfilePage() {
   const [row, setRow] = useState<Profile | null>(null);
   const [xi, setXi] = useState<AllTimeXi>(emptyXi());
   const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.navigate({ to: "/auth" });
@@ -110,6 +111,8 @@ function ProfilePage() {
       return toast.error(error.message);
     }
     toast.success("Profile saved");
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1600);
     await refreshProfile();
     qc.invalidateQueries({ queryKey: ["latest_members"] });
     qc.invalidateQueries({ queryKey: ["member_count"] });
@@ -222,21 +225,29 @@ function ProfilePage() {
           </div>
 
           <div className="border-t border-border/40 pt-6">
-            <AllTimeXiView xi={xi} editable onChange={setXi} />
+            <AllTimeXiView xi={xi} editable onChange={setXi} showDownload />
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Pick legends for your dream XI. Visitors can view this on your
-              public profile. No photo upload needed.
+              Pick legends for your dream XI — eFootball-style cards. Download or Save.
             </p>
           </div>
 
           <div className="flex justify-end">
             <Button
-              className="bg-gradient-brand text-primary-foreground"
+              className={`bg-gradient-brand text-primary-foreground transition ${
+                savedFlash ? "scale-105 ring-2 ring-emerald-400/60" : ""
+              }`}
+              style={
+                savedFlash
+                  ? { animation: "spin 0.55s ease-in-out" }
+                  : undefined
+              }
               onClick={save}
               disabled={saving}
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : savedFlash ? (
+                "Saved ✓"
               ) : (
                 "Save changes"
               )}
