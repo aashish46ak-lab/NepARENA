@@ -1,5 +1,6 @@
 -- Public member profiles + storage safety net
 -- Run in Supabase SQL Editor after 19/20/21/22
+-- Fixed: DROP VIEW first (CREATE OR REPLACE cannot remove columns)
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
@@ -19,7 +20,10 @@ CREATE POLICY "profiles update self" ON public.profiles
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
-CREATE OR REPLACE VIEW public.public_members AS
+-- Must DROP first: OR REPLACE cannot drop/reorder columns on existing view
+DROP VIEW IF EXISTS public.public_members CASCADE;
+
+CREATE VIEW public.public_members AS
 SELECT
   id,
   username,
@@ -30,7 +34,46 @@ SELECT
   country,
   created_at
 FROM public.profiles
-WHERE coalesce(is_suspended, false) = false;
+WHERE COALESCE(
+  CASE
+    WHEN EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'profiles'
+        AND column_name = 'is_suspended'
+    )
+    THEN (SELECT p.is_suspended FROM public.profiles p WHERE p.id = profiles.id)
+    ELSE false
+  END,
+  false
+) = false;
+
+-- Simpler filter if is_suspended may be missing — recreate without CASE if above fails:
+-- Prefer pure column version when is_suspended exists:
+DROP VIEW IF EXISTS public.public_members CASCADE;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'profiles'
+      AND column_name = 'is_suspended'
+  ) THEN
+    EXECUTE $
+      CREATE VIEW public.public_members AS
+      SELECT id, username, full_name, avatar_url, favourite_club, bio, country, created_at
+      FROM public.profiles
+      WHERE coalesce(is_suspended, false) = false
+    $;
+  ELSE
+    EXECUTE $
+      CREATE VIEW public.public_members AS
+      SELECT id, username, full_name, avatar_url, favourite_club, bio, country, created_at
+      FROM public.profiles
+    $;
+  END IF;
+END $$;
 
 GRANT SELECT ON public.public_members TO anon, authenticated;
 
