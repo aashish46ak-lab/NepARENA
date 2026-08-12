@@ -13,12 +13,19 @@ import { useAuth } from "@/hooks/useAuth";
 
 const KEY = "neparena-guest-dismissed";
 
+/**
+ * Temporarily disabled while AdSense / site verification is pending.
+ * Flip to true after verification to re-enable the login welcome sheet.
+ */
+const ENABLE_GUEST_POPUP = false;
+
 /** Twitter-style welcome sheet for first visit as guest. */
 export function GuestPopup() {
   const { user, loading } = useAuth();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (!ENABLE_GUEST_POPUP) return;
     if (loading || user) return;
     if (typeof window === "undefined") return;
     try {
@@ -39,7 +46,7 @@ export function GuestPopup() {
     setOpen(false);
   };
 
-  if (user) return null;
+  if (!ENABLE_GUEST_POPUP || user) return null;
 
   return (
     <Dialog
