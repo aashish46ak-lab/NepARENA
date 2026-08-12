@@ -35,9 +35,9 @@ import {
   ExternalLink,
   Copy,
   BadgeCheck,
-  Swords,
   Clock,
   Settings2,
+  BadgePercent,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MessagesInbox } from "@/components/MessagesInbox";
@@ -118,7 +118,7 @@ export function SuperAdminPanel() {
     stats?.players ?? 1,
     stats?.tournaments ?? 1,
     stats?.organizers ?? 1,
-    stats?.matches ?? 1,
+    stats?.liveTournaments ?? 1,
     1,
   );
 
@@ -130,6 +130,11 @@ export function SuperAdminPanel() {
     { id: "invites", label: "Invites", icon: UserPlus },
     { id: "users", label: "Users", icon: Users },
   ];
+
+  const verifyRate =
+    (stats?.organizers ?? 0) > 0
+      ? Math.round(((stats?.byStatus.verified ?? 0) / Math.max(stats?.organizers ?? 1, 1)) * 100)
+      : 0;
 
   return (
     <PageShell force="platform">
@@ -183,11 +188,10 @@ export function SuperAdminPanel() {
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
+          <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-5">
             <MetricCard icon={Users} label="Registered users" value={stats?.players ?? "—"} accent="from-sky-500/20" />
             <MetricCard icon={Building2} label="Organizers" value={stats?.organizers ?? "—"} accent="from-violet-500/20" />
             <MetricCard icon={Trophy} label="Tournaments" value={stats?.tournaments ?? "—"} accent="from-amber-500/20" />
-            <MetricCard icon={Swords} label="Matches" value={stats?.matches ?? "—"} accent="from-emerald-500/20" />
             <MetricCard icon={Activity} label="Live now" value={stats?.liveTournaments ?? "—"} accent="from-rose-500/20" />
             <MetricCard icon={MessageSquare} label="Messages" value={stats?.messages ?? "—"} accent="from-neutral-500/20" />
           </div>
@@ -219,6 +223,9 @@ export function SuperAdminPanel() {
                   {(stats?.messages ?? 0) > 99 ? "99+" : stats?.messages}
                 </span>
               )}
+              {t.id === "requests" && (
+                <span className="ml-0.5 text-[10px] text-neutral-500">inbox</span>
+              )}
             </button>
           ))}
         </div>
@@ -226,21 +233,25 @@ export function SuperAdminPanel() {
         {tab === "overview" && (
           <div className="mt-8 grid gap-6 lg:grid-cols-5">
             <div className="space-y-6 lg:col-span-3">
-              <Section title="Platform health" desc="Aggregate metrics only — no organizer insider details">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Section title="Platform analytics" desc="Users · tournaments · organizers — no match-level noise">
+                <div className="grid grid-cols-3 gap-3">
                   <BigBar label="Users" value={stats?.players ?? 0} max={maxBar} color="from-sky-400 to-sky-600" />
                   <BigBar label="Tournaments" value={stats?.tournaments ?? 0} max={maxBar} color="from-amber-400 to-amber-600" />
-                  <BigBar label="Matches" value={stats?.matches ?? 0} max={maxBar} color="from-emerald-400 to-emerald-600" />
                   <BigBar label="Organizers" value={stats?.organizers ?? 0} max={maxBar} color="from-violet-400 to-violet-600" />
                 </div>
                 <div className="mt-6 space-y-3">
-                  <Bar label="Users" value={stats?.players ?? 0} max={maxBar} tone="sky" />
-                  <Bar label="Tournaments" value={stats?.tournaments ?? 0} max={maxBar} tone="amber" />
-                  <Bar label="Matches played" value={stats?.matches ?? 0} max={maxBar} tone="emerald" />
-                  <Bar label="Organizers" value={stats?.organizers ?? 0} max={maxBar} tone="violet" />
+                  <Bar label="Registered users" value={stats?.players ?? 0} max={maxBar} tone="sky" />
+                  <Bar label="Tournaments hosted" value={stats?.tournaments ?? 0} max={maxBar} tone="amber" />
+                  <Bar label="Active organizers" value={stats?.organizers ?? 0} max={maxBar} tone="violet" />
+                  <Bar label="Live tournaments" value={stats?.liveTournaments ?? 0} max={maxBar} tone="emerald" />
+                </div>
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <MiniStat label="Completed tournaments" value={stats?.completedTournaments ?? 0} />
+                  <MiniStat label="Live / ongoing" value={stats?.liveTournaments ?? 0} color="text-emerald-400" />
+                  <MiniStat label="Verification rate" value={verifyRate} color="text-sky-400" />
                 </div>
               </Section>
-              <Section title="Organizer status" desc="Active, pending, verified, suspended">
+              <Section title="Organizer health" desc="Active, pending, verified, suspended">
                 <StatusDonut
                   active={stats?.byStatus.active ?? 0}
                   pending={stats?.byStatus.pending ?? 0}
@@ -253,19 +264,23 @@ export function SuperAdminPanel() {
                   <MiniStat label="Verified" value={stats?.byStatus.verified ?? 0} color="text-sky-400" />
                   <MiniStat label="Suspended" value={stats?.byStatus.suspended ?? 0} color="text-rose-400" />
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <MiniStat label="Completed tournaments" value={stats?.completedTournaments ?? 0} />
-                  <MiniStat label="Live / ongoing" value={stats?.liveTournaments ?? 0} />
-                </div>
               </Section>
             </div>
             <div className="space-y-6 lg:col-span-2">
-              <Section title="Quick actions">
+              <Section title="Command actions">
                 <div className="grid gap-2">
                   <QuickLink to="/dashboard" label="Default organizer dashboard" />
                   <QuickLink to="/organizers" label="Organizers directory" />
                   <QuickLink to="/users" label="Registered users" />
                   <QuickLink to="/ownership" label="Creators / ownership" />
+                  <button
+                    type="button"
+                    onClick={() => setTab("requests")}
+                    className="flex items-center justify-between rounded-xl border border-white/5 bg-black/20 px-3 py-2.5 text-left text-sm text-neutral-300 transition hover:border-white/15 hover:bg-white/[0.04] hover:text-neutral-100"
+                  >
+                    Review organizer applications
+                    <BadgePercent className="h-3.5 w-3.5 text-neutral-600" />
+                  </button>
                 </div>
               </Section>
               <Section title="Recent signups">
@@ -311,7 +326,7 @@ export function SuperAdminPanel() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold">All organizers</h2>
-                <p className="text-sm text-neutral-500">Activate, verify, suspend — no private internals exposed</p>
+                <p className="text-sm text-neutral-500">Activate, verify, suspend</p>
               </div>
               <div className="relative w-full sm:w-72">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
@@ -373,7 +388,7 @@ export function SuperAdminPanel() {
 
         {tab === "invites" && (
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <Section title="Invite organizer" desc="New organizers get the same dashboard features (messages, themes, tournaments).">
+            <Section title="Invite organizer" desc="New organizers get full dashboard features.">
               <div className="space-y-3">
                 <Input placeholder="Organizer name" value={name} onChange={(e) => setName(e.target.value)} />
                 <Input type="email" placeholder="Gmail to invite" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -490,7 +505,7 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
 function MiniStat({ label, value, color = "text-neutral-100" }: { label: string; value: number; color?: string }) {
   return (
     <div className="rounded-xl border border-white/5 bg-black/20 p-3">
-      <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
+      <p className={`text-xl font-bold tabular-nums ${color}`}>{typeof value === "number" && label.includes("rate") ? `${value}%` : value}</p>
       <p className="text-[11px] text-neutral-500">{label}</p>
     </div>
   );
