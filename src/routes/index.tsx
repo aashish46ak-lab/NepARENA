@@ -1,6 +1,5 @@
 /**
  * NepARENA = PLATFORM PROFILE homepage.
- * Root URL always stays here — shared org links never replace `/`.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -177,9 +176,6 @@ function PlatformProfilePage() {
     },
   });
 
-  const previewBlocks = ABOUT_BLOCKS.slice(0, 2);
-  const restBlocks = ABOUT_BLOCKS.slice(2);
-
   return (
     <PageShell force="platform">
       <section className="relative overflow-hidden">
@@ -207,9 +203,7 @@ function PlatformProfilePage() {
           />
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              {PLATFORM_NAME}
-            </h1>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{PLATFORM_NAME}</h1>
             <Badge className="gap-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500/20">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Verified
@@ -220,15 +214,11 @@ function PlatformProfilePage() {
 
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-400">
             <Link to="/users" className="hover:text-neutral-200">
-              <strong className="text-neutral-100">
-                {stats?.users?.toLocaleString() ?? "—"}
-              </strong>{" "}
+              <strong className="text-neutral-100">{stats?.users?.toLocaleString() ?? "—"}</strong>{" "}
               Registered users
             </Link>
             <Link to="/organizers" className="hover:text-neutral-200">
-              <strong className="text-neutral-100">
-                {stats?.organizers?.toLocaleString() ?? "—"}
-              </strong>{" "}
+              <strong className="text-neutral-100">{stats?.organizers?.toLocaleString() ?? "—"}</strong>{" "}
               Organizers
             </Link>
             <span className="inline-flex items-center gap-1">
@@ -238,61 +228,34 @@ function PlatformProfilePage() {
           </div>
 
           <p className="mt-6 text-base leading-relaxed text-neutral-300">
-            Nepal's Multi-Organizer eFootball Platform where verified
-            tournament organizers build and manage their own esports communities —
-            each with independent branding, members, and tournaments.
+            Nepal's Multi-Organizer eFootball Platform where verified tournament
+            organizers build and manage their own esports communities.
           </p>
 
-          <div className="relative mt-6">
-            <div className="space-y-4">
-              {previewBlocks.slice(0, 1).map((b) => (
-                <ProfileBlock key={b.title} title={b.title} icon={b.icon}>
-                  {b.body}
-                </ProfileBlock>
-              ))}
-            </div>
-
-            {!aboutOpen && (
-              <div className="relative mt-3 max-h-[4.5rem] overflow-hidden">
-                <div className="space-y-4 opacity-70">
-                  {previewBlocks.slice(1, 2).map((b) => (
-                    <ProfileBlock key={b.title} title={b.title} icon={b.icon}>
-                      {b.body}
-                    </ProfileBlock>
-                  ))}
-                </div>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+          <div className="relative mt-4">
+            {!aboutOpen ? (
+              <div className="relative">
+                <p className="line-clamp-4 text-sm leading-relaxed text-neutral-400">
+                  {ABOUT_BLOCKS.map((b) => b.body).join(" ")}
+                </p>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
               </div>
-            )}
-
-            {aboutOpen && (
-              <div className="mt-4 space-y-4">
-                {previewBlocks.slice(1).map((b) => (
-                  <ProfileBlock key={b.title} title={b.title} icon={b.icon}>
-                    {b.body}
-                  </ProfileBlock>
-                ))}
-                {restBlocks.map((b) => (
+            ) : (
+              <div className="space-y-4">
+                {ABOUT_BLOCKS.map((b) => (
                   <ProfileBlock key={b.title} title={b.title} icon={b.icon}>
                     {b.body}
                   </ProfileBlock>
                 ))}
               </div>
             )}
-
             <button
               type="button"
               onClick={() => setAboutOpen((v) => !v)}
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-neutral-300 hover:text-white"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-neutral-300 hover:text-white"
             >
               {aboutOpen ? "Show less" : "View more"}
-              <ChevronDown
-                className={
-                  aboutOpen
-                    ? "h-4 w-4 rotate-180 transition"
-                    : "h-4 w-4 transition"
-                }
-              />
+              <ChevronDown className={aboutOpen ? "h-4 w-4 rotate-180 transition" : "h-4 w-4 transition"} />
             </button>
           </div>
         </div>
@@ -301,9 +264,7 @@ function PlatformProfilePage() {
       {user && followedTournaments.length > 0 && (
         <section className="border-t border-white/5">
           <div className="mx-auto max-w-3xl px-4 py-10">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-              Followed tournaments
-            </h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Followed tournaments</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {followedTournaments.map((tour) => (
                 <Link
@@ -313,21 +274,13 @@ function PlatformProfilePage() {
                   className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-white/25"
                 >
                   {tour.banner_url ? (
-                    <img
-                      src={tour.banner_url}
-                      alt=""
-                      className="h-24 w-full object-cover"
-                    />
+                    <img src={tour.banner_url} alt="" className="h-24 w-full object-cover" />
                   ) : (
                     <div className="h-24 w-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
                   )}
                   <div className="p-3">
-                    <p className="truncate font-medium text-neutral-100">
-                      {tour.name}
-                    </p>
-                    <p className="text-xs capitalize text-neutral-500">
-                      {(tour.status ?? "").replaceAll("_", " ")}
-                    </p>
+                    <p className="truncate font-medium text-neutral-100">{tour.name}</p>
+                    <p className="text-xs capitalize text-neutral-500">{(tour.status ?? "").replaceAll("_", " ")}</p>
                   </div>
                 </Link>
               ))}
@@ -339,9 +292,7 @@ function PlatformProfilePage() {
       {followingOrgs.length > 0 && (
         <section className="border-t border-white/5">
           <div className="mx-auto max-w-3xl px-4 py-10">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-              Following organizers
-            </h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Following organizers</h2>
             <div className="mt-4 grid gap-6 sm:grid-cols-2">
               {followingOrgs.map((o) => (
                 <OrganizerCard key={o.id} organizer={o} queryKeyPrefix="home_org_extra" />
@@ -354,18 +305,11 @@ function PlatformProfilePage() {
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-10">
           <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-8 text-center">
-            <h2 className="text-xl font-semibold text-neutral-100">
-              Explore organizers
-            </h2>
+            <h2 className="text-xl font-semibold text-neutral-100">Explore organizers</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-neutral-400">
-              Organizers are separate communities on this platform. Browse
-              verified organizers and open their pages.
+              Organizers are separate communities on this platform.
             </p>
-            <Button
-              asChild
-              size="lg"
-              className="mt-6 bg-gradient-to-r from-neutral-100 to-neutral-400 text-black hover:opacity-90"
-            >
+            <Button asChild size="lg" className="mt-6 bg-gradient-to-r from-neutral-100 to-neutral-400 text-black hover:opacity-90">
               <Link to="/organizers">
                 View All Organizers
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -378,84 +322,33 @@ function PlatformProfilePage() {
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl space-y-8 px-4 py-12">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-              Vote your GOAT
-            </h2>
-            <p className="mt-1 text-sm text-neutral-400">
-              Messi or Ronaldo — view free, vote after login. Download results anytime.
-            </p>
-            <div className="mt-4">
-              <GoatVoteBooth />
-            </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Vote your GOAT</h2>
+            <div className="mt-4"><GoatVoteBooth /></div>
           </div>
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-              This or That
-            </h2>
-            <p className="mt-1 text-sm text-neutral-400">
-              Daily head-to-head — rotates every day.
-            </p>
-            <div className="mt-4">
-              <ThisOrThatBooth />
-            </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">This or That</h2>
+            <div className="mt-4"><ThisOrThatBooth /></div>
           </div>
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-              Games
-            </h2>
-            <p className="mt-1 text-sm text-neutral-400">
-              Play free — save / download after login.
-            </p>
-            <div className="mt-4">
-              <BlindRankGame compact />
-            </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Games</h2>
+            <div className="mt-4"><BlindRankGame compact /></div>
           </div>
         </div>
       </section>
 
       <section className="border-t border-white/5 bg-white/[0.015]">
         <div className="mx-auto max-w-3xl px-4 py-12">
-          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-500">
-            Vision behind NepARENA
-          </p>
-          <h2 className="mt-1 text-2xl font-semibold text-neutral-100">
-            Founders
-          </h2>
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-500">Vision behind NepARENA</p>
+          <h2 className="mt-1 text-2xl font-semibold text-neutral-100">Founders</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <FounderCard
-              initials="AK"
-              role="Founder"
-              name="Ashish Khadka"
-              email="aashish46ak@gmail.com"
-              focus="Platform Vision & Product Architecture"
-              href="/ownership"
-            />
-            <FounderCard
-              initials="AB"
-              role="Co-Founder"
-              name="Ashish Baral"
-              email="baralk851@gmail.com"
-              focus="Strategic Planning & Community Growth"
-              href="/ownership"
-            />
+            <FounderCard initials="AK" role="Founder" name="Ashish Khadka" email="aashish46ak@gmail.com" focus="Platform Vision & Product Architecture" href="/ownership" />
+            <FounderCard initials="AB" role="Co-Founder" name="Ashish Baral" email="baralk851@gmail.com" focus="Strategic Planning & Community Growth" href="/ownership" />
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <a
-              href="mailto:neparena2083@gmail.com"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-medium text-neutral-200 transition hover:border-white/30 hover:bg-white/[0.1]"
-            >
-              <Mail className="h-4 w-4" />
-              Email
+            <a href="mailto:neparena2083@gmail.com" className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-medium text-neutral-200">
+              <Mail className="h-4 w-4" /> Email
             </a>
-            <a
-              href="https://www.facebook.com/share/14jrmfHn22r/"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-medium text-neutral-200 transition hover:border-white/30 hover:bg-white/[0.1]"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
-                <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.93-1.956 1.886v2.26h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-              </svg>
+            <a href="https://www.facebook.com/share/14jrmfHn22r/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-medium text-neutral-200">
               Facebook
             </a>
           </div>
@@ -464,32 +357,15 @@ function PlatformProfilePage() {
 
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-12">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-            Platform statistics
-          </h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Platform statistics</h2>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: "Registered users", value: stats?.users, icon: Users },
-              {
-                label: "Registered organizers",
-                value: stats?.organizers,
-                icon: Building2,
-              },
-              {
-                label: "Tournaments hosted",
-                value: stats?.tournaments,
-                icon: Trophy,
-              },
-              {
-                label: "Communities",
-                value: stats?.communities,
-                icon: Sparkles,
-              },
+              { label: "Registered organizers", value: stats?.organizers, icon: Building2 },
+              { label: "Tournaments hosted", value: stats?.tournaments, icon: Trophy },
+              { label: "Communities", value: stats?.communities, icon: Sparkles },
             ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-              >
+              <div key={s.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <s.icon className="mb-2 h-4 w-4 text-neutral-400" />
                 <p className="text-2xl font-bold tabular-nums text-neutral-100">
                   {s.value == null ? "—" : s.value.toLocaleString()}
@@ -542,19 +418,10 @@ function FounderCard({
   href: string;
 }) {
   return (
-    <Link
-      to={href}
-      className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-transparent p-5 transition hover:border-white/25"
-    >
-      <div className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-400 text-lg font-bold text-black">
-        {initials}
-      </div>
-      <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-        {role}
-      </p>
-      <h3 className="text-lg font-semibold text-neutral-100 group-hover:text-white">
-        {name}
-      </h3>
+    <Link to={href} className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-transparent p-5 transition hover:border-white/25">
+      <div className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-neutral-100 to-neutral-400 text-lg font-bold text-black">{initials}</div>
+      <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-neutral-500">{role}</p>
+      <h3 className="text-lg font-semibold text-neutral-100 group-hover:text-white">{name}</h3>
       <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-neutral-400">
         <Mail className="h-3.5 w-3.5" />
         {email}
