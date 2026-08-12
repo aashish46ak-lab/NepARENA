@@ -120,7 +120,16 @@ function PlatformProfilePage() {
         .select("id, name, slug, logo_url, banner_url, tagline, is_verified, status")
         .in("id", ids)
         .eq("status", "active");
-      return (orgs ?? []) as {
+      const { data: site } = await supabase
+        .from("site_settings")
+        .select("logo_url, hero_image_url, tagline")
+        .limit(1)
+        .maybeSingle();
+      const brandLogo = (site as { logo_url?: string | null } | null)?.logo_url ?? null;
+      const brandBanner =
+        (site as { hero_image_url?: string | null } | null)?.hero_image_url ?? null;
+      const brandTag = (site as { tagline?: string | null } | null)?.tagline ?? null;
+      return ((orgs ?? []) as {
         id: string;
         name: string;
         slug: string;
@@ -128,7 +137,12 @@ function PlatformProfilePage() {
         banner_url: string | null;
         tagline: string | null;
         is_verified: boolean;
-      }[];
+      }[]).map((o) => ({
+        ...o,
+        logo_url: o.logo_url || brandLogo,
+        banner_url: o.banner_url || brandBanner,
+        tagline: o.tagline || brandTag,
+      }));
     },
   });
 
