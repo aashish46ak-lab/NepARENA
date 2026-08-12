@@ -14,7 +14,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
-import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
+import { SplashScreen } from "@/components/SplashScreen";
 import { InstallFAB } from "@/components/InstallFAB";
 import { registerPWA } from "@/lib/pwa-register";
 import {
@@ -204,18 +204,26 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  // sessionStorage: show cinematic splash only once per browser session
-  const [splashDone, setSplashDone] = useState(() => !shouldShowSplash());
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Home only: show on full load / refresh (root remounts). SPA route changes keep splashDone.
+  const [splashDone, setSplashDone] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const p = window.location.pathname;
+    return p !== "/" && p !== "";
+  });
 
   useEffect(() => {
     void registerPWA();
   }, []);
 
+  // Client-side return to home must NOT replay splash
+  const showSplash = !splashDone && (pathname === "/" || pathname === "");
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ClientErrorBoundary>
-          {!splashDone && (
+          {showSplash && (
             <SplashScreen onDone={() => setSplashDone(true)} />
           )}
           <RoleRedirect />
