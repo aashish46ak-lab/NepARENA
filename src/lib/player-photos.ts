@@ -17,26 +17,25 @@ function initials(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-/** Proxy with top-aligned cover crop (faces sit in upper frame). */
 function proxied(fileOrUrl: string, w = 480, h = 600): string {
   const isFull = /^https?:\/\//i.test(fileOrUrl);
   const raw = isFull
     ? fileOrUrl
     : `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileOrUrl)}`;
   const clean = raw.replace(/^https?:\/\//, "");
-  // a=top biases crop toward head/shoulders instead of full body mid-frame
   return `https://wsrv.nl/?url=${encodeURIComponent(clean)}&w=${w}&h=${h}&fit=cover&a=top&output=jpg&q=88`;
 }
 
-/** Prefer well-known portrait / headshot files on Commons */
 const WIKI_FILES: Record<string, string> = {
   "Lionel Messi": "Lionel-Messi-Argentina-2022-FIFA-World-Cup_(cropped).jpg",
   "Cristiano Ronaldo": "Cristiano_Ronaldo_playing_for_Al_Nassr_FC_against_Persepolis,_September_2023_(cropped).jpg",
   "Pelé": "Pelé_1960.jpg",
+  Pele: "Pelé_1960.jpg",
   "Diego Maradona": "Maradona-Mondiali_1986_-_retocado.jpg",
   "Zinedine Zidane": "Zinedine_Zidane_by_Tasnim_03.jpg",
   Ronaldinho: "Ronaldinho_Willy_Chara_2006.jpg",
   "Ronaldo Nazário": "Ronaldo_061115_1.jpg",
+  Ronaldo: "Ronaldo_061115_1.jpg",
   "Johan Cruyff": "Johan_Cruijff_(1974).jpg",
   "Franz Beckenbauer": "Franz_Beckenbauer_1975.jpg",
   "Paolo Maldini": "Paolo_Maldini_2018.jpg",
@@ -45,28 +44,40 @@ const WIKI_FILES: Record<string, string> = {
   "Roberto Carlos": "Roberto_Carlos.jpg",
   "Andrea Pirlo": "Andrea_Pirlo_Juventus_2012.jpg",
   "Xavi Hernández": "Xavi_Hernández_2012.jpg",
+  Xavi: "Xavi_Hernández_2012.jpg",
   "Andrés Iniesta": "Andrés_Iniesta_2015.jpg",
+  Iniesta: "Andrés_Iniesta_2015.jpg",
   "Luka Modrić": "Luka_Modric_2018.jpg",
+  "Luka Modric": "Luka_Modric_2018.jpg",
   "Kevin De Bruyne": "Kevin_De_Bruyne_2019.jpg",
   "Thierry Henry": "Thierry_Henry_2012.jpg",
   "Kylian Mbappé": "Kylian_Mbappé_France.jpg",
+  "Kylian Mbappe": "Kylian_Mbappé_France.jpg",
   "Neymar Jr": "Neymar_Jr._2018.jpg",
   Neymar: "Neymar_Jr._2018.jpg",
   "Mohamed Salah": "Mohamed_Salah_2018.jpg",
+  Salah: "Mohamed_Salah_2018.jpg",
   "Robert Lewandowski": "Robert_Lewandowski_2021.jpg",
   "Manuel Neuer": "Manuel_Neuer_2018.jpg",
   "Gianluigi Buffon": "Gianluigi_Buffon_(cropped).jpg",
+  Buffon: "Gianluigi_Buffon_(cropped).jpg",
   "Iker Casillas": "Iker_Casillas_2015.jpg",
+  Casillas: "Iker_Casillas_2015.jpg",
   "Sergio Ramos": "Sergio_Ramos_2018.jpg",
+  Ramos: "Sergio_Ramos_2018.jpg",
   "Virgil van Dijk": "Virgil_van_Dijk_2019.jpg",
   "Kaká": "Kaká_Inter_Milan.jpg",
+  Kaka: "Kaká_Inter_Milan.jpg",
   "Steven Gerrard": "Steven_Gerrard_2014.jpg",
   "Frank Lampard": "Frank_Lampard_2014.jpg",
   "Patrick Vieira": "Patrick_Vieira.jpg",
   "Claude Makélélé": "Claude_Makelele.jpg",
+  "Claude Makelele": "Claude_Makelele.jpg",
   "Gareth Bale": "Gareth_Bale_RM.jpg",
   "Luis Suárez": "Luis_Suárez_2018.jpg",
+  "Luis Suarez": "Luis_Suárez_2018.jpg",
   "Karim Benzema": "Karim_Benzema_2018.jpg",
+  Benzema: "Karim_Benzema_2018.jpg",
   "Didier Drogba": "Didier_Drogba_2015.jpg",
   "Samuel Eto'o": "Samuel_Eto'o_2011.jpg",
   "George Best": "George_Best.jpg",
@@ -78,12 +89,38 @@ const WIKI_FILES: Record<string, string> = {
   Marcelo: "Marcelo_Vieira_2019.jpg",
   "Dani Alves": "Dani_Alves_2018.jpg",
   "Sergio Busquets": "Sergio_Busquets_2018.jpg",
+  Busquets: "Sergio_Busquets_2018.jpg",
   "Toni Kroos": "Toni_Kroos_2018.jpg",
+  Kroos: "Toni_Kroos_2018.jpg",
   "Zlatan Ibrahimović": "Zlatan_Ibrahimović_2018.jpg",
+  "Zlatan Ibrahimovic": "Zlatan_Ibrahimović_2018.jpg",
+  Zlatan: "Zlatan_Ibrahimović_2018.jpg",
   "Wayne Rooney": "Wayne_Rooney_2015.jpg",
+  Rooney: "Wayne_Rooney_2015.jpg",
   "Erling Haaland": "Erling_Haaland_2023_(cropped).jpg",
+  Haaland: "Erling_Haaland_2023_(cropped).jpg",
   "Vinícius Jr": "Vinicius_Junior_2021.jpg",
+  "Vinicius Jr": "Vinicius_Junior_2021.jpg",
+  Vinicius: "Vinicius_Junior_2021.jpg",
   "Jude Bellingham": "Jude_Bellingham_2023.jpg",
+  Bellingham: "Jude_Bellingham_2023.jpg",
+  "David Beckham": "David_Beckham_2015.jpg",
+  Beckham: "David_Beckham_2015.jpg",
+  "Francesco Totti": "Francesco_Totti.jpg",
+  Totti: "Francesco_Totti.jpg",
+  "Alessandro Del Piero": "Alessandro_Del_Piero.jpg",
+  "Fernando Torres": "Fernando_Torres_2017.jpg",
+  "David Villa": "David_Villa.jpg",
+  "Dennis Bergkamp": "Dennis_Bergkamp.jpg",
+  "Ryan Giggs": "Ryan_Giggs.jpg",
+  "Paul Scholes": "Paul_Scholes.jpg",
+  "Eden Hazard": "Eden_Hazard.jpg",
+  Hazard: "Eden_Hazard.jpg",
+  "Harry Kane": "Harry_Kane_2023.jpg",
+  "Antoine Griezmann": "Antoine_Griezmann.jpg",
+  Griezmann: "Antoine_Griezmann.jpg",
+  "Thibaut Courtois": "Thibaut_Courtois.jpg",
+  Courtois: "Thibaut_Courtois.jpg",
 };
 
 const META: Record<string, { overall: number; position: string }> = {
@@ -157,6 +194,11 @@ function resolveFile(name: string): string | null {
   const n = normalize(name);
   for (const [key, file] of Object.entries(WIKI_FILES)) {
     if (normalize(key) === n) return file;
+    const keyParts = normalize(key).split(" ");
+    const last = keyParts[keyParts.length - 1]!;
+    if (last.length > 3 && (n === last || n.endsWith(" " + last))) return file;
+  }
+  for (const [key, file] of Object.entries(WIKI_FILES)) {
     if (n.includes(normalize(key)) || normalize(key).includes(n)) return file;
   }
   return null;
