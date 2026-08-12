@@ -1,6 +1,7 @@
 /**
- * eFootball-style player face cards as SVG data-URLs.
- * Always loads offline — no external CDN / Wikimedia dependency.
+ * Real football player portraits.
+ * Primary: Wikimedia Commons (via wsrv.nl image proxy — reliable hotlink).
+ * Fallback: eFootball-style SVG only if remote fails at render time (onError).
  */
 
 function hash(s: string): number {
@@ -16,69 +17,74 @@ function initials(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-const PALETTES: [string, string, string][] = [
-  ["#0ea5e9", "#1e3a8a", "#082f49"], // sky
-  ["#f43f5e", "#9f1239", "#4c0519"], // rose
-  ["#fbbf24", "#b45309", "#422006"], // gold
-  ["#34d399", "#047857", "#022c22"], // emerald
-  ["#a78bfa", "#5b21b6", "#2e1065"], // violet
-  ["#f97316", "#c2410c", "#431407"], // orange
-  ["#e2e8f0", "#475569", "#0f172a"], // silver
-  ["#38bdf8", "#0369a1", "#0c4a6e"], // cyan
-];
-
-/** Build an eFootball-like portrait card SVG for any player name */
-export function efootballCardSvg(
-  name: string,
-  opts?: { overall?: number; position?: string; width?: number; height?: number },
-): string {
-  const w = opts?.width ?? 240;
-  const h = opts?.height ?? 320;
-  const ovr = opts?.overall ?? 90 + (hash(name) % 9);
-  const pos = (opts?.position ?? "CF").slice(0, 3).toUpperCase();
-  const [c1, c2, c3] = PALETTES[hash(name) % PALETTES.length]!;
-  const ini = initials(name);
-  const short =
-    name.length > 16 ? name.split(" ").slice(-1)[0]!.slice(0, 12) : name;
-
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="${c1}"/>
-      <stop offset="55%" stop-color="${c2}"/>
-      <stop offset="100%" stop-color="${c3}"/>
-    </linearGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fff" stop-opacity="0.35"/>
-      <stop offset="40%" stop-color="#fff" stop-opacity="0.05"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0.25"/>
-    </linearGradient>
-    <clipPath id="card"><rect x="0" y="0" width="${w}" height="${h}" rx="18"/></clipPath>
-  </defs>
-  <g clip-path="url(#card)">
-    <rect width="${w}" height="${h}" fill="url(#bg)"/>
-    <rect width="${w}" height="${h}" fill="url(#shine)"/>
-    <!-- diamond frame -->
-    <rect x="14" y="14" width="${w - 28}" height="${h - 28}" rx="12" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2"/>
-    <rect x="20" y="20" width="${w - 40}" height="${h - 40}" rx="10" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-    <!-- OVR badge -->
-    <circle cx="48" cy="52" r="26" fill="rgba(0,0,0,0.45)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
-    <text x="48" y="48" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="18" fill="#fbbf24">${ovr}</text>
-    <text x="48" y="64" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="11" fill="#e2e8f0">${pos}</text>
-    <!-- face circle with initials -->
-    <circle cx="${w / 2}" cy="${h * 0.42}" r="${Math.min(w, h) * 0.22}" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.45)" stroke-width="2"/>
-    <text x="${w / 2}" y="${h * 0.42 + 14}" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="${Math.min(w, h) * 0.14}" fill="#fff">${ini}</text>
-    <!-- name plate -->
-    <rect x="24" y="${h - 64}" width="${w - 48}" height="36" rx="8" fill="rgba(0,0,0,0.5)"/>
-    <text x="${w / 2}" y="${h - 40}" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="14" fill="#f8fafc">${short.replace(/&/g, "&").replace(/</g, "<")}</text>
-  </g>
-</svg>`;
-
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+/** Proxy for CORS / hotlink safety */
+function proxied(fileOrUrl: string, w = 400, h = 520): string {
+  const isFull = /^https?:\/\//i.test(fileOrUrl);
+  const raw = isFull
+    ? fileOrUrl
+    : `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileOrUrl)}`;
+  const clean = raw.replace(/^https?:\/\//, "");
+  return `https://wsrv.nl/?url=${encodeURIComponent(clean)}&w=${w}&h=${h}&fit=cover&output=jpg&q=85`;
 }
 
-/** Map of optional overall/position overrides from legend pool */
+/** Wikimedia file names (Special:FilePath) for legends */
+const WIKI_FILES: Record<string, string> = {
+  "Lionel Messi": "Lionel-Messi-Argentina-2022-FIFA-World-Cup_(cropped).jpg",
+  "Cristiano Ronaldo": "Cristiano_Ronaldo_2018.jpg",
+  "Pelé": "Pele_(athlete).jpg",
+  "Diego Maradona": "Diego_Maradona_2012_2.jpg",
+  "Zinedine Zidane": "Zinedine_Zidane_by_Tasnim_03.jpg",
+  Ronaldinho: "Ronaldinho_2019.jpg",
+  "Ronaldo Nazário": "Ronaldo_Nazario.jpg",
+  "Johan Cruyff": "Johan_Cruijff_(1974).jpg",
+  "Franz Beckenbauer": "Franz_Beckenbauer_1975.jpg",
+  "Paolo Maldini": "Paolo_Maldini_2018.jpg",
+  "Franco Baresi": "Franco_Baresi.jpg",
+  Cafu: "Cafu.jpg",
+  "Roberto Carlos": "Roberto_Carlos.jpg",
+  "Andrea Pirlo": "Andrea_Pirlo_2014.jpg",
+  "Xavi Hernández": "Xavi_Hernández_2012.jpg",
+  "Andrés Iniesta": "Andrés_Iniesta_2018.jpg",
+  "Luka Modrić": "Luka_Modrić_2018.jpg",
+  "Kevin De Bruyne": "Kevin_De_Bruyne_201807081.jpg",
+  "Thierry Henry": "Thierry_Henry_2012.jpg",
+  "Kylian Mbappé": "Kylian_Mbappé_2019.jpg",
+  "Neymar Jr": "Neymar_Jr._2018.jpg",
+  Neymar: "Neymar_Jr._2018.jpg",
+  "Mohamed Salah": "Mohamed_Salah_2018.jpg",
+  "Robert Lewandowski": "Robert_Lewandowski_2020.jpg",
+  "Manuel Neuer": "Manuel_Neuer_2018.jpg",
+  "Gianluigi Buffon": "Gianluigi_Buffon_2018.jpg",
+  "Iker Casillas": "Iker_Casillas_2015.jpg",
+  "Sergio Ramos": "Sergio_Ramos_2018.jpg",
+  "Virgil van Dijk": "Virgil_van_Dijk_2019.jpg",
+  "Kaká": "Kaká_2007.jpg",
+  "Steven Gerrard": "Steven_Gerrard_2014.jpg",
+  "Frank Lampard": "Frank_Lampard_2014.jpg",
+  "Patrick Vieira": "Patrick_Vieira.jpg",
+  "Claude Makélélé": "Claude_Makélélé.jpg",
+  "Gareth Bale": "Gareth_Bale_2015.jpg",
+  "Luis Suárez": "Luis_Suárez_2018.jpg",
+  "Karim Benzema": "Karim_Benzema_2018.jpg",
+  "Didier Drogba": "Didier_Drogba_2015.jpg",
+  "Samuel Eto'o": "Samuel_Eto'o.jpg",
+  "George Best": "George_Best.jpg",
+  "Michel Platini": "Michel_Platini.jpg",
+  "Lev Yashin": "Lev_Yashin.jpg",
+  "Alessandro Nesta": "Alessandro_Nesta.jpg",
+  "Fabio Cannavaro": "Fabio_Cannavaro_2009.jpg",
+  "Philipp Lahm": "Philipp_Lahm_2014.jpg",
+  Marcelo: "Marcelo_Vieira.jpg",
+  "Dani Alves": "Dani_Alves_2018.jpg",
+  "Sergio Busquets": "Sergio_Busquets_2018.jpg",
+  "Toni Kroos": "Toni_Kroos_2018.jpg",
+  "Zlatan Ibrahimović": "Zlatan_Ibrahimović_2018.jpg",
+  "Wayne Rooney": "Wayne_Rooney_2018.jpg",
+  "Erling Haaland": "Erling_Haaland_2023_(cropped).jpg",
+  "Vinícius Jr": "Vinícius_Júnior_2021.jpg",
+  "Jude Bellingham": "Jude_Bellingham_2023.jpg",
+};
+
 const META: Record<string, { overall: number; position: string }> = {
   "Lionel Messi": { overall: 98, position: "RWF" },
   "Cristiano Ronaldo": { overall: 97, position: "CF" },
@@ -136,12 +142,73 @@ const META: Record<string, { overall: number; position: string }> = {
   "Fabio Cannavaro": { overall: 92, position: "CB" },
 };
 
-export function playerPhotoUrl(name: string): string {
+function normalize(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function resolveFile(name: string): string | null {
+  if (WIKI_FILES[name]) return WIKI_FILES[name]!;
+  const n = normalize(name);
+  for (const [key, file] of Object.entries(WIKI_FILES)) {
+    if (normalize(key) === n) return file;
+    if (n.includes(normalize(key)) || normalize(key).includes(n)) return file;
+  }
+  return null;
+}
+
+/** SVG card fallback (used by onError handlers) */
+export function efootballCardSvg(
+  name: string,
+  opts?: { overall?: number; position?: string; width?: number; height?: number },
+): string {
+  const w = opts?.width ?? 240;
+  const h = opts?.height ?? 320;
   const meta = META[name];
-  return efootballCardSvg(name, {
-    overall: meta?.overall,
-    position: meta?.position,
-  });
+  const ovr = opts?.overall ?? meta?.overall ?? 90 + (hash(name) % 9);
+  const pos = (opts?.position ?? meta?.position ?? "CF").slice(0, 3).toUpperCase();
+  const palettes: [string, string, string][] = [
+    ["#0ea5e9", "#1e3a8a", "#082f49"],
+    ["#f43f5e", "#9f1239", "#4c0519"],
+    ["#fbbf24", "#b45309", "#422006"],
+    ["#34d399", "#047857", "#022c22"],
+    ["#a78bfa", "#5b21b6", "#2e1065"],
+  ];
+  const [c1, c2, c3] = palettes[hash(name) % palettes.length]!;
+  const ini = initials(name);
+  const short =
+    name.length > 16 ? name.split(" ").slice(-1)[0]!.slice(0, 12) : name;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c3}"/>
+    </linearGradient>
+  </defs>
+  <rect width="${w}" height="${h}" rx="16" fill="url(#bg)"/>
+  <circle cx="${w / 2}" cy="${h * 0.4}" r="${Math.min(w, h) * 0.2}" fill="rgba(0,0,0,0.35)" stroke="#fff" stroke-opacity="0.4"/>
+  <text x="${w / 2}" y="${h * 0.4 + 12}" text-anchor="middle" font-family="system-ui" font-weight="800" font-size="28" fill="#fff">${ini}</text>
+  <text x="24" y="36" font-family="system-ui" font-weight="800" font-size="18" fill="#fbbf24">${ovr}</text>
+  <text x="24" y="52" font-family="system-ui" font-weight="700" font-size="11" fill="#e2e8f0">${pos}</text>
+  <text x="${w / 2}" y="${h - 20}" text-anchor="middle" font-family="system-ui" font-weight="700" font-size="13" fill="#fff">${short.replace(/&/g, "&")}</text>
+</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/** Prefer real portrait; SVG only as explicit fallback helper */
+export function playerPhotoUrl(name: string): string {
+  const file = resolveFile(name);
+  if (file) return proxied(file);
+  // Last resort: SVG so UI never breaks
+  return efootballCardSvg(name);
+}
+
+/** onError handler helper for <img> */
+export function playerPhotoFallback(name: string): string {
+  return efootballCardSvg(name);
 }
 
 export const MESSI_PHOTO = playerPhotoUrl("Lionel Messi");
