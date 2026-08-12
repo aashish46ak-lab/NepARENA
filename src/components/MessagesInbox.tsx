@@ -23,16 +23,17 @@ type Msg = {
   is_from_side: boolean;
   created_at: string;
   sender_name: string | null;
-  /** For admin-sent: read_by_user. For user-sent: read_by_admin/organizer */
   seen_by_other: boolean;
 };
 
 export function MessagesInbox({
   mode,
   organizerId,
+  onUnreadChange,
 }: {
   mode: "platform" | "organizer";
   organizerId?: string;
+  onUnreadChange?: (n: number) => void;
 }) {
   const { user, profile } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -90,7 +91,9 @@ export function MessagesInbox({
             }
           }
         }
-        setThreads([...map.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1)));
+        const list = [...map.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1));
+        setThreads(list);
+        onUnreadChange?.(list.reduce((s, t) => s + t.unread, 0));
       } else if (organizerId) {
         const { data } = await supabase
           .from("organizer_messages")
@@ -134,7 +137,9 @@ export function MessagesInbox({
             }
           }
         }
-        setThreads([...map.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1)));
+        const list = [...map.values()].sort((a, b) => (a.last_at < b.last_at ? 1 : -1));
+        setThreads(list);
+        onUnreadChange?.(list.reduce((s, t) => s + t.unread, 0));
       }
     } finally {
       setLoading(false);
@@ -173,7 +178,6 @@ export function MessagesInbox({
           seen_by_other: m.is_from_admin ? !!m.read_by_user : !!m.read_by_admin,
         })),
       );
-      // Mark user messages as read by admin → clears red badge
       await supabase
         .from("platform_messages")
         .update({ read_by_admin: true })
