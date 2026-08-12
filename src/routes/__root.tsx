@@ -14,7 +14,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
-import { SplashScreen } from "@/components/SplashScreen";
+import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { InstallFAB } from "@/components/InstallFAB";
 import { registerPWA } from "@/lib/pwa-register";
 import {
@@ -204,7 +204,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [splashDone, setSplashDone] = useState(false);
+  // sessionStorage: show cinematic splash only once per browser session
+  const [splashDone, setSplashDone] = useState(() => !shouldShowSplash());
 
   useEffect(() => {
     void registerPWA();
@@ -241,5 +242,4 @@ function PlatformInstallFab() {
   return <InstallFAB />;
 }
 
-// Re-export flag for GuestPopup if mounted elsewhere
 export { ENABLE_LOGIN_POPUPS };
