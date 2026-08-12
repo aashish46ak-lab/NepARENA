@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { MessageCircle, Send, X, ImagePlus, Loader2 } from "lucide-react";
+import { MessageCircle, Send, X, ImagePlus, Loader2, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { uploadPublicImage } from "@/lib/upload";
@@ -15,6 +15,7 @@ type Msg = {
   is_from_admin: boolean;
   created_at: string;
   read_by_user: boolean | null;
+  read_by_admin: boolean | null;
 };
 
 /** Floating Chat with NepARENA platform admins. Photo + unread badge. */
@@ -27,6 +28,7 @@ export function AdminChatFab() {
   const [unread, setUnread] = useState(0);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -37,14 +39,14 @@ export function AdminChatFab() {
     if (!user) return;
     const { data, error } = await supabase
       .from("platform_messages")
-      .select("id, body, image_url, is_from_admin, created_at, read_by_user")
+      .select("id, body, image_url, is_from_admin, created_at, read_by_user, read_by_admin")
       .eq("user_id", user.id)
       .order("created_at", { ascending: true })
       .limit(80);
     if (error) {
       const { data: d2 } = await supabase
         .from("platform_messages")
-        .select("id, body, is_from_admin, created_at, read_by_user")
+        .select("id, body, is_from_admin, created_at, read_by_user, read_by_admin")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true })
         .limit(80);
@@ -199,13 +201,24 @@ export function AdminChatFab() {
                 )}
               >
                 {m.image_url && (
-                  <img
-                    src={m.image_url}
-                    alt=""
-                    className="mb-1.5 max-h-36 w-full rounded-xl object-cover"
-                  />
+                  <button type="button" className="mb-1.5 block w-full" onClick={() => setLightbox(m.image_url)}>
+                    <img
+                      src={m.image_url}
+                      alt=""
+                      className="max-h-36 w-full rounded-xl object-cover"
+                    />
+                  </button>
                 )}
                 {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                {!m.is_from_admin && (
+                  <p className="mt-1 flex items-center justify-end gap-0.5 text-[10px] opacity-70">
+                    {m.read_by_admin ? (
+                      <><CheckCheck className="h-3 w-3" /> Seen</>
+                    ) : (
+                      <><Check className="h-3 w-3" /> Delivered</>
+                    )}
+                  </p>
+                )}
               </div>
             ))}
             <div ref={bottomRef} />
@@ -278,6 +291,18 @@ export function AdminChatFab() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button type="button" className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white" onClick={() => setLightbox(null)}>
+            <X className="h-5 w-5" />
+          </button>
+          <img src={lightbox} alt="" className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </>
