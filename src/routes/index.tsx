@@ -8,12 +8,13 @@ import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PLATFORM_NAME } from "@/lib/organizers";
+import { PLATFORM_NAME, getFollowerCount } from "@/lib/organizers";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { AdminChatFab } from "@/components/AdminChatFab";
 import { BlindRankGame } from "@/components/BlindRankGame";
 import { GoatVoteBooth } from "@/components/GoatVoteBooth";
+import { ThisOrThatBooth } from "@/components/ThisOrThatBooth";
 import { buildSeoHead } from "@/lib/seo";
 import {
   Users,
@@ -207,13 +208,13 @@ function PlatformProfilePage() {
               <strong className="text-neutral-100">
                 {stats?.users?.toLocaleString() ?? "—"}
               </strong>{" "}
-              Followers
+              Registered users
             </Link>
-            <Link to="/following" className="hover:text-neutral-200">
+            <Link to="/organizers" className="hover:text-neutral-200">
               <strong className="text-neutral-100">
                 {stats?.organizers?.toLocaleString() ?? "—"}
               </strong>{" "}
-              Following
+              Organizers
             </Link>
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
@@ -328,55 +329,7 @@ function PlatformProfilePage() {
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {followingOrgs.map((o) => (
-                <div
-                  key={o.id}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
-                >
-                  <div className="aspect-[21/9] bg-neutral-900">
-                    {o.banner_url ? (
-                      <img src={o.banner_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="grid h-full place-items-center bg-gradient-to-br from-sky-950 via-slate-900 to-violet-950 text-neutral-600">
-                        <Building2 className="h-8 w-8" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <div className="flex gap-3">
-                      {o.logo_url ? (
-                        <img
-                          src={o.logo_url}
-                          alt=""
-                          className="h-12 w-12 rounded-xl object-cover ring-1 ring-white/10"
-                        />
-                      ) : (
-                        <div className="grid h-12 w-12 place-items-center rounded-xl bg-neutral-800 text-sm font-bold">
-                          {o.name.slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="truncate font-semibold text-neutral-100">{o.name}</p>
-                          {o.is_verified && (
-                            <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-400" />
-                          )}
-                        </div>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-neutral-400">
-                          {o.tagline || "Organizer on NepARENA"}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      className="mt-3 w-full bg-neutral-100 text-black hover:bg-white"
-                    >
-                      <Link to="/o/$slug" params={{ slug: o.slug }}>
-                        Open profile
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
+                <FollowingOrgCard key={o.id} organizer={o} />
               ))}
             </div>
           </div>
@@ -414,10 +367,21 @@ function PlatformProfilePage() {
               Vote your GOAT
             </h2>
             <p className="mt-1 text-sm text-neutral-400">
-              Messi or Ronaldo — community decides.
+              Messi or Ronaldo — community decides. Share opens the poll page only.
             </p>
             <div className="mt-4">
               <GoatVoteBooth />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+              This or That
+            </h2>
+            <p className="mt-1 text-sm text-neutral-400">
+              Daily head-to-head — rotates every day.
+            </p>
+            <div className="mt-4">
+              <ThisOrThatBooth />
             </div>
           </div>
           <div>
@@ -524,6 +488,94 @@ function PlatformProfilePage() {
 
       <AdminChatFab />
     </PageShell>
+  );
+}
+
+function FollowingOrgCard({
+  organizer,
+}: {
+  organizer: {
+    id: string;
+    slug: string;
+    name: string;
+    tagline: string | null;
+    logo_url: string | null;
+    banner_url: string | null;
+    is_verified: boolean;
+  };
+}) {
+  const { data: extra } = useQuery({
+    queryKey: ["home_org_extra", organizer.id],
+    queryFn: async () => {
+      const [members, tournaments, followers] = await Promise.all([
+        supabase
+          .from("organizer_members")
+          .select("id", { count: "exact", head: true })
+          .eq("organizer_id", organizer.id),
+        supabase
+          .from("tournaments")
+          .select("id", { count: "exact", head: true })
+          .eq("organizer_id", organizer.id),
+        getFollowerCount(organizer.id),
+      ]);
+      return {
+        members: members.count ?? 0,
+        tournaments: tournaments.count ?? 0,
+        followers,
+      };
+    },
+  });
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+      <div className="aspect-[21/9] bg-neutral-900">
+        {organizer.banner_url ? (
+          <img src={organizer.banner_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full place-items-center bg-gradient-to-br from-sky-950 via-slate-900 to-violet-950 text-neutral-600">
+            <Building2 className="h-10 w-10" />
+          </div>
+        )}
+      </div>
+      <div className="p-5">
+        <div className="flex gap-3">
+          {organizer.logo_url ? (
+            <img
+              src={organizer.logo_url}
+              alt=""
+              className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
+            />
+          ) : (
+            <div className="grid h-14 w-14 place-items-center rounded-xl bg-neutral-800 text-sm font-bold">
+              {organizer.name.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="truncate text-lg font-semibold text-neutral-100">
+                {organizer.name}
+              </h3>
+              {organizer.is_verified && (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-400" />
+              )}
+            </div>
+            <p className="mt-1 line-clamp-2 text-sm text-neutral-400">
+              {organizer.tagline || "Organizer on NepARENA"}
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3 text-xs text-neutral-500">
+          <span>{extra?.followers ?? 0} followers</span>
+          <span>{extra?.members ?? "—"} members</span>
+          <span>{extra?.tournaments ?? "—"} tournaments</span>
+        </div>
+        <Button asChild className="mt-5 w-full bg-neutral-100 text-black hover:bg-white">
+          <Link to="/o/$slug" params={{ slug: organizer.slug }}>
+            Open profile
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }
 
