@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LEGEND_PLAYERS } from "@/components/AllTimeXi";
 import { playerPhotoUrl } from "@/lib/player-photos";
 import { ChevronDown, Download, Play, RotateCcw, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 type RankPlayer = {
   name: string;
@@ -40,6 +41,7 @@ export function BlindRankGame({
   /** homepage teaser — show CTA only */
   compact?: boolean;
 }) {
+  const { user } = useAuth();
   const [phase, setPhase] = useState<Phase>("setup");
   const [size, setSize] = useState(5);
   const [sizeOpen, setSizeOpen] = useState(false);
@@ -98,6 +100,18 @@ export function BlindRankGame({
   };
 
   const exportPng = async () => {
+    if (!user) {
+      toast.message("Sign in to save / download", {
+        description: "Play free — save results after login.",
+        action: {
+          label: "Sign in",
+          onClick: () => {
+            window.location.href = "/auth/";
+          },
+        },
+      });
+      return;
+    }
     try {
       const W = 1080;
       const H = 1350;
@@ -114,7 +128,6 @@ export function BlindRankGame({
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // logo
       const logo = await loadImage("/neparena-logo.png");
       if (logo) {
         ctx.drawImage(logo, W / 2 - 48, 36, 96, 96);
@@ -144,7 +157,6 @@ export function BlindRankGame({
         roundRect(ctx, 64, y, W - 128, rowH, 16);
         ctx.stroke();
 
-        // rank
         ctx.fillStyle = "#0ea5e9";
         ctx.beginPath();
         ctx.arc(120, y + rowH / 2, 26, 0, Math.PI * 2);
@@ -154,7 +166,6 @@ export function BlindRankGame({
         ctx.textAlign = "center";
         ctx.fillText(`#${i + 1}`, 120, y + rowH / 2 + 8);
 
-        // photo
         const photo = await loadImage(p.photo);
         const px = 170;
         const py = y + 10;
@@ -224,7 +235,7 @@ export function BlindRankGame({
         </p>
         <h3 className="mt-1 text-lg font-bold text-white">Blind Ranking</h3>
         <p className="mt-1 text-xs text-slate-400">
-          Rank legends one by one — no peeking ahead
+          Rank legends one by one — play free, save after login
         </p>
         <Button
           asChild
@@ -243,7 +254,7 @@ export function BlindRankGame({
       <div className="flex items-center justify-between border-b border-white/5 px-3 py-2.5">
         <div>
           <p className="text-sm font-bold text-white">Blind Ranking</p>
-          <p className="text-[10px] text-slate-500">NepARENA</p>
+          <p className="text-[10px] text-slate-500">NepARENA · play free</p>
         </div>
         {phase === "setup" && (
           <div className="relative">
@@ -310,7 +321,6 @@ export function BlindRankGame({
 
       {phase === "play" && (
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-2 p-2.5">
-          {/* LEFT ranks */}
           <div className="max-h-[58vh] space-y-1.5 overflow-y-auto pr-0.5">
             {slots.map((p, i) => {
               const open = !p && !!current && !awaitingNext;
@@ -359,7 +369,6 @@ export function BlindRankGame({
             })}
           </div>
 
-          {/* RIGHT current player */}
           <div className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-black/30 p-2">
             {awaitingNext ? (
               <>
@@ -437,7 +446,9 @@ export function BlindRankGame({
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <p className="text-center text-[10px] text-slate-500">Download · Share · Play again</p>
+          <p className="text-center text-[10px] text-slate-500">
+            Download needs login · Share · Play again
+          </p>
         </div>
       )}
     </div>
