@@ -172,7 +172,17 @@ export async function getFollowerCount(organizerId: string): Promise<number> {
   return count ?? 0;
 }
 
+/** Follow — prefers secure RPC (auth.uid only). Falls back to RLS insert. */
 export async function followOrganizer(organizerId: string, userId: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user || auth.user.id !== userId) {
+    return { error: { message: "Unauthorized" } } as const;
+  }
+  const rpc = await supabase.rpc("secure_follow_organizer", {
+    p_organizer_id: organizerId,
+  });
+  if (!rpc.error) return rpc;
+  // Fallback if RPC not deployed yet
   return supabase.from("organizer_followers").upsert(
     { organizer_id: organizerId, user_id: userId },
     { onConflict: "organizer_id,user_id" },
@@ -180,6 +190,14 @@ export async function followOrganizer(organizerId: string, userId: string) {
 }
 
 export async function unfollowOrganizer(organizerId: string, userId: string) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user || auth.user.id !== userId) {
+    return { error: { message: "Unauthorized" } } as const;
+  }
+  const rpc = await supabase.rpc("secure_unfollow_organizer", {
+    p_organizer_id: organizerId,
+  });
+  if (!rpc.error) return rpc;
   return supabase
     .from("organizer_followers")
     .delete()
@@ -283,10 +301,22 @@ export async function getPlatformStats() {
 }
 
 export async function setOrganizerVerified(organizerId: string, verified: boolean) {
+  const rpc = await supabase.rpc("admin_set_organizer_verified", {
+    p_organizer_id: organizerId,
+    p_verified: verified,
+  });
+  if (!rpc.error) return rpc;
   return supabase
     .from("organizers")
     .update({ is_verified: verified, updated_at: new Date().toISOString() })
     .eq("id", organizerId);
+}
+
+/** Server-driven auto-verify when criteria met (logo, banner, contact, ≥1 completed tournament). */
+export async function evaluateOrganizerVerification(organizerId: string) {
+  return supabase.rpc("evaluate_organizer_verification", {
+    p_organizer_id: organizerId,
+  });
 }
 
 export async function inviteOrganizer(params: {
@@ -333,6 +363,11 @@ export async function setOrganizerStatus(
   organizerId: string,
   status: OrganizerStatus,
 ) {
+  const rpc = await supabase.rpc("admin_set_organizer_status", {
+    p_organizer_id: organizerId,
+    p_status: status,
+  });
+  if (!rpc.error) return rpc;
   return supabase.from("organizers").update({ status }).eq("id", organizerId);
 }
 
