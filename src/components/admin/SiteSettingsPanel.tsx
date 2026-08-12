@@ -9,13 +9,21 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { toast } from "sonner";
 import { Check, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getTheme, THEME_PRESETS, type ThemeId } from "@/lib/themes";
+import {
+  buildCover,
+  getTheme,
+  THEME_PRESETS,
+  type ThemeId,
+} from "@/lib/themes";
 import { DEFAULT_ORGANIZER_SLUG } from "@/lib/organizers";
 import { cn } from "@/lib/utils";
 
 export function SiteSettingsPanel() {
   const [row, setRow] = useState<SiteSettings | null>(null);
   const [themeId, setThemeId] = useState<ThemeId>("black-silver");
+  const [startColor, setStartColor] = useState("#0a0a0a");
+  const [endColor, setEndColor] = useState("#525252");
+  const [angle, setAngle] = useState(135);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const qc = useQueryClient();
@@ -26,13 +34,18 @@ export function SiteSettingsPanel() {
       setRow(data as SiteSettings | null);
       const { data: org } = await supabase
         .from("organizers")
-        .select("theme_id")
+        .select("theme_id, primary_color, secondary_color")
         .eq("slug", DEFAULT_ORGANIZER_SLUG)
         .maybeSingle();
       const fromOrg = (org as { theme_id?: string | null } | null)?.theme_id;
       const fromSite = (data as SiteSettings & { theme_id?: string | null } | null)?.theme_id;
       const id = (fromOrg || fromSite || "black-silver") as ThemeId;
+      const preset = THEME_PRESETS.find((t) => t.id === id) ?? THEME_PRESETS[0]!;
       setThemeId(THEME_PRESETS.some((t) => t.id === id) ? id : "black-silver");
+      const pc = (org as { primary_color?: string | null } | null)?.primary_color;
+      const sc = (org as { secondary_color?: string | null } | null)?.secondary_color;
+      setStartColor(pc || preset.swatch[0]);
+      setEndColor(sc || preset.swatch[1]);
       setLoading(false);
     })();
   }, []);
@@ -51,7 +64,23 @@ export function SiteSettingsPanel() {
     );
 
   const patch = (p: Partial<SiteSettings>) => setRow({ ...row, ...p });
-  const theme = getTheme(themeId);
+
+  const theme = getTheme(themeId, {
+    start: startColor,
+    end: endColor,
+    accent: endColor,
+  });
+  // Override cover with live angle
+  const liveCover = buildCover(startColor, endColor, angle);
+
+  const pickPreset = (id: ThemeId) => {
+    const p = THEME_PRESETS.find((t) => t.id === id);
+    if (!p) return;
+    setThemeId(id);
+    setStartColor(p.swatch[0]);
+    setEndColor(p.swatch[1]);
+    setAngle(135);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -71,7 +100,6 @@ export function SiteSettingsPanel() {
         .eq("id", row.id);
       if (error) throw error;
 
-      // Primary write: organizers.theme_id powers public /o/$slug
       const { data: updated, error: orgErr } = await supabase
         .from("organizers")
         .update({
@@ -81,6 +109,8 @@ export function SiteSettingsPanel() {
           logo_url: row.logo_url,
           banner_url: row.hero_image_url,
           theme_id: themeId,
+          primary_color: startColor,
+          secondary_color: endColor,
           updated_at: new Date().toISOString(),
         })
         .eq("slug", DEFAULT_ORGANIZER_SLUG)
@@ -88,16 +118,13 @@ export function SiteSettingsPanel() {
         .maybeSingle();
 
       if (orgErr) {
-        // Column may be missing — try SQL hint
         throw new Error(
           orgErr.message.includes("theme_id")
             ? "theme_id column missing — run supabase-setup/19-messages-theme-storage.sql"
             : orgErr.message,
         );
       }
-      if (!updated) {
-        throw new Error("Organizer row not found for theme save");
-      }
+      if (!updated) throw new Error("Organizer row not found for theme save");
 
       await supabase
         .from("site_settings")
@@ -123,18 +150,18 @@ export function SiteSettingsPanel() {
         backgroundColor: "rgba(10,10,10,0.92)",
       }}
     >
-      {/* Mini cover strip so whole settings panel feels themed */}
-      <div className="h-2 rounded-t-xl" style={{ background: theme.cover }} />
+      <div className="h-2 rounded-t-xl" style={{ background: liveCover }} />
 
       <AdminSection
         title="Site settings"
-        description={`Live theme: ${theme.label}. Save applies to the full public organizer page.`}
+        description={`Live theme: ${theme.label}. Templates + color graph. Save applies to public page.`}
       >
-        <div className="mb-5">
+        {/* TEMPLATES */}
+        <div className="mb-4">
           <Label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
-            Theme
+            Templates
           </Label>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
             {THEME_PRESETS.map((th) => {
               const selected = themeId === th.id;
               return (
@@ -142,33 +169,116 @@ export function SiteSettingsPanel() {
                   key={th.id}
                   type="button"
                   title={th.label}
-                  onClick={() => setThemeId(th.id)}
+                  onClick={() => pickPreset(th.id)}
                   className={cn(
-                    "relative h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 transition",
+                    "relative overflow-hidden rounded-lg border-2 transition",
                     selected
-                      ? "border-white scale-110 shadow-lg"
-                      : "border-white/20 hover:border-white/50",
+                      ? "border-white ring-2 ring-white/30"
+                      : "border-white/15 hover:border-white/40",
                   )}
-                  style={{ background: th.cover }}
                 >
+                  <div className="h-8 w-full" style={{ background: th.cover }} />
+                  <p className="truncate bg-black/50 px-1 py-0.5 text-center text-[9px] text-white">
+                    {th.label}
+                  </p>
                   {selected && (
-                    <span className="absolute inset-0 grid place-items-center bg-black/30">
-                      <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                    <span className="absolute right-0.5 top-0.5 rounded-full bg-black/50 p-0.5">
+                      <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                     </span>
                   )}
                 </button>
               );
             })}
           </div>
-          <p className="mt-2 text-xs" style={{ color: theme.accent }}>
-            {theme.label} — panel preview live · Save to publish
-          </p>
         </div>
 
+        {/* COLOR GRAPH */}
+        <div className="mb-5 rounded-xl border border-white/10 bg-black/30 p-3">
+          <Label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
+            Color graph
+          </Label>
+          {/* Big gradient graph bar */}
+          <div
+            className="relative h-14 w-full overflow-hidden rounded-lg ring-1 ring-white/15"
+            style={{ background: liveCover }}
+          >
+            <div className="absolute inset-x-0 bottom-0 flex justify-between px-2 py-1 text-[10px] font-mono text-white/90 drop-shadow">
+              <span>{startColor}</span>
+              <span>{angle}°</span>
+              <span>{endColor}</span>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <p className="mb-1 text-[10px] text-muted-foreground">Start</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={startColor}
+                  onChange={(e) => {
+                    setStartColor(e.target.value);
+                    setThemeId("custom");
+                  }}
+                  className="h-9 w-12 cursor-pointer rounded border border-white/20 bg-transparent"
+                />
+                <Input
+                  value={startColor}
+                  onChange={(e) => {
+                    setStartColor(e.target.value);
+                    setThemeId("custom");
+                  }}
+                  className="h-9 font-mono text-xs"
+                />
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-[10px] text-muted-foreground">End</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={endColor}
+                  onChange={(e) => {
+                    setEndColor(e.target.value);
+                    setThemeId("custom");
+                  }}
+                  className="h-9 w-12 cursor-pointer rounded border border-white/20 bg-transparent"
+                />
+                <Input
+                  value={endColor}
+                  onChange={(e) => {
+                    setEndColor(e.target.value);
+                    setThemeId("custom");
+                  }}
+                  className="h-9 font-mono text-xs"
+                />
+              </div>
+            </div>
+            <div className="col-span-2">
+              <p className="mb-1 text-[10px] text-muted-foreground">Angle {angle}°</p>
+              <input
+                type="range"
+                min={0}
+                max={360}
+                value={angle}
+                onChange={(e) => {
+                  setAngle(Number(e.target.value));
+                  setThemeId("custom");
+                }}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Live page chrome preview */}
         <div className="mb-6 overflow-hidden rounded-xl border border-white/10">
-          <div className="h-16 w-full sm:h-20" style={{ background: theme.cover }} />
+          <div className="h-16 w-full sm:h-20" style={{ background: liveCover }} />
           <div className="bg-black/40 p-3">
-            <p className="text-base font-bold" style={{ color: theme.accent, textShadow: theme.nameShadow }}>
+            <p
+              className="text-base font-bold"
+              style={{ color: endColor, textShadow: theme.nameShadow }}
+            >
               {row.site_name || "Organizer"}
             </p>
             <p className="text-xs text-neutral-400">{row.tagline || "Public page preview"}</p>
@@ -229,7 +339,7 @@ export function SiteSettingsPanel() {
             onClick={() => void save()}
             disabled={saving}
             className="text-black"
-            style={{ background: theme.cover }}
+            style={{ background: liveCover }}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
           </Button>
