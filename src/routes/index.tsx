@@ -11,7 +11,7 @@ import { PLATFORM_NAME } from "@/lib/organizers";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { BeAnOrganizer } from "@/components/BeAnOrganizer";
-import { BlindRankGame } from "@/components/BlindRankGame";
+import { GamesHub } from "@/components/GamesHub";
 import { GoatVoteBooth } from "@/components/GoatVoteBooth";
 import { ThisOrThatBooth } from "@/components/ThisOrThatBooth";
 import { OrganizerCard } from "@/components/OrganizerCard";
@@ -331,10 +331,14 @@ function PlatformProfilePage() {
           </div>
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Games</h2>
-            <div className="mt-4"><BlindRankGame compact /></div>
+            <p className="mt-1 text-xs text-neutral-500">Blind Ranking · Penalty · more coming</p>
+            <div className="mt-4"><GamesHub /></div>
           </div>
         </div>
       </section>
+
+      {/* Be an Organizer ABOVE founders */}
+      <BeAnOrganizer />
 
       <section className="border-t border-white/5 bg-white/[0.015]">
         <div className="mx-auto max-w-3xl px-4 py-12">
@@ -354,8 +358,6 @@ function PlatformProfilePage() {
           </div>
         </div>
       </section>
-
-      <BeAnOrganizer />
 
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-12">
