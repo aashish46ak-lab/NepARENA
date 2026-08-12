@@ -6,18 +6,17 @@ import { supabase, type Profile } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { buildSeoHead } from "@/lib/seo";
 
 const PAGE = 20;
 
 export const Route = createFileRoute("/members")({
   head: () => ({
-    meta: [
-      { title: "Members — eFootball Nepal" },
-      {
-        name: "description",
-        content: "Meet the eFootball Nepal community.",
-      },
-    ],
+    ...buildSeoHead({
+      title: "Members",
+      description: "Meet the NepARENA community — players and members.",
+      path: "/members",
+    }),
   }),
   component: MembersPage,
 });
@@ -30,8 +29,6 @@ function MembersPage() {
 
   const load = async (from: number) => {
     setLoading(true);
-
-    // Try public_members first; fallback to profiles if empty/fail
     let rows: Profile[] = [];
 
     const { data: pub, error: pubErr } = await supabase
@@ -45,7 +42,7 @@ function MembersPage() {
     } else {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, username, full_name, avatar_url, favourite_club, bio, created_at")
         .order("created_at", { ascending: false })
         .range(from, from + PAGE - 1);
       rows = (profiles ?? []) as Profile[];
@@ -64,29 +61,27 @@ function MembersPage() {
 
   return (
     <PageShell>
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="text-center mb-10">
-          <div className="text-5xl md:text-6xl font-bold text-gradient-brand">
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <div className="mb-10 text-center">
+          <div className="text-5xl font-bold text-gradient-brand md:text-6xl">
             {displayCount}
           </div>
-          <div className="text-muted-foreground mt-2">
+          <div className="mt-2 text-muted-foreground">
             registered members and counting
           </div>
         </div>
 
-        {/* Vertical numbered list: photo + name */}
         <ol className="space-y-2">
           {members.map((m, index) => {
-            const name =
-              m.full_name?.trim() || m.username?.trim() || "Player";
+            const name = m.full_name?.trim() || m.username?.trim() || "Player";
             return (
               <li key={m.id}>
                 <Link
                   to="/members/$id"
                   params={{ id: m.id }}
-                  className="glass rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 flex items-center gap-3 hover:bg-accent/25 transition min-w-0"
+                  className="glass flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-accent/25 sm:px-4 sm:py-3"
                 >
-                  <span className="w-7 shrink-0 text-sm font-bold text-muted-foreground tabular-nums text-right">
+                  <span className="w-7 shrink-0 text-right text-sm font-bold tabular-nums text-muted-foreground">
                     {index + 1}.
                   </span>
                   <Avatar className="h-11 w-11 shrink-0 ring-1 ring-border/50">
@@ -94,14 +89,14 @@ function MembersPage() {
                       src={m.avatar_url ?? undefined}
                       className="object-cover"
                     />
-                    <AvatarFallback className="bg-gradient-brand text-primary-foreground text-xs">
+                    <AvatarFallback className="bg-gradient-brand text-xs text-primary-foreground">
                       {name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="font-semibold truncate">{name}</div>
+                    <div className="truncate font-semibold">{name}</div>
                     {m.favourite_club && (
-                      <div className="text-xs text-muted-foreground truncate">
+                      <div className="truncate text-xs text-muted-foreground">
                         {m.favourite_club}
                       </div>
                     )}
@@ -113,7 +108,7 @@ function MembersPage() {
         </ol>
 
         {members.length === 0 && !loading && (
-          <p className="text-center text-sm text-muted-foreground py-10">
+          <p className="py-10 text-center text-sm text-muted-foreground">
             No members found yet.
           </p>
         )}
@@ -142,4 +137,4 @@ function MembersPage() {
       </div>
     </PageShell>
   );
-                }
+}
