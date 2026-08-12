@@ -330,14 +330,13 @@ function PlatformProfilePage() {
             <div className="mt-4"><ThisOrThatBooth /></div>
           </div>
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Games</h2>
-            <p className="mt-1 text-xs text-neutral-500">Blind Ranking · Penalty · more coming</p>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Play Games</h2>
+            <p className="mt-1 text-xs text-neutral-500">Tap the console to open the game list</p>
             <div className="mt-4"><GamesHub /></div>
           </div>
         </div>
       </section>
 
-      {/* Be an Organizer ABOVE founders */}
       <BeAnOrganizer />
 
       <section className="border-t border-white/5 bg-white/[0.015]">
