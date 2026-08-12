@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Send, Loader2, ImagePlus, X, ArrowLeft } from "lucide-react";
+import { MessageCircle, Send, Loader2, ImagePlus, X, ArrowLeft, Check, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { uploadPublicImage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
@@ -23,9 +23,10 @@ type Msg = {
   is_from_side: boolean;
   created_at: string;
   sender_name: string | null;
+  /** For admin-sent: read_by_user. For user-sent: read_by_admin/organizer */
+  seen_by_other: boolean;
 };
 
-/** Messenger inbox for platform superadmin or organizer dashboard. */
 export function MessagesInbox({
   mode,
   organizerId,
@@ -41,6 +42,7 @@ export function MessagesInbox({
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const myName =
     profile?.full_name || profile?.username || user?.email?.split("@")[0] || "Admin";
@@ -77,10 +79,14 @@ export function MessagesInbox({
             .select("id, username, full_name, avatar_url")
             .in("id", ids);
           for (const p of profiles ?? []) {
-            const t = map.get(p.id);
+            const t = map.get(p.id as string);
             if (t) {
-              t.sender_name = t.sender_name || p.full_name || p.username || "User";
-              t.avatar_url = p.avatar_url;
+              t.sender_name =
+                t.sender_name ||
+                (p.full_name as string) ||
+                (p.username as string) ||
+                null;
+              t.avatar_url = (p.avatar_url as string) || null;
             }
           }
         }
@@ -117,10 +123,14 @@ export function MessagesInbox({
             .select("id, username, full_name, avatar_url")
             .in("id", ids);
           for (const p of profiles ?? []) {
-            const t = map.get(p.id);
+            const t = map.get(p.id as string);
             if (t) {
-              t.sender_name = t.sender_name || p.full_name || p.username || "User";
-              t.avatar_url = p.avatar_url;
+              t.sender_name =
+                t.sender_name ||
+                (p.full_name as string) ||
+                (p.username as string) ||
+                null;
+              t.avatar_url = (p.avatar_url as string) || null;
             }
           }
         }
@@ -135,29 +145,35 @@ export function MessagesInbox({
     if (mode === "platform") {
       const { data } = await supabase
         .from("platform_messages")
-        .select("id, body, image_url, is_from_admin, created_at, sender_name")
+        .select(
+          "id, body, image_url, is_from_admin, created_at, sender_name, read_by_user, read_by_admin",
+        )
         .eq("user_id", uid)
         .order("created_at", { ascending: true })
-        .limit(100);
+        .limit(120);
       setMsgs(
         (
           (data as {
             id: string;
             body: string | null;
-            image_url?: string | null;
+            image_url: string | null;
             is_from_admin: boolean;
             created_at: string;
             sender_name: string | null;
+            read_by_user: boolean | null;
+            read_by_admin: boolean | null;
           }[]) ?? []
         ).map((m) => ({
           id: m.id,
           body: m.body,
-          image_url: m.image_url ?? null,
+          image_url: m.image_url,
           is_from_side: m.is_from_admin,
           created_at: m.created_at,
           sender_name: m.sender_name,
+          seen_by_other: m.is_from_admin ? !!m.read_by_user : !!m.read_by_admin,
         })),
       );
+      // Mark user messages as read by admin → clears red badge
       await supabase
         .from("platform_messages")
         .update({ read_by_admin: true })
@@ -167,11 +183,13 @@ export function MessagesInbox({
     } else if (organizerId) {
       const { data } = await supabase
         .from("organizer_messages")
-        .select("id, body, image_url, is_from_organizer, created_at, sender_name")
+        .select(
+          "id, body, image_url, is_from_organizer, created_at, sender_name, read_by_user, read_by_organizer",
+        )
         .eq("organizer_id", organizerId)
         .eq("user_id", uid)
         .order("created_at", { ascending: true })
-        .limit(100);
+        .limit(120);
       setMsgs(
         (
           (data as {
@@ -181,6 +199,8 @@ export function MessagesInbox({
             is_from_organizer: boolean;
             created_at: string;
             sender_name: string | null;
+            read_by_user: boolean | null;
+            read_by_organizer: boolean | null;
           }[]) ?? []
         ).map((m) => ({
           id: m.id,
@@ -189,6 +209,9 @@ export function MessagesInbox({
           is_from_side: m.is_from_organizer,
           created_at: m.created_at,
           sender_name: m.sender_name,
+          seen_by_other: m.is_from_organizer
+            ? !!m.read_by_user
+            : !!m.read_by_organizer,
         })),
       );
       await supabase
@@ -265,168 +288,178 @@ export function MessagesInbox({
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-neutral-400" />
-          <h3 className="font-semibold">Messages</h3>
+          <h3 className="text-sm font-semibold">Messages</h3>
           {totalUnread > 0 && (
             <span className="grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
               {totalUnread > 99 ? "99+" : totalUnread}
             </span>
           )}
         </div>
-        <p className="text-[11px] text-neutral-500">
-          {mode === "platform" ? "From NepARENA floating chat" : "From organizer page"}
-        </p>
+        {active && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-xs text-neutral-400 hover:text-white"
+            onClick={() => setActive(null)}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Inbox
+          </button>
+        )}
       </div>
 
-      <div className="grid min-h-[420px] md:grid-cols-[280px_1fr]">
-        <div
-          className={cn(
-            "border-b border-white/10 md:border-b-0 md:border-r",
-            active ? "hidden md:block" : "block",
-          )}
-        >
-          {loading ? (
-            <div className="grid place-items-center py-16">
-              <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+      {!active ? (
+        <div className="max-h-[420px] overflow-y-auto">
+          {loading && (
+            <div className="grid place-items-center py-12 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
             </div>
-          ) : threads.length === 0 ? (
-            <p className="p-6 text-center text-sm text-neutral-500">No messages yet</p>
-          ) : (
-            <ul className="max-h-[420px] overflow-y-auto">
-              {threads.map((t) => (
-                <li key={t.user_id}>
-                  <button
-                    type="button"
-                    onClick={() => setActive(t.user_id)}
-                    className={cn(
-                      "flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-white/[0.04]",
-                      active === t.user_id && "bg-white/[0.06]",
-                    )}
-                  >
-                    {t.avatar_url ? (
-                      <img src={t.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
-                    ) : (
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-neutral-800 text-xs font-semibold">
-                        {(t.sender_name ?? "?").slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium">{t.sender_name ?? "User"}</p>
-                        {t.unread > 0 && (
-                          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                            {t.unread}
-                          </span>
-                        )}
-                      </div>
-                      <p className="truncate text-xs text-neutral-500">{t.last_body}</p>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
           )}
-        </div>
-
-        <div className={cn("flex flex-col", !active && "hidden md:flex")}>
-          {!active ? (
-            <div className="grid flex-1 place-items-center text-sm text-neutral-500">
-              Select a conversation
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
-                <button type="button" className="md:hidden" onClick={() => setActive(null)}>
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <p className="text-sm font-semibold">{activeThread?.sender_name ?? "User"}</p>
+          {!loading && threads.length === 0 && (
+            <p className="py-12 text-center text-sm text-muted-foreground">No messages yet</p>
+          )}
+          {threads.map((t) => (
+            <button
+              key={t.user_id}
+              type="button"
+              onClick={() => setActive(t.user_id)}
+              className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left hover:bg-white/[0.04]"
+            >
+              <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-white/10 text-xs font-bold">
+                {t.avatar_url ? (
+                  <img src={t.avatar_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  (t.sender_name || "?")[0]?.toUpperCase()
+                )}
               </div>
-              <div className="flex-1 space-y-2 overflow-y-auto p-3" style={{ maxHeight: 320 }}>
-                {msgs.map((m) => (
-                  <div
-                    key={m.id}
-                    className={cn(
-                      "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                      m.is_from_side
-                        ? "ml-auto bg-sky-500/90 text-white"
-                        : "bg-white/10 text-neutral-100",
-                    )}
-                  >
-                    {m.image_url && (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-medium">{t.sender_name || "Member"}</p>
+                  {t.unread > 0 && (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {t.unread}
+                    </span>
+                  )}
+                </div>
+                <p className="truncate text-xs text-muted-foreground">{t.last_body || "Photo"}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex h-[420px] flex-col">
+          <div className="border-b border-white/10 px-4 py-2 text-sm font-medium">
+            {activeThread?.sender_name || "Conversation"}
+          </div>
+          <div className="flex-1 space-y-2 overflow-y-auto p-3">
+            {msgs.map((m) => (
+              <div
+                key={m.id}
+                className={cn("flex", m.is_from_side ? "justify-end" : "justify-start")}
+              >
+                <div
+                  className={cn(
+                    "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                    m.is_from_side
+                      ? "bg-sky-600/90 text-white"
+                      : "bg-white/10 text-neutral-100",
+                  )}
+                >
+                  {m.image_url && (
+                    <button type="button" className="mb-1 block" onClick={() => setLightbox(m.image_url)}>
                       <img
                         src={m.image_url}
                         alt=""
-                        className="mb-1.5 max-h-36 w-full rounded-xl object-cover"
+                        className="max-h-40 rounded-lg object-cover"
                       />
-                    )}
-                    {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
-                    <p
-                      className={cn(
-                        "mt-1 text-[10px]",
-                        m.is_from_side ? "text-white/70" : "text-neutral-500",
-                      )}
-                    >
-                      {new Date(m.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-white/10 p-3">
-                {photo && (
-                  <div className="relative mb-2 inline-block">
-                    <span className="text-xs text-neutral-400">{photo.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setPhoto(null)}
-                      className="ml-2 text-red-400"
-                    >
-                      <X className="inline h-3 w-3" />
                     </button>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <label className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-xl border border-white/10 text-neutral-400 hover:text-white">
-                    <ImagePlus className="h-5 w-5" />
-                    <input
-                      type="file"
-                      accept="image/*,video/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) setPhoto(f);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                  <input
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void send();
-                      }
-                    }}
-                    placeholder="Reply…"
-                    className="min-h-10 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm outline-none focus:border-white/25"
-                  />
-                  <Button
-                    size="icon"
-                    disabled={busy}
-                    onClick={() => void send()}
-                    className="h-10 w-10 bg-sky-500 text-white hover:bg-sky-400"
-                  >
-                    {busy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
+                  )}
+                  {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
+                  <div
+                    className={cn(
+                      "mt-1 flex items-center gap-1 text-[10px]",
+                      m.is_from_side ? "justify-end text-white/70" : "text-neutral-500",
                     )}
-                  </Button>
+                  >
+                    <span>
+                      {new Date(m.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {m.is_from_side &&
+                      (m.seen_by_other ? (
+                        <span className="inline-flex items-center gap-0.5 text-sky-200" title="Seen">
+                          <CheckCheck className="h-3 w-3" /> Seen
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5" title="Delivered">
+                          <Check className="h-3 w-3" /> Delivered
+                        </span>
+                      ))}
+                  </div>
                 </div>
               </div>
-            </>
-          )}
+            ))}
+          </div>
+          <div className="border-t border-white/10 p-2">
+            {photo && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-neutral-400">
+                <span className="truncate">{photo.name}</span>
+                <button type="button" onClick={() => setPhoto(null)}>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer rounded-lg border border-white/10 p-2 hover:bg-white/5">
+                <ImagePlus className="h-4 w-4" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+                placeholder="Message…"
+                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/25"
+              />
+              <Button size="sm" disabled={busy} onClick={() => void send()}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setLightbox(null)}
+          role="dialog"
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white"
+            onClick={() => setLightbox(null)}
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={lightbox}
+            alt="Full size"
+            className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
