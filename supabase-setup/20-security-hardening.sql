@@ -30,13 +30,7 @@ CREATE INDEX IF NOT EXISTS security_audit_log_actor_idx
 
 ALTER TABLE public.security_audit_log ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "audit_select_admin" ON public.security_audit_log;
--- Only service role / security definer functions should insert;
--- authenticated users cannot read audit unless they are platform owners via email claim is not available in RLS easily.
--- Keep audit readable only via service role (no public SELECT policy).
-
-DROP POLICY IF EXISTS "audit_no_client_write" ON public.security_audit_log;
--- No INSERT/UPDATE/DELETE policies for anon/authenticated → clients cannot write.
+-- No client SELECT/INSERT policies on audit log (service role / SECURITY DEFINER only)
 
 -- 3) Helper: is platform super admin (email allow-list)
 CREATE OR REPLACE FUNCTION public.is_platform_super_admin()
@@ -72,7 +66,7 @@ $$;
 REVOKE ALL ON FUNCTION public.has_app_role(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.has_app_role(text) TO authenticated;
 
--- 5) SECURE FOLLOW / UNFOLLOW (auth.uid must match; no client spoof)
+-- 5) SECURE FOLLOW / UNFOLLOW (auth.uid only; no client spoof)
 CREATE OR REPLACE FUNCTION public.secure_follow_organizer(p_organizer_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -141,10 +135,6 @@ CREATE POLICY "followers_delete_self" ON public.organizer_followers
   FOR DELETE TO authenticated
   USING (user_id = auth.uid());
 
--- Block UPDATE (no need to change rows)
-DROP POLICY IF EXISTS "followers_no_update" ON public.organizer_followers;
--- no update policy = updates denied
-
 -- 7) Auto-verification for organizers
 CREATE OR REPLACE FUNCTION public.evaluate_organizer_verification(p_organizer_id uuid)
 RETURNS boolean
@@ -174,7 +164,6 @@ BEGIN
     AND coalesce(o.contact_email, '') <> ''
     AND completed >= 1;
 
-  -- Super admins can keep manual override; only auto-set when criteria met
   IF ok AND o.is_verified IS DISTINCT FROM true THEN
     UPDATE public.organizers
     SET is_verified = true, updated_at = now()
@@ -188,7 +177,7 @@ $$;
 REVOKE ALL ON FUNCTION public.evaluate_organizer_verification(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.evaluate_organizer_verification(uuid) TO authenticated;
 
--- 8) Harden user_roles: only super admin can change roles via RPC
+-- 8) Role assignment — super admin only
 CREATE OR REPLACE FUNCTION public.admin_set_user_role(p_user_id uuid, p_role text)
 RETURNS void
 LANGUAGE plpgsql
@@ -215,10 +204,7 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_set_user_role(uuid, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_set_user_role(uuid, text) TO authenticated;
 
--- 9) Profiles: users can only update themselves; role columns must not be client-writable
--- (Assumes is_suspended is admin-only via separate RPC if needed)
-
--- 10) Organizer status changes: prefer RPC for audit
+-- 9) Organizer status / verified — super admin only + audit
 CREATE OR REPLACE FUNCTION public.admin_set_organizer_status(p_organizer_id uuid, p_status text)
 RETURNS void
 LANGUAGE plpgsql
@@ -270,5 +256,7 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_set_organizer_verified(uuid, boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_set_organizer_verified(uuid, boolean) TO authenticated;
 
--- Done.
-NOTICE 'NepARENA 20-security-hardening applied';
+DO $$
+BEGIN
+  RAISE NOTICE 'NepARENA 20-security-hardening applied';
+END $$;
