@@ -119,6 +119,9 @@ export const LEGEND_PLAYERS: PlayerDef[] = [
   { name: "Toni Kroos", positions: ["CMF", "DMF"], overall: 91, color: "from-white/40 to-slate-800" },
   { name: "Zlatan Ibrahimović", positions: ["CF", "SS"], overall: 92, color: "from-red-700 to-black" },
   { name: "Wayne Rooney", positions: ["CF", "SS", "AMF"], overall: 91, color: "from-red-600 to-yellow-600" },
+  { name: "Erling Haaland", positions: ["CF"], overall: 93, color: "from-sky-400 to-slate-900" },
+  { name: "Vinícius Jr", positions: ["LWF", "CF"], overall: 91, color: "from-white/40 to-slate-800" },
+  { name: "Jude Bellingham", positions: ["CMF", "AMF"], overall: 91, color: "from-white/40 to-slate-800" },
 ];
 
 const COACHES = [
@@ -205,19 +208,12 @@ function PlayerCard({
           alt=""
           className="absolute inset-0 h-full w-full object-cover object-top"
           loading="lazy"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
         />
       )}
       <div className="relative z-[1] flex items-start justify-between px-1 pt-1">
-        <span className="rounded bg-black/55 px-1 text-[8px] font-bold text-white">
-          {label}
-        </span>
+        <span className="rounded bg-black/55 px-1 text-[8px] font-bold text-white">{label}</span>
         {ovr != null && (
-          <span className="rounded bg-black/55 px-0.5 text-[10px] font-black text-amber-200">
-            {ovr}
-          </span>
+          <span className="rounded bg-black/55 px-0.5 text-[10px] font-black text-amber-200">{ovr}</span>
         )}
       </div>
       <div className="relative z-[1] mt-auto bg-gradient-to-t from-black/80 to-transparent px-0.5 pb-1.5 pt-4">
@@ -247,10 +243,12 @@ export function AllTimeXiView({
   xi,
   editable,
   onChange,
+  showDownload,
 }: {
   xi: AllTimeXi | null;
   editable?: boolean;
   onChange?: (next: AllTimeXi) => void;
+  showDownload?: boolean;
 }) {
   const data: AllTimeXi = {
     ...emptyXi(),
@@ -298,6 +296,75 @@ export function AllTimeXiView({
     setPickCoach(false);
   };
 
+  const downloadXi = async () => {
+    try {
+      const W = 900;
+      const H = 1200;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "#0f3d24");
+      g.addColorStop(0.5, "#166534");
+      g.addColorStop(1, "#0a1f12");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(24, 24, W - 48, H - 48);
+      ctx.fillStyle = "#e2e8f0";
+      ctx.font = "bold 36px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("ALL-TIME XI", W / 2, 70);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "20px system-ui";
+      ctx.fillText("NepARENA · eFootball", W / 2, 100);
+      const load = (src: string) =>
+        new Promise<HTMLImageElement | null>((res) => {
+          const img = new Image();
+          img.onload = () => res(img);
+          img.onerror = () => res(null);
+          img.src = src;
+        });
+      const rows = [[0], [1, 2, 3, 4], [5, 6, 7], [8, 9, 10]];
+      let y = 140;
+      for (const row of rows) {
+        const cardW = 110;
+        const cardH = 150;
+        const gap = 16;
+        const totalW = row.length * cardW + (row.length - 1) * gap;
+        let x = (W - totalW) / 2;
+        for (const si of row) {
+          const slot = data.slots[si];
+          const name = slot?.name;
+          if (name) {
+            const img = await load(playerPhotoUrl(name));
+            if (img) ctx.drawImage(img, x, y, cardW, cardH);
+          } else {
+            ctx.fillStyle = "rgba(0,0,0,0.35)";
+            ctx.fillRect(x, y, cardW, cardH);
+          }
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 12px system-ui";
+          ctx.fillText(slot?.pos ?? "", x + cardW / 2, y + cardH + 16);
+          x += cardW + gap;
+        }
+        y += 190;
+      }
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "18px system-ui";
+      ctx.fillText("neparena.xyz", W / 2, H - 40);
+      const ael = document.createElement("a");
+      ael.href = canvas.toDataURL("image/png");
+      ael.download = `neparena-all-time-xi-${Date.now()}.png`;
+      ael.click();
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -306,16 +373,26 @@ export function AllTimeXiView({
           <h3 className="text-sm font-semibold">All-Time eFootball XI</h3>
           <span className="text-[11px] text-muted-foreground">{data.formation}</span>
         </div>
-        {editable && (
-          <span className="text-[11px] text-muted-foreground">Tap card to pick</span>
-        )}
+        <div className="flex items-center gap-2">
+          {showDownload && (
+            <button
+              type="button"
+              onClick={() => void downloadXi()}
+              className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-medium text-neutral-200 hover:bg-white/10"
+            >
+              Download
+            </button>
+          )}
+          {editable && (
+            <span className="text-[11px] text-muted-foreground">Tap card to pick</span>
+          )}
+        </div>
       </div>
 
       <div className="relative mx-auto aspect-[3/4] w-full max-w-md overflow-hidden rounded-2xl border border-emerald-500/25 bg-[linear-gradient(180deg,#0f3d24_0%,#166534_45%,#15803d_100%)] shadow-inner">
         <div className="pointer-events-none absolute inset-3 rounded-xl border border-white/20" />
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20" />
         <div className="pointer-events-none absolute inset-x-6 top-1/2 h-px -translate-y-1/2 bg-white/20" />
-
         {data.slots.map((slot, i) => {
           const p = PITCH_POS[i];
           return (
@@ -350,9 +427,7 @@ export function AllTimeXiView({
       </div>
 
       <div>
-        <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Substitutes
-        </p>
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Substitutes</p>
         <div className="flex flex-wrap gap-2">
           {(data.bench ?? emptyXi().bench!).map((name, i) => (
             <PlayerCard
@@ -385,21 +460,11 @@ export function AllTimeXiView({
                 : `Pick substitute`}
             </DialogTitle>
           </DialogHeader>
-          <Input
-            placeholder="Search players…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            autoFocus
-          />
+          <Input placeholder="Search players…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
           <div className="max-h-72 space-y-1.5 overflow-y-auto">
             {(pickIdx != null && data.slots[pickIdx]?.name) ||
             (pickBench != null && data.bench?.[pickBench]) ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-rose-400"
-                onClick={() => setPlayer(null)}
-              >
+              <Button variant="ghost" size="sm" className="w-full justify-start text-rose-400" onClick={() => setPlayer(null)}>
                 <X className="mr-2 h-3.5 w-3.5" /> Clear slot
               </Button>
             ) : null}
@@ -411,29 +476,15 @@ export function AllTimeXiView({
                 onClick={() => setPlayer(p.name)}
               >
                 <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-white/20 bg-neutral-900">
-                  <img
-                    src={playerPhotoUrl(p.name)}
-                    alt=""
-                    className="h-full w-full object-cover object-top"
-                    loading="lazy"
-                  />
-                  <span className="absolute right-0.5 top-0.5 rounded bg-black/60 px-0.5 text-[9px] font-black text-amber-200">
-                    {p.overall}
-                  </span>
+                  <img src={playerPhotoUrl(p.name)} alt="" className="h-full w-full object-cover object-top" loading="lazy" />
+                  <span className="absolute right-0.5 top-0.5 rounded bg-black/60 px-0.5 text-[9px] font-black text-amber-200">{p.overall}</span>
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{p.name}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {p.positions.join(" · ")}
-                  </p>
+                  <p className="text-[11px] text-muted-foreground">{p.positions.join(" · ")}</p>
                 </div>
               </button>
             ))}
-            {filtered.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No players for this position
-              </p>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -445,22 +496,12 @@ export function AllTimeXiView({
           </DialogHeader>
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {data.coach && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-rose-400"
-                onClick={() => setCoach(null)}
-              >
+              <Button variant="ghost" size="sm" className="w-full justify-start text-rose-400" onClick={() => setCoach(null)}>
                 <X className="mr-2 h-3.5 w-3.5" /> Clear
               </Button>
             )}
             {COACHES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5"
-                onClick={() => setCoach(c)}
-              >
+              <button key={c} type="button" className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5" onClick={() => setCoach(c)}>
                 {c}
               </button>
             ))}
