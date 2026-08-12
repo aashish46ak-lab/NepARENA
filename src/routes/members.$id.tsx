@@ -21,7 +21,6 @@ export const Route = createFileRoute("/members/$id")({
       title: "Member profile",
       description: "Player profile on NepARENA",
       path: "/members",
-      noIndex: true,
     }),
   }),
   component: MemberProfilePage,
@@ -197,51 +196,63 @@ function MemberProfilePage() {
           </Link>
         </Button>
 
-        <div className="glass flex flex-col items-center gap-5 rounded-2xl p-6 sm:flex-row sm:items-start">
-          <Avatar className="h-24 w-24 ring-2 ring-brand/30">
-            <AvatarImage
-              src={profile.avatar_url ?? undefined}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-gradient-brand text-xl text-primary-foreground">
-              {displayName.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
-            <h1 className="truncate text-2xl font-bold">{displayName}</h1>
-            {realName && realName !== displayName && (
-              <p className="truncate text-sm text-muted-foreground">{realName}</p>
-            )}
-            {profile.favourite_club && (
-              <p className="text-sm text-brand-glow">{profile.favourite_club}</p>
-            )}
-            {profile.bio && (
-              <p className="text-sm text-muted-foreground">{profile.bio}</p>
-            )}
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <div className="relative h-36 bg-gradient-to-br from-sky-900 via-slate-900 to-violet-950 sm:h-44">
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt=""
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-sm"
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+          </div>
+          <div className="relative px-4 pb-5 sm:px-6">
+            <Avatar className="-mt-12 h-24 w-24 ring-4 ring-[#0a0a0a] sm:h-28 sm:w-28">
+              <AvatarImage
+                src={profile.avatar_url ?? undefined}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-gradient-brand text-xl text-primary-foreground">
+                {displayName.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="mt-3 min-w-0 space-y-2">
+              <h1 className="truncate text-2xl font-bold">{displayName}</h1>
+              {realName && realName !== displayName && (
+                <p className="truncate text-sm text-muted-foreground">{realName}</p>
+              )}
+              {profile.favourite_club && (
+                <p className="text-sm text-brand-glow">{profile.favourite_club}</p>
+              )}
+              {profile.bio && (
+                <p className="text-sm text-muted-foreground">{profile.bio}</p>
+              )}
 
-            {joinedTags.length > 0 && (
-              <div className="pt-2">
-                <p className="mb-1.5 text-xs text-muted-foreground">Tournaments</p>
-                <div className="flex flex-wrap justify-center gap-1.5 sm:justify-start">
-                  {joinedTags.map((tag) => (
-                    <Link
-                      key={tag.tournamentId}
-                      to="/tournaments/$id"
-                      params={{ id: tag.tournamentId }}
-                    >
-                      <Badge
-                        className={cn(
-                          "cursor-pointer border-0 capitalize",
-                          statusBadgeClass(tag.tourStatus),
-                        )}
+              {joinedTags.length > 0 && (
+                <div className="pt-2">
+                  <p className="mb-1.5 text-xs text-muted-foreground">Tournaments</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {joinedTags.map((tag) => (
+                      <Link
+                        key={tag.tournamentId}
+                        to="/tournaments/$id"
+                        params={{ id: tag.tournamentId }}
                       >
-                        {tag.name}
-                      </Badge>
-                    </Link>
-                  ))}
+                        <Badge
+                          className={cn(
+                            "cursor-pointer border-0 capitalize",
+                            statusBadgeClass(tag.tourStatus),
+                          )}
+                        >
+                          {tag.name}
+                        </Badge>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -262,11 +273,15 @@ function MemberProfilePage() {
           ))}
         </div>
 
-        {xi && xi.slots.some((s) => s.name) && (
-          <div className="glass rounded-2xl p-4">
+        <div className="glass rounded-2xl p-4">
+          {xi && xi.slots.some((s) => s.name) ? (
             <AllTimeXiView xi={xi} />
-          </div>
-        )}
+          ) : (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No All-Time XI published yet
+            </div>
+          )}
+        </div>
 
         {achievements.length > 0 && (
           <div>
