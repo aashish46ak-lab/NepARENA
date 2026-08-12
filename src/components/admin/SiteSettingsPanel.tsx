@@ -16,6 +16,7 @@ import {
   type ThemeId,
 } from "@/lib/themes";
 import { DEFAULT_ORGANIZER_SLUG } from "@/lib/organizers";
+import { saveOrganizerTheme } from "@/lib/save-organizer-theme";
 import { cn } from "@/lib/utils";
 
 export function SiteSettingsPanel() {
@@ -70,7 +71,6 @@ export function SiteSettingsPanel() {
     end: endColor,
     accent: endColor,
   });
-  // Override cover with live angle
   const liveCover = buildCover(startColor, endColor, angle);
 
   const pickPreset = (id: ThemeId) => {
@@ -100,31 +100,16 @@ export function SiteSettingsPanel() {
         .eq("id", row.id);
       if (error) throw error;
 
-      const { data: updated, error: orgErr } = await supabase
-        .from("organizers")
-        .update({
-          name: row.site_name || "eFootball Nepal",
-          tagline: row.tagline,
-          description: row.about_short,
-          logo_url: row.logo_url,
-          banner_url: row.hero_image_url,
-          theme_id: themeId,
-          primary_color: startColor,
-          secondary_color: endColor,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("slug", DEFAULT_ORGANIZER_SLUG)
-        .select("id, theme_id")
-        .maybeSingle();
-
-      if (orgErr) {
-        throw new Error(
-          orgErr.message.includes("theme_id")
-            ? "theme_id column missing — run supabase-setup/19-messages-theme-storage.sql"
-            : orgErr.message,
-        );
-      }
-      if (!updated) throw new Error("Organizer row not found for theme save");
+      await saveOrganizerTheme({
+        name: row.site_name || "eFootball Nepal",
+        tagline: row.tagline,
+        description: row.about_short,
+        logo_url: row.logo_url,
+        banner_url: row.hero_image_url,
+        theme_id: themeId,
+        primary_color: startColor,
+        secondary_color: endColor,
+      });
 
       await supabase
         .from("site_settings")
@@ -156,7 +141,6 @@ export function SiteSettingsPanel() {
         title="Site settings"
         description={`Live theme: ${theme.label}. Templates + color graph. Save applies to public page.`}
       >
-        {/* TEMPLATES */}
         <div className="mb-4">
           <Label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
             Templates
@@ -192,12 +176,10 @@ export function SiteSettingsPanel() {
           </div>
         </div>
 
-        {/* COLOR GRAPH */}
         <div className="mb-5 rounded-xl border border-white/10 bg-black/30 p-3">
           <Label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
             Color graph
           </Label>
-          {/* Big gradient graph bar */}
           <div
             className="relative h-14 w-full overflow-hidden rounded-lg ring-1 ring-white/15"
             style={{ background: liveCover }}
@@ -271,14 +253,10 @@ export function SiteSettingsPanel() {
           </div>
         </div>
 
-        {/* Live page chrome preview */}
         <div className="mb-6 overflow-hidden rounded-xl border border-white/10">
           <div className="h-16 w-full sm:h-20" style={{ background: liveCover }} />
           <div className="bg-black/40 p-3">
-            <p
-              className="text-base font-bold"
-              style={{ color: endColor, textShadow: theme.nameShadow }}
-            >
+            <p className="text-base font-bold" style={{ color: endColor, textShadow: theme.nameShadow }}>
               {row.site_name || "Organizer"}
             </p>
             <p className="text-xs text-neutral-400">{row.tagline || "Public page preview"}</p>
@@ -297,18 +275,10 @@ export function SiteSettingsPanel() {
               <Input value={row.hero_title} onChange={(e) => patch({ hero_title: e.target.value })} />
             </Field>
             <Field label="Hero subtitle">
-              <Textarea
-                rows={3}
-                value={row.hero_subtitle}
-                onChange={(e) => patch({ hero_subtitle: e.target.value })}
-              />
+              <Textarea rows={3} value={row.hero_subtitle} onChange={(e) => patch({ hero_subtitle: e.target.value })} />
             </Field>
             <Field label="About (short)">
-              <Textarea
-                rows={4}
-                value={row.about_short}
-                onChange={(e) => patch({ about_short: e.target.value })}
-              />
+              <Textarea rows={4} value={row.about_short} onChange={(e) => patch({ about_short: e.target.value })} />
             </Field>
             <Field label="Footer text">
               <Input value={row.footer_text} onChange={(e) => patch({ footer_text: e.target.value })} />
@@ -316,31 +286,16 @@ export function SiteSettingsPanel() {
           </div>
           <div className="space-y-4">
             <Field label="Logo">
-              <ImageUpload
-                value={row.logo_url}
-                onChange={(u) => patch({ logo_url: u })}
-                folder="branding"
-                aspect="square"
-              />
+              <ImageUpload value={row.logo_url} onChange={(u) => patch({ logo_url: u })} folder="branding" aspect="square" />
             </Field>
             <Field label="Hero / cover image">
-              <ImageUpload
-                value={row.hero_image_url}
-                onChange={(u) => patch({ hero_image_url: u })}
-                folder="branding"
-                aspect="wide"
-              />
+              <ImageUpload value={row.hero_image_url} onChange={(u) => patch({ hero_image_url: u })} folder="branding" aspect="wide" />
             </Field>
           </div>
         </div>
 
         <div className="mt-6 flex justify-end">
-          <Button
-            onClick={() => void save()}
-            disabled={saving}
-            className="text-black"
-            style={{ background: liveCover }}
-          >
+          <Button onClick={() => void save()} disabled={saving} className="text-black" style={{ background: liveCover }}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
           </Button>
         </div>
