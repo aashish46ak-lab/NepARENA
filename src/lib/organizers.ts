@@ -182,7 +182,6 @@ export async function followOrganizer(organizerId: string, userId: string) {
     p_organizer_id: organizerId,
   });
   if (!rpc.error) return rpc;
-  // Fallback if RPC not deployed yet
   return supabase.from("organizer_followers").upsert(
     { organizer_id: organizerId, user_id: userId },
     { onConflict: "organizer_id,user_id" },
@@ -238,7 +237,7 @@ export async function getPlatformStats() {
     completedTournaments,
     recentUsers,
     pendingInvites,
-    messagesCount,
+    unreadMessages,
   ] = await Promise.all([
     supabase.from("tournaments").select("id", { count: "exact", head: true }),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
@@ -262,7 +261,12 @@ export async function getPlatformStats() {
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(20),
-    supabase.from("platform_messages").select("id", { count: "exact", head: true }),
+    // UNREAD only — clears after admin opens threads
+    supabase
+      .from("platform_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("is_from_admin", false)
+      .eq("read_by_admin", false),
   ]);
 
   const byStatus = {
@@ -279,7 +283,7 @@ export async function getPlatformStats() {
     matches: matchCount.count ?? 0,
     liveTournaments: liveTournaments.count ?? 0,
     completedTournaments: completedTournaments.count ?? 0,
-    messages: messagesCount.count ?? 0,
+    messages: unreadMessages.count ?? 0,
     byStatus,
     organizersList: organizers,
     recentUsers: (recentUsers.data ?? []) as {
