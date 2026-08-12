@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AllTimeXiView, parseXi } from "@/components/AllTimeXi";
-import { Loader2, Trophy, ArrowLeft, Award } from "lucide-react";
+import { Loader2, Trophy, ArrowLeft, Award, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildSeoHead } from "@/lib/seo";
 
@@ -31,8 +31,7 @@ function statusBadgeClass(status: string) {
     return "bg-muted text-muted-foreground";
   if (status === "live" || status === "ongoing")
     return "bg-brand/25 text-brand-glow";
-  if (status === "registration_open")
-    return "bg-emerald-500/20 text-emerald-300";
+  if (status === "registration_open") return "bg-emerald-500/20 text-emerald-300";
   return "bg-secondary text-secondary-foreground";
 }
 
@@ -43,13 +42,39 @@ function MemberProfilePage() {
     queryKey: ["member_profile", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data: profile, error: pErr } = await supabase
+      let profile: Profile | null = null;
+      const { data: p1, error: pErr } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", id)
         .maybeSingle();
+      if (pErr) console.warn("profiles select", pErr.message);
+      profile = (p1 as Profile | null) ?? null;
 
-      if (pErr) throw pErr;
+      if (!profile) {
+        const { data: p2 } = await supabase
+          .from("public_members")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        profile = (p2 as Profile | null) ?? null;
+      }
+
+      if (!profile) {
+        profile = {
+          id,
+          username: null,
+          full_name: null,
+          avatar_url: null,
+          favourite_club: null,
+          bio: null,
+          country: null,
+          social_links: {},
+          is_suspended: false,
+          has_password: false,
+          created_at: new Date().toISOString(),
+        } as Profile;
+      }
 
       const { data: parts } = await supabase
         .from("tournament_participants")
@@ -64,8 +89,8 @@ function MemberProfilePage() {
       const { data: hof } = await supabase.from("hall_of_fame").select("*");
 
       const names = new Set<string>();
-      if (profile?.full_name) names.add(profile.full_name.toLowerCase());
-      if (profile?.username) names.add(profile.username.toLowerCase());
+      if (profile.full_name) names.add(profile.full_name.toLowerCase());
+      if (profile.username) names.add(profile.username.toLowerCase());
       for (const p of partList) {
         names.add(p.player_name.toLowerCase());
         if (p.club) names.add(p.club.toLowerCase());
@@ -75,9 +100,7 @@ function MemberProfilePage() {
         names.has(h.player_name.toLowerCase()),
       );
 
-      const tournamentIds = [
-        ...new Set(partList.map((p) => p.tournament_id)),
-      ];
+      const tournamentIds = [...new Set(partList.map((p) => p.tournament_id))];
 
       let tours: { id: string; name: string; status: string }[] = [];
       if (tournamentIds.length) {
@@ -121,12 +144,36 @@ function MemberProfilePage() {
         }
       }
 
+      let followingOrgs: {
+        id: string;
+        name: string;
+        slug: string;
+        logo_url: string | null;
+        is_verified: boolean;
+      }[] = [];
+      const { data: follows } = await supabase
+        .from("organizer_followers")
+        .select("organizer_id")
+        .eq("user_id", id);
+      const orgIds = (follows ?? []).map(
+        (f: { organizer_id: string }) => f.organizer_id,
+      );
+      if (orgIds.length) {
+        const { data: orgs } = await supabase
+          .from("organizers")
+          .select("id, name, slug, logo_url, is_verified, status")
+          .in("id", orgIds)
+          .eq("status", "active");
+        followingOrgs = ((orgs ?? []) as typeof followingOrgs).filter(Boolean);
+      }
+
       return {
-        profile: (profile as Profile | null) ?? null,
+        profile,
         parts: partList,
         tours,
         achievements,
         stats: { wins, draws, losses, goalsFor, goalsAgainst },
+        followingOrgs,
       };
     },
   });
@@ -145,7 +192,9 @@ function MemberProfilePage() {
     return (
       <PageShell>
         <div className="mx-auto max-w-lg space-y-3 py-20 text-center">
-          <p className="text-muted-foreground">Member not found</p>
+          <p className="text-muted-foreground">
+            {error instanceof Error ? error.message : "Member not found"}
+          </p>
           <Button asChild variant="outline">
             <Link to="/members">
               <ArrowLeft className="mr-1 h-4 w-4" /> Members
@@ -156,7 +205,7 @@ function MemberProfilePage() {
     );
   }
 
-  const { profile, parts, tours, achievements } = data;
+  const { profile, parts, tours, achievements, followingOrgs } = data;
   const tourMap = new Map(tours.map((t) => [t.id, t]));
   const displayName =
     profile.username?.trim() || profile.full_name?.trim() || "Player";
@@ -220,7 +269,9 @@ function MemberProfilePage() {
             <div className="mt-3 min-w-0 space-y-2">
               <h1 className="truncate text-2xl font-bold">{displayName}</h1>
               {realName && realName !== displayName && (
-                <p className="truncate text-sm text-muted-foreground">{realName}</p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {realName}
+                </p>
               )}
               {profile.favourite_club && (
                 <p className="text-sm text-brand-glow">{profile.favourite_club}</p>
@@ -229,9 +280,45 @@ function MemberProfilePage() {
                 <p className="text-sm text-muted-foreground">{profile.bio}</p>
               )}
 
+              {followingOrgs.length > 0 && (
+                <div className="pt-2">
+                  <p className="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5" /> Following organizers
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {followingOrgs.map((o) => (
+                      <Link
+                        key={o.id}
+                        to="/o/$slug"
+                        params={{ slug: o.slug }}
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] py-1 pl-1 pr-2.5 text-xs font-medium text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+                      >
+                        {o.logo_url ? (
+                          <img
+                            src={o.logo_url}
+                            alt=""
+                            className="h-5 w-5 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-700 text-[9px] font-bold">
+                            {o.name.slice(0, 1)}
+                          </span>
+                        )}
+                        <span className="truncate">{o.name}</span>
+                        {o.is_verified && (
+                          <span className="text-sky-400">✓</span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {joinedTags.length > 0 && (
                 <div className="pt-2">
-                  <p className="mb-1.5 text-xs text-muted-foreground">Tournaments</p>
+                  <p className="mb-1.5 text-xs text-muted-foreground">
+                    Tournaments
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {joinedTags.map((tag) => (
                       <Link
@@ -265,7 +352,9 @@ function MemberProfilePage() {
             { label: "Conceded", value: stats.goalsAgainst },
           ].map((s) => (
             <div key={s.label} className="glass rounded-xl p-3 text-center">
-              <div className="text-xl font-bold text-gradient-brand">{s.value}</div>
+              <div className="text-xl font-bold text-gradient-brand">
+                {s.value}
+              </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
                 {s.label}
               </div>
