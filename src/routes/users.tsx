@@ -25,12 +25,22 @@ function PlatformUsersPage() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["platform_users"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, created_at")
+        .select("id, username, full_name, avatar_url, created_at")
         .order("created_at", { ascending: false })
         .limit(200);
-      return data ?? [];
+      if (error) {
+        console.warn(error.message);
+        return [];
+      }
+      return (data ?? []) as {
+        id: string;
+        username: string | null;
+        full_name: string | null;
+        avatar_url: string | null;
+        created_at: string;
+      }[];
     },
   });
 
@@ -47,35 +57,36 @@ function PlatformUsersPage() {
           <p className="mt-8 text-sm text-neutral-500">Loading…</p>
         )}
         <ul className="mt-8 divide-y divide-white/5 rounded-2xl border border-white/10">
-          {users.map((u) => (
-            <li key={u.id}>
-              <Link
-                to="/members/$id"
-                params={{ id: u.id }}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03]"
-              >
-                {u.avatar_url ? (
-                  <img
-                    src={u.avatar_url}
-                    alt=""
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-neutral-800 text-xs font-semibold">
-                    {(u.username ?? "?").slice(0, 2).toUpperCase()}
+          {users.map((u) => {
+            const label = u.full_name || u.username || "Player";
+            return (
+              <li key={u.id}>
+                <Link
+                  to="/members/$id"
+                  params={{ id: u.id }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03]"
+                >
+                  {u.avatar_url ? (
+                    <img
+                      src={u.avatar_url}
+                      alt=""
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid h-10 w-10 place-items-center rounded-full bg-neutral-800 text-xs font-semibold">
+                      {label.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{label}</p>
+                    <p className="truncate text-xs text-neutral-500">
+                      @{u.username ?? "user"}
+                    </p>
                   </div>
-                )}
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {u.display_name || u.username || "Player"}
-                  </p>
-                  <p className="truncate text-xs text-neutral-500">
-                    @{u.username ?? "user"}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
         {!isLoading && users.length === 0 && (
           <p className="mt-6 text-sm text-neutral-500">No users yet.</p>
