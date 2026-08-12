@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Shirt, X, Users } from "lucide-react";
+import { playerPhotoUrl } from "@/lib/player-photos";
 
 export type XiSlot = {
   pos: string;
@@ -184,6 +185,7 @@ function PlayerCard({
 }) {
   const ovr = overallOf(name);
   const h = size === "sm" ? "h-[72px] w-[52px]" : "h-[88px] w-[64px]";
+  const photo = name ? playerPhotoUrl(name) : null;
   return (
     <button
       type="button"
@@ -192,35 +194,37 @@ function PlayerCard({
       className={cn(
         "relative flex shrink-0 flex-col overflow-hidden rounded-lg border border-white/25 bg-gradient-to-b shadow-lg transition",
         h,
-        cardGradient(name),
+        !photo && cardGradient(name),
         !disabled && "cursor-pointer hover:scale-105 hover:border-white/50",
         disabled && "cursor-default",
       )}
     >
-      <div className="flex items-start justify-between px-1 pt-1">
-        <span className="rounded bg-black/50 px-1 text-[8px] font-bold text-white">
+      {photo && (
+        <img
+          src={photo}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-top"
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+      <div className="relative z-[1] flex items-start justify-between px-1 pt-1">
+        <span className="rounded bg-black/55 px-1 text-[8px] font-bold text-white">
           {label}
         </span>
         {ovr != null && (
-          <span className="text-[10px] font-black text-amber-200 drop-shadow">
+          <span className="rounded bg-black/55 px-0.5 text-[10px] font-black text-amber-200">
             {ovr}
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col items-center justify-end px-0.5 pb-1.5">
-        <div
-          className={cn(
-            "mb-0.5 grid place-items-center rounded-full bg-black/35 text-[9px] font-bold text-white ring-1 ring-white/30",
-            size === "sm" ? "h-6 w-6" : "h-8 w-8",
-          )}
-        >
-          {(name ?? label).slice(0, 2).toUpperCase()}
-        </div>
-        <span className="w-full truncate text-center text-[8px] font-semibold leading-tight text-white drop-shadow">
+      <div className="relative z-[1] mt-auto bg-gradient-to-t from-black/80 to-transparent px-0.5 pb-1.5 pt-4">
+        <span className="block w-full truncate text-center text-[8px] font-semibold leading-tight text-white">
           {name ?? "Empty"}
         </span>
       </div>
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-white/10" />
     </button>
   );
 }
@@ -406,17 +410,15 @@ export function AllTimeXiView({
                 className="flex w-full items-center gap-3 rounded-xl border border-border/40 px-2 py-2 text-left hover:bg-white/5"
                 onClick={() => setPlayer(p.name)}
               >
-                <div
-                  className={cn(
-                    "relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-white/20 bg-gradient-to-b",
-                    p.color,
-                  )}
-                >
-                  <span className="absolute right-0.5 top-0.5 text-[9px] font-black text-amber-200">
+                <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-white/20 bg-neutral-900">
+                  <img
+                    src={playerPhotoUrl(p.name)}
+                    alt=""
+                    className="h-full w-full object-cover object-top"
+                    loading="lazy"
+                  />
+                  <span className="absolute right-0.5 top-0.5 rounded bg-black/60 px-0.5 text-[9px] font-black text-amber-200">
                     {p.overall}
-                  </span>
-                  <span className="absolute bottom-0.5 left-0 right-0 truncate px-0.5 text-center text-[7px] font-semibold text-white">
-                    {p.name.split(" ").slice(-1)[0]}
                   </span>
                 </div>
                 <div className="min-w-0">
