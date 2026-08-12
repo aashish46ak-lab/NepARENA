@@ -25,7 +25,6 @@ import {
   Users,
   Bell,
   BellOff,
-  ArrowRight,
   Share2,
   History,
   Image,
@@ -331,7 +330,11 @@ function OrganizerPublicPage() {
     );
   }
 
-  const theme = getTheme((organizer as { theme_id?: string | null }).theme_id);
+  const theme = getTheme((organizer as { theme_id?: string | null }).theme_id, {
+    start: organizer.primary_color,
+    end: organizer.secondary_color,
+    accent: organizer.secondary_color || organizer.primary_color,
+  });
   const banner = organizer.banner_url || site?.hero_image_url || null;
   const logo = organizer.logo_url || site?.logo_url || null;
   const description =
@@ -431,9 +434,7 @@ function OrganizerPublicPage() {
                     )}
                   </div>
                   {organizer.tagline && (
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {organizer.tagline}
-                    </p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{organizer.tagline}</p>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -478,27 +479,6 @@ function OrganizerPublicPage() {
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground line-clamp-3">
               {description}
             </p>
-
-            {(organizer.website_url || organizer.contact_email || organizer.facebook_url) && (
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                {organizer.website_url && (
-                  <a href={organizer.website_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-muted-foreground hover:text-foreground">
-                    <Globe className="h-3 w-3" /> Website
-                  </a>
-                )}
-                {organizer.contact_email && (
-                  <a href={`mailto:${organizer.contact_email}`} className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-muted-foreground hover:text-foreground">
-                    Contact
-                  </a>
-                )}
-              </div>
-            )}
-
-            {!organizer.is_verified && (
-              <p className="mt-2 text-xs text-amber-400/90">
-                Organize more tournaments to get verified by NepARENA.
-              </p>
-            )}
           </div>
         </div>
 
