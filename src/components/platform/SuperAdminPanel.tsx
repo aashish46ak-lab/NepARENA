@@ -41,8 +41,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MessagesInbox } from "@/components/MessagesInbox";
+import { OrganizerRequestsPanel } from "@/components/platform/OrganizerRequestsPanel";
 
-type Tab = "overview" | "organizers" | "invites" | "users" | "messages";
+type Tab = "overview" | "organizers" | "requests" | "invites" | "users" | "messages";
 
 export function SuperAdminPanel() {
   const { user, loading } = useAuth();
@@ -123,6 +124,7 @@ export function SuperAdminPanel() {
 
   const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "requests", label: "Org requests", icon: UserPlus },
     { id: "messages", label: "Messages", icon: MessageSquare },
     { id: "organizers", label: "Organizers", icon: Building2 },
     { id: "invites", label: "Invites", icon: UserPlus },
@@ -301,6 +303,8 @@ export function SuperAdminPanel() {
             <MessagesInbox mode="platform" />
           </div>
         )}
+
+        {tab === "requests" && <OrganizerRequestsPanel />}
 
         {tab === "organizers" && (
           <div className="mt-8 space-y-4">
