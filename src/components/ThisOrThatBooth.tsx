@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { playerPhotoUrl } from "@/lib/player-photos";
 import { Button } from "@/components/ui/button";
-import { Loader2, Share2 } from "lucide-react";
+import { Download, Loader2, Share2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -73,8 +75,9 @@ async function cast(pairId: string, side: "a" | "b"): Promise<Counts> {
 }
 
 export function ThisOrThatBooth() {
+  const { user } = useAuth();
   const qc = useQueryClient();
-  const pair = useMemo(() => PAIRS[dayIndex() % PAIRS.length]!, []);
+  const pair = useMemo(() => PAIRS[dayIndex() % PAIRS.length]! , []);
   const storageKey = `neparena_tot_voted_${pair.id}`;
   const [voted, setVoted] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -98,6 +101,18 @@ export function ThisOrThatBooth() {
   const bPct = total ? 100 - aPct : 50;
 
   const vote = async (side: "a" | "b") => {
+    if (!user) {
+      toast.message("Sign in to vote", {
+        description: "Anyone can view. Voting needs login.",
+        action: {
+          label: "Sign in",
+          onClick: () => {
+            window.location.href = "/auth/";
+          },
+        },
+      });
+      return;
+    }
     if (voted) {
       toast.message("Already voted today on this device");
       return;
@@ -131,8 +146,53 @@ export function ThisOrThatBooth() {
     }
   };
 
+  const downloadResults = async () => {
+    try {
+      const W = 1080;
+      const H = 1350;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "#1e1b4b");
+      g.addColorStop(1, "#020617");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#e9d5ff";
+      ctx.font = "bold 42px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("THIS OR THAT", W / 2, 120);
+      ctx.fillStyle = "#c4b5fd";
+      ctx.font = "28px system-ui";
+      ctx.fillText(pair.label + " · NepARENA", W / 2, 170);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 32px system-ui";
+      ctx.fillText(`Total: ${total.toLocaleString()}`, W / 2, 230);
+      ctx.fillStyle = "#a78bfa";
+      ctx.font = "bold 36px system-ui";
+      ctx.fillText(`${pair.a}: ${aPct}% (${counts.a})`, W / 2, 400);
+      ctx.fillStyle = "#e879f9";
+      ctx.fillText(`${pair.b}: ${bPct}% (${counts.b})`, W / 2, 480);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "22px system-ui";
+      ctx.fillText("neparena.xyz", W / 2, H - 40);
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `neparena-this-or-that-${Date.now()}.png`;
+      a.click();
+      toast.success("Results downloaded");
+    } catch {
+      toast.error("Export failed");
+    }
+  };
+
   return (
-    <div id="this-or-that" className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-violet-950/40 via-[#0b1220] to-black">
+    <div
+      id="this-or-that"
+      className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-violet-950/40 via-[#0b1220] to-black"
+    >
       <div className="flex items-start justify-between gap-2 border-b border-white/5 px-4 py-4 sm:px-6">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-violet-300/90">
@@ -144,12 +204,27 @@ export function ThisOrThatBooth() {
             <span className="tabular-nums text-white">
               {isLoading ? "…" : total.toLocaleString()}
             </span>
+            {" · vote needs login"}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}>
-          <Share2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}>
+            <Share2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="outline" className="border-white/15" onClick={() => void downloadResults()}>
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
+
+      {!user && (
+        <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-100">
+          View free ·{" "}
+          <Link to="/auth/" className="font-semibold underline">
+            Sign in to vote
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-2">
         <Side
