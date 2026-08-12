@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { PLATFORM_NAME } from "@/lib/organizers";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { AdminChatFab } from "@/components/AdminChatFab";
+import { BeAnOrganizer } from "@/components/BeAnOrganizer";
 import { BlindRankGame } from "@/components/BlindRankGame";
 import { GoatVoteBooth } from "@/components/GoatVoteBooth";
 import { ThisOrThatBooth } from "@/components/ThisOrThatBooth";
@@ -355,6 +355,8 @@ function PlatformProfilePage() {
         </div>
       </section>
 
+      <BeAnOrganizer />
+
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-12">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Platform statistics</h2>
@@ -376,8 +378,6 @@ function PlatformProfilePage() {
           </div>
         </div>
       </section>
-
-      <AdminChatFab />
     </PageShell>
   );
 }
