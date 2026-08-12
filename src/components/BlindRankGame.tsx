@@ -16,6 +16,8 @@ type RankPlayer = {
 
 type Phase = "setup" | "play" | "done";
 
+const CARD_H = 168; // px — reel item height
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -44,11 +46,7 @@ function toPlayer(p: (typeof LEGEND_PLAYERS)[number]): RankPlayer {
   };
 }
 
-export function BlindRankGame({
-  compact = false,
-}: {
-  compact?: boolean;
-}) {
+export function BlindRankGame({ compact = false }: { compact?: boolean }) {
   const { user } = useAuth();
   const [phase, setPhase] = useState<Phase>("setup");
   const [size, setSize] = useState(5);
@@ -56,20 +54,24 @@ export function BlindRankGame({
   const [deck, setDeck] = useState<RankPlayer[]>([]);
   const [cursor, setCursor] = useState(0);
   const [slots, setSlots] = useState<(RankPlayer | null)[]>([]);
-  /** After place: keep card visible until user hits Next */
   const [placed, setPlaced] = useState(false);
   const [spinning, setSpinning] = useState(false);
-  const [spinFace, setSpinFace] = useState<RankPlayer | null>(null);
-  const spinTimer = useRef<number | null>(null);
+  const [reel, setReel] = useState<RankPlayer[]>([]);
+  const [reelY, setReelY] = useState(0);
+  const [reelAnimate, setReelAnimate] = useState(false);
+  const spinEnd = useRef<number | null>(null);
 
   const current =
-    phase === "play" && !spinning ? deck[cursor] ?? null : spinning ? spinFace : null;
+    phase === "play" && !spinning
+      ? deck[cursor] ?? null
+      : spinning
+        ? reel[reel.length - 1] ?? null
+        : null;
   const filled = slots.filter(Boolean).length;
-  const allFilled = filled >= size;
 
   useEffect(() => {
     return () => {
-      if (spinTimer.current) window.clearInterval(spinTimer.current);
+      if (spinEnd.current) window.clearTimeout(spinEnd.current);
     };
   }, []);
 
@@ -80,7 +82,8 @@ export function BlindRankGame({
     setCursor(0);
     setPlaced(false);
     setSpinning(false);
-    setSpinFace(null);
+    setReel([]);
+    setReelY(0);
     setPhase("play");
     setSizeOpen(false);
   };
@@ -94,8 +97,7 @@ export function BlindRankGame({
     });
     setPlaced(true);
     if (cursor + 1 >= size) {
-      // last player placed — finish after brief moment
-      window.setTimeout(() => setPhase("done"), 400);
+      window.setTimeout(() => setPhase("done"), 350);
     }
   };
 
@@ -109,7 +111,6 @@ export function BlindRankGame({
       setPhase("done");
       return;
     }
-
     const nextIdx = cursor + 1;
     const target = deck[nextIdx];
     if (!target) {
@@ -117,35 +118,43 @@ export function BlindRankGame({
       return;
     }
 
-    // Spin reel of random faces then land on next deck player
+    // Build smooth vertical reel: random faces + final target
+    const faces = shuffle(LEGEND_PLAYERS.map(toPlayer)).slice(0, 10);
+    const strip = [...faces, target];
+    setReel(strip);
+    setReelY(0);
+    setReelAnimate(false);
     setSpinning(true);
     setPlaced(false);
-    const faces = shuffle(LEGEND_PLAYERS.map(toPlayer)).slice(0, 18);
-    let tick = 0;
-    if (spinTimer.current) window.clearInterval(spinTimer.current);
-    spinTimer.current = window.setInterval(() => {
-      setSpinFace(faces[tick % faces.length]!);
-      tick += 1;
-      if (tick > 14) {
-        if (spinTimer.current) window.clearInterval(spinTimer.current);
-        spinTimer.current = null;
-        setSpinFace(target);
-        setCursor(nextIdx);
-        setSpinning(false);
-        setPlaced(false);
-      }
-    }, 70);
+
+    // Start CSS transition on next frame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setReelAnimate(true);
+        setReelY(-(strip.length - 1) * CARD_H);
+      });
+    });
+
+    if (spinEnd.current) window.clearTimeout(spinEnd.current);
+    spinEnd.current = window.setTimeout(() => {
+      setCursor(nextIdx);
+      setSpinning(false);
+      setReelAnimate(false);
+      setReelY(0);
+      setReel([target]);
+      setPlaced(false);
+    }, 1400);
   };
 
   const reset = () => {
-    if (spinTimer.current) window.clearInterval(spinTimer.current);
+    if (spinEnd.current) window.clearTimeout(spinEnd.current);
     setPhase("setup");
     setDeck([]);
     setSlots([]);
     setCursor(0);
     setPlaced(false);
     setSpinning(false);
-    setSpinFace(null);
+    setReel([]);
   };
 
   const exportPng = async () => {
@@ -168,72 +177,53 @@ export function BlindRankGame({
       canvas.height = H;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-
       const bg = ctx.createLinearGradient(0, 0, 0, H);
       bg.addColorStop(0, "#020617");
       bg.addColorStop(0.45, "#0c1a3a");
       bg.addColorStop(1, "#020617");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
-
       const logo = await loadImage("/neparena-logo.png");
       if (logo) ctx.drawImage(logo, W / 2 - 48, 36, 96, 96);
-
       ctx.fillStyle = "#e0f2fe";
       ctx.font = "bold 44px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("MY BLIND RANKING TEST", W / 2, 170);
       ctx.fillStyle = "rgba(148,163,184,0.95)";
-      ctx.font = "26px system-ui, sans-serif";
+      ctx.font = "26px system-ui";
       ctx.fillText("Powered by NepARENA", W / 2, 210);
 
-      const gap = 14;
-      const cols = 2;
-      const cellW = Math.floor((W - 128 - gap) / cols);
-      const cellH = cellW;
+      const gap = 12;
+      const cols = Math.min(5, size);
+      const cellW = Math.floor((W - 96 - gap * (cols - 1)) / cols);
+      const cellH = Math.floor(cellW * 1.25);
       const startY = 250;
-
       for (let i = 0; i < slots.length; i++) {
         const p = slots[i];
         if (!p) continue;
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const x = 64 + col * (cellW + gap);
-        const y = startY + row * (cellH + gap + 8);
-
-        ctx.fillStyle = "rgba(15,23,42,0.95)";
-        roundRect(ctx, x, y, cellW, cellH, 18);
-        ctx.fill();
-
+        const x = 48 + col * (cellW + gap);
+        const y = startY + row * (cellH + gap);
         const photo = await loadImage(p.photo);
         if (photo) {
-          ctx.save();
-          roundRect(ctx, x + 8, y + 8, cellW - 16, cellH - 48, 12);
-          ctx.clip();
-          ctx.drawImage(photo, x + 8, y + 8, cellW - 16, cellH - 48);
-          ctx.restore();
+          ctx.drawImage(photo, x, y, cellW, cellH);
+        } else {
+          ctx.fillStyle = "#1e293b";
+          ctx.fillRect(x, y, cellW, cellH);
         }
-
         ctx.fillStyle = "#0ea5e9";
         ctx.beginPath();
-        ctx.arc(x + 28, y + 28, 18, 0, Math.PI * 2);
+        ctx.arc(x + 22, y + 22, 16, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 16px system-ui";
+        ctx.font = "bold 14px system-ui";
         ctx.textAlign = "center";
-        ctx.fillText(`#${i + 1}`, x + 28, y + 33);
-
-        ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 18px system-ui";
-        ctx.textAlign = "center";
-        ctx.fillText(p.name, x + cellW / 2, y + cellH - 16);
+        ctx.fillText(`#${i + 1}`, x + 22, y + 27);
       }
-
-      ctx.textAlign = "center";
       ctx.fillStyle = "rgba(148,163,184,0.85)";
       ctx.font = "22px system-ui";
       ctx.fillText("neparena.xyz/games/blind-ranking", W / 2, H - 40);
-
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
       a.download = `neparena-blind-ranking-${Date.now()}.png`;
@@ -265,13 +255,9 @@ export function BlindRankGame({
   if (compact) {
     return (
       <div className="rounded-3xl border border-sky-500/20 bg-gradient-to-br from-slate-950 to-[#0a1628] p-5 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-sky-400">
-          Viral game
-        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-sky-400">Viral game</p>
         <h3 className="mt-1 text-lg font-bold text-white">Blind Ranking</h3>
-        <p className="mt-1 text-xs text-slate-400">
-          Spin · rank · share — play free
-        </p>
+        <p className="mt-1 text-xs text-slate-400">Spin · rank · share</p>
         <Button asChild className="mt-4 bg-sky-500 font-semibold text-white hover:bg-sky-400">
           <a href="/games/blind-ranking">
             <Play className="mr-2 h-4 w-4" /> Play now
@@ -281,12 +267,16 @@ export function BlindRankGame({
     );
   }
 
+  const displayCard = spinning
+    ? null
+    : current;
+
   return (
-    <div className="mx-auto max-w-lg overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-b from-slate-950 via-[#0a1628] to-black">
-      <div className="flex items-center justify-between border-b border-white/5 px-3 py-2.5">
+    <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-b from-slate-950 via-[#0a1628] to-black">
+      <div className="flex items-center justify-between border-b border-white/5 px-3 py-2">
         <div>
           <p className="text-sm font-bold text-white">Blind Ranking</p>
-          <p className="text-[10px] text-slate-500">NepARENA · photos on</p>
+          <p className="text-[10px] text-slate-500">eFootball cards · NepARENA</p>
         </div>
         {phase === "setup" && (
           <div className="relative">
@@ -329,13 +319,13 @@ export function BlindRankGame({
 
       {phase === "setup" && (
         <div className="space-y-3 p-3">
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="flex flex-wrap justify-center gap-1.5">
             {Array.from({ length: size }, (_, i) => (
               <div
                 key={i}
-                className="aspect-square rounded-lg border border-dashed border-white/15 bg-white/[0.03] grid place-items-center"
+                className="grid h-11 w-11 place-items-center rounded-lg border border-dashed border-white/15 bg-white/[0.03] text-[10px] font-bold text-slate-500"
               >
-                <span className="text-[10px] font-bold text-slate-500">#{i + 1}</span>
+                #{i + 1}
               </div>
             ))}
           </div>
@@ -346,9 +336,9 @@ export function BlindRankGame({
       )}
 
       {phase === "play" && (
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-2 p-2.5">
-          {/* LEFT — square rank slots */}
-          <div className="max-h-[62vh] space-y-1.5 overflow-y-auto pr-0.5">
+        <div className="flex gap-2 p-2.5">
+          {/* Compact rank column — mobile-friendly size */}
+          <div className="flex w-[4.5rem] shrink-0 flex-col gap-1.5 sm:w-[5.25rem]">
             {slots.map((p, i) => {
               const open = !p && !!current && !placed && !spinning;
               return (
@@ -358,99 +348,92 @@ export function BlindRankGame({
                   disabled={!open}
                   onClick={() => place(i)}
                   className={cn(
-                    "relative aspect-square w-full overflow-hidden rounded-xl border transition",
+                    "relative h-12 w-full overflow-hidden rounded-lg border sm:h-14",
                     p
                       ? "border-sky-500/40"
                       : open
-                        ? "border-sky-400/60 bg-sky-500/10 animate-pulse"
-                        : "border-white/10 bg-white/[0.03] opacity-70",
+                        ? "border-sky-400/70 bg-sky-500/10 animate-pulse"
+                        : "border-white/10 bg-white/[0.03]",
                   )}
                 >
                   {p ? (
                     <>
-                      <img
-                        src={p.photo}
-                        alt={p.name}
-                        className="absolute inset-0 h-full w-full object-cover object-top"
-                        onError={(e) => {
-                          e.currentTarget.src = playerPhotoUrl(p.name);
-                        }}
-                      />
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-1 pb-1.5 pt-6">
-                        <p className="truncate text-center text-[9px] font-semibold leading-tight text-white">
-                          {p.name}
-                        </p>
-                      </div>
-                      <span className="absolute left-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-sky-500 text-[9px] font-black text-white">
+                      <img src={p.photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      <span className="absolute left-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-sky-500 text-[8px] font-black text-white">
                         {i + 1}
                       </span>
                     </>
                   ) : (
-                    <div className="grid h-full place-items-center">
-                      <span className="text-[11px] font-bold text-slate-500">#{i + 1}</span>
-                    </div>
+                    <span className="grid h-full place-items-center text-[10px] font-bold text-slate-500">
+                      #{i + 1}
+                    </span>
                   )}
                 </button>
               );
             })}
           </div>
 
-          {/* RIGHT — player card + Next always under card */}
-          <div className="flex flex-col items-center rounded-xl border border-white/10 bg-black/30 p-2">
+          {/* Card + smooth reel */}
+          <div className="flex min-w-0 flex-1 flex-col items-center">
             <div
-              className={cn(
-                "relative aspect-[3/4] w-full max-w-[160px] overflow-hidden rounded-xl ring-1 ring-white/20",
-                spinning && "ring-sky-400/60",
-              )}
+              className="relative w-full max-w-[140px] overflow-hidden rounded-xl ring-1 ring-white/20 sm:max-w-[160px]"
+              style={{ height: CARD_H }}
             >
-              {current ? (
-                <>
-                  <img
-                    key={current.name + (spinning ? "-spin" : "")}
-                    src={current.photo}
-                    alt={current.name}
-                    className={cn(
-                      "h-full w-full object-cover object-top transition",
-                      spinning && "opacity-90 scale-105",
-                    )}
-                    onError={(e) => {
-                      e.currentTarget.src = playerPhotoUrl(current.name);
-                    }}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-2 pb-2 pt-8">
-                    <p className="text-center text-xs font-bold leading-tight text-white">
-                      {spinning ? "…" : current.name}
-                    </p>
-                    {!spinning && (
-                      <p className="text-center text-[10px] text-slate-300">
-                        {current.positions[0]} · {current.overall}
-                      </p>
-                    )}
-                  </div>
-                </>
+              {spinning && reel.length > 0 ? (
+                <div
+                  className="absolute inset-x-0 top-0"
+                  style={{
+                    transform: `translateY(${reelY}px)`,
+                    transition: reelAnimate
+                      ? "transform 1.25s cubic-bezier(0.12, 0.75, 0.2, 1)"
+                      : "none",
+                  }}
+                >
+                  {reel.map((p, i) => (
+                    <img
+                      key={`${p.name}-${i}`}
+                      src={p.photo}
+                      alt=""
+                      className="w-full object-cover"
+                      style={{ height: CARD_H }}
+                    />
+                  ))}
+                </div>
+              ) : displayCard ? (
+                <img
+                  src={displayCard.photo}
+                  alt={displayCard.name}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="grid h-full place-items-center text-xs text-slate-500">—</div>
               )}
-              {spinning && (
-                <div className="pointer-events-none absolute inset-0 bg-sky-500/10" />
-              )}
             </div>
 
-            <p className="mt-2 text-center text-[10px] text-slate-500">
+            {!spinning && displayCard && (
+              <div className="mt-1.5 text-center">
+                <p className="text-xs font-bold text-white">{displayCard.name}</p>
+                <p className="text-[10px] text-slate-400">
+                  {displayCard.positions[0]} · {displayCard.overall}
+                </p>
+              </div>
+            )}
+
+            <p className="mt-1 text-center text-[10px] text-slate-500">
               {spinning
                 ? "Spinning…"
                 : placed
-                  ? "Locked — press Next"
-                  : "Tap a square rank on the left"}
+                  ? "Locked — Next"
+                  : "Tap rank on left"}
             </p>
 
             <Button
               size="sm"
-              disabled={spinning || (!placed && !allFilled)}
+              disabled={spinning || !placed}
               onClick={nextPlayer}
-              className="mt-2 w-full max-w-[160px] bg-sky-500 font-bold text-white hover:bg-sky-400 disabled:opacity-40"
+              className="mt-2 w-full max-w-[140px] bg-sky-500 font-bold text-white hover:bg-sky-400 disabled:opacity-40"
             >
-              {spinning ? "Spinning…" : placed ? "Next →" : "Next"}
+              {spinning ? "…" : "Next →"}
             </Button>
           </div>
         </div>
@@ -458,21 +441,13 @@ export function BlindRankGame({
 
       {phase === "done" && (
         <div className="space-y-3 p-3">
-          <p className="text-center text-sm font-bold text-sky-200">
-            Your Blind Ranking is Complete!
-          </p>
-          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+          <p className="text-center text-sm font-bold text-sky-200">Ranking complete!</p>
+          <div className="flex flex-wrap justify-center gap-1.5">
             {slots.map((p, i) =>
               p ? (
-                <div
-                  key={i}
-                  className="relative aspect-square overflow-hidden rounded-xl border border-white/10"
-                >
-                  <img src={p.photo} alt={p.name} className="h-full w-full object-cover object-top" />
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-0.5 pb-1 pt-4">
-                    <p className="truncate text-center text-[8px] font-semibold text-white">{p.name}</p>
-                  </div>
-                  <span className="absolute left-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-sky-500 text-[9px] font-black text-white">
+                <div key={i} className="relative h-16 w-12 overflow-hidden rounded-lg border border-white/10 sm:h-20 sm:w-14">
+                  <img src={p.photo} alt={p.name} className="h-full w-full object-cover" />
+                  <span className="absolute left-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-sky-500 text-[8px] font-black text-white">
                     {i + 1}
                   </span>
                 </div>
@@ -490,26 +465,8 @@ export function BlindRankGame({
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <p className="text-center text-[10px] text-slate-500">Download needs login · Share · Play again</p>
         </div>
       )}
     </div>
   );
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }
