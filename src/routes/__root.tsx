@@ -29,6 +29,11 @@ import {
   websiteJsonLd,
 } from "@/lib/seo";
 
+/** Set true after AdSense / site verification is complete */
+const ENABLE_LOGIN_POPUPS = false;
+/** Set true to show Install FAB again */
+const ENABLE_INSTALL_FAB = false;
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 text-white">
@@ -128,6 +133,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
       },
       { name: "googlebot", content: "index, follow" },
+      { name: "google-adsense-account", content: "ca-pub-3033911443659343" },
       { name: "theme-color", content: "#0a0a0a" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "application-name", content: SITE_NAME },
@@ -162,6 +168,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         type: "application/ld+json",
         children: websiteJsonLd(),
+      },
+      {
+        async: true,
+        src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343",
+        crossOrigin: "anonymous",
       },
     ],
   }),
@@ -208,7 +219,7 @@ function RootComponent() {
           )}
           <RoleRedirect />
           <Outlet />
-          <PlatformInstallFab />
+          {ENABLE_INSTALL_FAB && <PlatformInstallFab />}
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
       </AuthProvider>
@@ -229,3 +240,6 @@ function PlatformInstallFab() {
   if (!show) return null;
   return <InstallFAB />;
 }
+
+// Re-export flag for GuestPopup if mounted elsewhere
+export { ENABLE_LOGIN_POPUPS };
