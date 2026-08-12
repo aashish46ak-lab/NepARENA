@@ -18,6 +18,10 @@ import {
   Clock,
   XCircle,
   AlertCircle,
+  Sparkles,
+  ArrowRight,
+  Trophy,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -135,16 +139,14 @@ export function BeAnOrganizer() {
 
   const submit = async () => {
     if (!user) {
-      toast.message("Sign in to apply",
-        {
-          action: {
-            label: "Sign in",
-            onClick: () => {
-              window.location.href = "/auth/";
-            },
+      toast.message("Sign in to apply", {
+        action: {
+          label: "Sign in",
+          onClick: () => {
+            window.location.href = "/auth/";
           },
         },
-      );
+      });
       return;
     }
     const name = orgName.trim();
@@ -206,24 +208,36 @@ export function BeAnOrganizer() {
   return (
     <section className="border-t border-white/5">
       <div className="mx-auto max-w-3xl px-4 py-12">
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-6 sm:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-neutral-100 text-black">
-                <Building2 className="h-6 w-6" />
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-sky-400/30 bg-gradient-to-br from-sky-950/90 via-slate-950 to-violet-950/80 p-6 shadow-[0_0_60px_rgba(56,189,248,0.12)] sm:p-8">
+          {/* Glow orbs */}
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-sky-500/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-violet-500/20 blur-3xl" />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-4">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-violet-600 text-white shadow-lg shadow-sky-500/30 ring-2 ring-white/20">
+                <Building2 className="h-7 w-7" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-neutral-50">Be an Organizer</h2>
-                <p className="mt-0.5 text-sm text-neutral-400">
-                  Run tournaments on NepARENA — apply with logo, banner & theme.
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-black tracking-tight text-white sm:text-2xl">
+                    Be an Organizer
+                  </h2>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-200 ring-1 ring-sky-400/30">
+                    <Sparkles className="h-3 w-3" /> Open
+                  </span>
+                </div>
+                <p className="mt-1.5 max-w-md text-sm leading-relaxed text-slate-300">
+                  Launch your own branded esports community on NepARENA — tournaments,
+                  members, themes & results tools included.
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
               {myReq && (
                 <Button
                   variant="outline"
-                  className="border-white/15"
+                  className="border-white/20 bg-white/5 text-white hover:bg-white/10"
                   onClick={() => {
                     setOpen(true);
                     setMode("status");
@@ -233,19 +247,36 @@ export function BeAnOrganizer() {
                 </Button>
               )}
               <Button
-                className="bg-neutral-100 text-black hover:bg-white"
+                className="bg-gradient-to-r from-sky-400 to-violet-500 font-bold text-white shadow-lg shadow-sky-500/25 hover:opacity-95"
                 onClick={() => {
                   setOpen(true);
                   setMode(myReq ? "status" : "form");
                 }}
               >
                 {myReq ? "Open panel" : "Apply now"}
+                <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
             </div>
           </div>
 
+          <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
+            {[
+              { icon: Trophy, t: "Full tournament tools" },
+              { icon: Palette, t: "Custom theme & brand" },
+              { icon: MessageCircle, t: "Direct admin chat" },
+            ].map((f) => (
+              <div
+                key={f.t}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs font-medium text-slate-200"
+              >
+                <f.icon className="h-3.5 w-3.5 shrink-0 text-sky-300" />
+                {f.t}
+              </div>
+            ))}
+          </div>
+
           {myReq && (
-            <div className="mt-4">
+            <div className="relative mt-4">
               {(() => {
                 const s = STATUS_UI[myReq.status] ?? STATUS_UI.pending;
                 const Icon = s.icon;
