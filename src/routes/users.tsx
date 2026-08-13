@@ -1,5 +1,6 @@
 /**
- * Platform Followers — signed-up users.
+ * Platform users directory — all registered profiles.
+ * Not the same as organizer_followers or user_follows.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { buildSeoHead } from "@/lib/seo";
@@ -48,10 +49,10 @@ function PlatformUsersPage() {
     <PageShell force="platform">
       <div className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Users className="h-6 w-6" /> Followers
+          <Users className="h-6 w-6" /> Users
         </h1>
         <p className="mt-1 text-sm text-neutral-500">
-          Signed-up users on {PLATFORM_NAME}
+          Registered players on {PLATFORM_NAME}. Open a profile to follow them.
         </p>
         {isLoading && (
           <p className="mt-8 text-sm text-neutral-500">Loading…</p>
