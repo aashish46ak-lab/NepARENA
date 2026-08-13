@@ -28,7 +28,7 @@ function FollowingPage() {
     enabled: !!user?.id,
     queryFn: async () => {
       const { data } = await supabase
-        .from("organizer_follows")
+        .from("organizer_followers")
         .select("organizer_id")
         .eq("user_id", user!.id);
       return (data ?? []).map((r: { organizer_id: string }) => r.organizer_id);
