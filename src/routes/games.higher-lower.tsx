@@ -2,28 +2,29 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { HigherLowerGame } from "@/components/HigherLowerGame";
 import { buildSeoHead } from "@/lib/seo";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/games/higher-lower")({
+export const Route = createFileRoute("/higher-lower")({
   head: () => ({
     ...buildSeoHead({
       title: "Higher or Lower — NepARENA",
-      description: "Guess whether the next football legend has a higher or lower overall rating.",
-      path: "/games/higher-lower",
+      description: "Guess the next football legend overall rating on NepARENA.",
+      path: "/higher-lower",
     }),
   }),
-  component: Page,
+  component: HigherLowerPage,
 });
 
-function Page() {
+function HigherLowerPage() {
   return (
     <PageShell force="platform">
       <div className="mx-auto max-w-lg px-4 py-8">
-        <div className="mb-4 flex items-center justify-between text-sm">
-          <Link to="/" className="text-neutral-400 hover:text-neutral-200">
-            Home
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-neutral-400">
+          <Link to="/games">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Games
           </Link>
-          <span className="text-neutral-500">Games</span>
-        </div>
+        </Button>
         <HigherLowerGame />
       </div>
     </PageShell>

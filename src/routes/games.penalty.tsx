@@ -2,13 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { PenaltyGame } from "@/components/PenaltyGame";
 import { buildSeoHead } from "@/lib/seo";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/games/penalty")({
+export const Route = createFileRoute("/penalty")({
   head: () => ({
     ...buildSeoHead({
       title: "Penalty Shootout — NepARENA",
-      description: "Play Penalty Shootout on NepARENA — pick left, center or right and beat the keeper.",
-      path: "/games/penalty",
+      description:
+        "Play Penalty Shootout on NepARENA — swipe to shoot, beat the keeper in five kicks.",
+      path: "/penalty",
     }),
   }),
   component: PenaltyPage,
@@ -18,12 +21,11 @@ function PenaltyPage() {
   return (
     <PageShell force="platform">
       <div className="mx-auto max-w-lg px-4 py-8">
-        <div className="mb-4 flex items-center justify-between text-sm">
-          <Link to="/" className="text-neutral-400 hover:text-neutral-200">
-            Home
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-neutral-400">
+          <Link to="/games">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Games
           </Link>
-          <span className="text-neutral-500">Games</span>
-        </div>
+        </Button>
         <PenaltyGame />
       </div>
     </PageShell>
