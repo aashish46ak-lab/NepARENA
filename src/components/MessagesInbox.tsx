@@ -178,12 +178,26 @@ export function MessagesInbox({
           seen_by_other: m.is_from_admin ? !!m.read_by_user : !!m.read_by_admin,
         })),
       );
-      await supabase
-        .from("platform_messages")
-        .update({ read_by_admin: true })
-        .eq("user_id", uid)
-        .eq("is_from_admin", false)
-        .eq("read_by_admin", false);
+      // Optimistic: clear this thread's unread in UI immediately
+      setThreads((prev) => {
+        const next = prev.map((t) =>
+          t.user_id === uid ? { ...t, unread: 0 } : t,
+        );
+        onUnreadChange?.(next.reduce((s, t) => s + t.unread, 0));
+        return next;
+      });
+      // Prefer RPC (bypasses RLS); fall back to direct update
+      const rpc = await supabase.rpc("admin_mark_platform_thread_read", {
+        p_user_id: uid,
+      });
+      if (rpc.error) {
+        await supabase
+          .from("platform_messages")
+          .update({ read_by_admin: true })
+          .eq("user_id", uid)
+          .eq("is_from_admin", false)
+          .eq("read_by_admin", false);
+      }
     } else if (organizerId) {
       const { data } = await supabase
         .from("organizer_messages")
@@ -218,6 +232,13 @@ export function MessagesInbox({
             : !!m.read_by_organizer,
         })),
       );
+      setThreads((prev) => {
+        const next = prev.map((t) =>
+          t.user_id === uid ? { ...t, unread: 0 } : t,
+        );
+        onUnreadChange?.(next.reduce((s, t) => s + t.unread, 0));
+        return next;
+      });
       await supabase
         .from("organizer_messages")
         .update({ read_by_organizer: true })
