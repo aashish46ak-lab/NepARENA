@@ -1,14 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { buildSeoHead } from "@/lib/seo";
-import { Gamepad2, Play, Shuffle, Target, TrendingUp, ArrowLeft, Brain } from "lucide-react";
+import { Gamepad2, Play, Shuffle, Target, TrendingUp, ArrowLeft, Brain, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/games/")({
   head: () => ({
     ...buildSeoHead({
       title: "Play Games — NepARENA",
-      description: "Blind Ranking, Penalty, Higher or Lower, Daily Quiz and more on NepARENA.",
+      description: "Blind Ranking, Penalty, Higher or Lower, Daily Quiz, Guess the Club on NepARENA.",
       path: "/games",
     }),
   }),
@@ -24,6 +24,15 @@ const GAMES = [
     tag: "Daily",
     icon: Brain,
     accent: "from-violet-950/80 to-black border-violet-500/25",
+  },
+  {
+    id: "guess-club",
+    href: "/games/guess-club",
+    title: "Guess the Club",
+    desc: "Hints only — name the club. Fresh set every run.",
+    tag: "New",
+    icon: Building2,
+    accent: "from-cyan-950/80 to-black border-cyan-500/25",
   },
   {
     id: "blind-ranking",
@@ -47,8 +56,8 @@ const GAMES = [
     id: "higher-lower",
     href: "/games/higher-lower",
     title: "Higher or Lower",
-    desc: "Fresh decks every run · multi-stat comparisons.",
-    tag: "Updated",
+    desc: "FIFA Mobile-style all-time peak OVR.",
+    tag: "Live",
     icon: TrendingUp,
     accent: "from-amber-950/70 to-black border-amber-500/20",
   },
