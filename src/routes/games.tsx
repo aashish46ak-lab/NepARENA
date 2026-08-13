@@ -86,15 +86,13 @@ function GamesLobbyPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-neutral-400">{g.desc}</p>
-                    <Button
-                      asChild
-                      size="sm"
-                      className="mt-3 bg-neutral-100 font-semibold text-black hover:bg-white"
+                    {/* Hard navigation — reliable across SPA route matching quirks */}
+                    <a
+                      href={g.href}
+                      className="mt-3 inline-flex h-8 items-center justify-center rounded-md bg-neutral-100 px-3 text-sm font-semibold text-black hover:bg-white"
                     >
-                      <Link to={g.href}>
-                        <Play className="mr-1.5 h-3.5 w-3.5" /> Play
-                      </Link>
-                    </Button>
+                      <Play className="mr-1.5 h-3.5 w-3.5" /> Play
+                    </a>
                   </div>
                 </div>
               </div>
