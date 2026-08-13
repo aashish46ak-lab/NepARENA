@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { GlobalSearchButton } from "@/components/GlobalSearch";
 import { isSuperAdminEmail, PLATFORM_NAME } from "@/lib/organizers";
 
 const PLATFORM_NAV = [
@@ -131,6 +132,7 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
             {brandName}
           </span>
         </Link>
+        <GlobalSearchButton />
 
         <nav className="ml-4 hidden items-center gap-1 md:flex">
           {NAV.map((n) => (
@@ -154,7 +156,19 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          {user && mode === "organizer" && <NotificationsBell />}
+          {user && (
+            <>
+              <Link
+                to="/messages"
+                className="grid h-9 w-9 place-items-center rounded-full text-neutral-300 transition hover:bg-white/10 hover:text-white"
+                aria-label="Messages"
+                title="Messages"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </Link>
+              <NotificationsBell />
+            </>
+          )}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -171,17 +185,16 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile">
-                    <UserIcon className="mr-2 h-4 w-4" /> Profile
-                  </Link>
-                </DropdownMenuItem>
-                {user?.id && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/members/$id" params={{ id: user.id }}>
-                      <UserIcon className="mr-2 h-4 w-4" /> Public profile
+                  {isAdmin || isSuperAdmin ? (
+                    <Link to="/profile">
+                      <UserIcon className="mr-2 h-4 w-4" /> Profile
                     </Link>
-                  </DropdownMenuItem>
-                )}
+                  ) : (
+                    <Link to="/members/$id" params={{ id: user.id }}>
+                      <UserIcon className="mr-2 h-4 w-4" /> Profile
+                    </Link>
+                  )}
+                </DropdownMenuItem>
                 {isSuperAdmin && (
                   <DropdownMenuItem asChild>
                     <Link to="/platform">
@@ -231,6 +244,11 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
                     {n.label}
                   </Link>
                 ))}
+                {user && (
+                  <Link to="/messages" className="rounded-md px-3 py-2 hover:bg-white/5">
+                    Messages
+                  </Link>
+                )}
               </div>
             </SheetContent>
           </Sheet>
