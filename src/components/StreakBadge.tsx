@@ -1,16 +1,42 @@
-import { formatStreak } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
+
+/** Compact identity badge: 🔥12 — used beside usernames everywhere */
+export function InlineStreak({
+  streak,
+  className,
+}: {
+  streak?: number | null;
+  className?: string;
+}) {
+  const n = Number(streak ?? 0);
+  if (!n || n < 1) return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums text-amber-300",
+        className,
+      )}
+      title={`${n} day login streak`}
+    >
+      <span aria-hidden>🔥</span>
+      {n}
+    </span>
+  );
+}
 
 export function StreakBadge({
   streak,
   longest,
   className,
+  compact,
 }: {
   streak: number;
   longest?: number;
   className?: string;
+  compact?: boolean;
 }) {
   if (!streak || streak <= 0) {
+    if (compact) return null;
     return (
       <span
         className={cn(
@@ -22,6 +48,11 @@ export function StreakBadge({
       </span>
     );
   }
+
+  if (compact) {
+    return <InlineStreak streak={streak} className={className} />;
+  }
+
   return (
     <span
       className={cn(
@@ -30,7 +61,9 @@ export function StreakBadge({
       )}
       title={longest ? `Best: ${longest} days` : undefined}
     >
-      {formatStreak(streak)}
+      <span aria-hidden>🔥⚽</span>
+      <span className="tabular-nums">{streak}</span>
+      <span className="font-medium text-amber-200/80">day streak</span>
       {longest != null && longest > streak && (
         <span className="font-normal text-amber-200/60">· best {longest}</span>
       )}
