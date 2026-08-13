@@ -35,11 +35,13 @@ import {
   unfollowUser,
 } from "@/lib/user-follows";
 import { toast } from "sonner";
+import { MessageProfileButton } from "@/components/MessageProfileButton";
+import { SocialFeed } from "@/components/SocialFeed";
 
 export const Route = createFileRoute("/members/$id")({
   head: () => ({
     ...buildSeoHead({
-      title: "Member profile",
+      title: "Profile",
       description: "Player profile on NepARENA",
       path: "/members",
     }),
@@ -169,7 +171,6 @@ function MemberProfilePage() {
         }
       }
 
-      // Organizer follows (communities) — NOT user followers
       let followingOrgs: {
         id: string;
         name: string;
@@ -193,7 +194,6 @@ function MemberProfilePage() {
         followingOrgs = ((orgs ?? []) as typeof followingOrgs).filter(Boolean);
       }
 
-      // User ↔ user social graph
       const [followerCount, followingCount, followers, followingUsers] =
         await Promise.all([
           getUserFollowerCount(id),
@@ -348,28 +348,31 @@ function MemberProfilePage() {
                 </AvatarFallback>
               </Avatar>
               {!isOwn && (
-                <Button
-                  size="sm"
-                  className={
-                    iFollow
-                      ? "border border-white/15 bg-white/10 text-white hover:bg-white/15"
-                      : "bg-neutral-100 text-black hover:bg-white"
-                  }
-                  disabled={followBusy}
-                  onClick={() => void toggleFollow()}
-                >
-                  {followBusy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : iFollow ? (
-                    <>
-                      <UserMinus className="mr-1.5 h-3.5 w-3.5" /> Following
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Follow
-                    </>
-                  )}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <MessageProfileButton peerId={id} />
+                  <Button
+                    size="sm"
+                    className={
+                      iFollow
+                        ? "border border-white/15 bg-white/10 text-white hover:bg-white/15"
+                        : "bg-neutral-100 text-black hover:bg-white"
+                    }
+                    disabled={followBusy}
+                    onClick={() => void toggleFollow()}
+                  >
+                    {followBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : iFollow ? (
+                      <>
+                        <UserMinus className="mr-1.5 h-3.5 w-3.5" /> Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Follow
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
             <div className="mt-3 min-w-0 space-y-2">
@@ -441,7 +444,6 @@ function MemberProfilePage() {
           ))}
         </div>
 
-        {/* User followers / following — NOT organizer lists */}
         {(followers.length > 0 || followingUsers.length > 0) && (
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
@@ -503,7 +505,6 @@ function MemberProfilePage() {
           </div>
         )}
 
-        {/* Organizer communities — clearly labeled, separate from people */}
         {followingOrgs.length > 0 && (
           <div>
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -540,6 +541,11 @@ function MemberProfilePage() {
               No All-Time XI published yet
             </div>
           )}
+        </div>
+
+        <div>
+          <h2 className="mb-3 text-lg font-bold">Posts</h2>
+          <SocialFeed authorId={id} />
         </div>
 
         {achievements.length > 0 && (
