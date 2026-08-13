@@ -18,14 +18,17 @@ import {
   Shield,
   User as UserIcon,
   Building2,
+  Newspaper,
 } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { GlobalSearchButton } from "@/components/GlobalSearch";
+import { GlobalSearchBar } from "@/components/GlobalSearch";
+import { MessagesNavButton } from "@/components/MessagesNavButton";
 import { isSuperAdminEmail, PLATFORM_NAME } from "@/lib/organizers";
 
 const PLATFORM_NAV = [
   { to: "/" as const, label: "Home" },
+  { to: "/feed" as const, label: "Feed" },
   { to: "/organizers" as const, label: "Organizers" },
 ];
 
@@ -97,7 +100,8 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
       style={
         mode === "organizer"
           ? {
-              borderBottomColor: "color-mix(in srgb, var(--org-accent, #525252) 35%, transparent)",
+              borderBottomColor:
+                "color-mix(in srgb, var(--org-accent, #525252) 35%, transparent)",
             }
           : undefined
       }
@@ -132,7 +136,6 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
             {brandName}
           </span>
         </Link>
-        <GlobalSearchButton />
 
         <nav className="ml-4 hidden items-center gap-1 md:flex">
           {NAV.map((n) => (
@@ -155,20 +158,8 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          {user && (
-            <>
-              <Link
-                to="/messages"
-                className="grid h-9 w-9 place-items-center rounded-full text-neutral-300 transition hover:bg-white/10 hover:text-white"
-                aria-label="Messages"
-                title="Messages"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              </Link>
-              <NotificationsBell />
-            </>
-          )}
+        <div className="ml-auto flex items-center gap-1.5">
+          {user && <NotificationsBell />}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -194,6 +185,11 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
                       <UserIcon className="mr-2 h-4 w-4" /> Profile
                     </Link>
                   )}
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/feed">
+                    <Newspaper className="mr-2 h-4 w-4" /> Feed
+                  </Link>
                 </DropdownMenuItem>
                 {isSuperAdmin && (
                   <DropdownMenuItem asChild>
@@ -245,15 +241,29 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
                   </Link>
                 ))}
                 {user && (
-                  <Link to="/messages" className="rounded-md px-3 py-2 hover:bg-white/5">
-                    Messages
-                  </Link>
+                  <>
+                    <Link to="/messages" className="rounded-md px-3 py-2 hover:bg-white/5">
+                      Messages
+                    </Link>
+                    <Link to="/feed" className="rounded-md px-3 py-2 hover:bg-white/5">
+                      Feed
+                    </Link>
+                  </>
                 )}
               </div>
             </SheetContent>
           </Sheet>
         </div>
       </div>
+
+      {mode === "platform" && (
+        <div className="border-t border-white/5 bg-[#0a0a0a]/95">
+          <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2">
+            <GlobalSearchBar />
+            <MessagesNavButton />
+          </div>
+        </div>
+      )}
 
       {mode === "organizer" && isAdmin && activeMenu && "sub" in activeMenu && activeMenu.sub && (
         <div className="border-t border-border/60 glass">
