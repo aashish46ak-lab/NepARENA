@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase, type AppNotification } from "@/lib/supabase";
 import { followUser, isFollowingUser } from "@/lib/user-follows";
@@ -24,6 +24,7 @@ type NotifRow = AppNotification & {
 
 export function NotificationsBell() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<NotifRow[]>([]);
   const [mutualMap, setMutualMap] = useState<Record<string, boolean>>({});
   const [followingBack, setFollowingBack] = useState<Record<string, boolean>>({});
@@ -80,7 +81,11 @@ export function NotificationsBell() {
         },
         (payload) => {
           void load();
-          const row = payload.new as { title?: string; body?: string | null } | null;
+          const row = payload.new as {
+            title?: string;
+            body?: string | null;
+            link?: string | null;
+          } | null;
           if (
             row?.title &&
             typeof Notification !== "undefined" &&
@@ -96,6 +101,16 @@ export function NotificationsBell() {
               n.onclick = () => {
                 window.focus();
                 n.close();
+                if (row.link) {
+                  try {
+                    const path = row.link.startsWith("http")
+                      ? new URL(row.link).pathname + new URL(row.link).search
+                      : row.link;
+                    window.location.href = path;
+                  } catch {
+                    /* ignore */
+                  }
+                }
               };
             } catch {
               /* ignore */
@@ -118,14 +133,25 @@ export function NotificationsBell() {
 
   const unread = items.filter((n) => !n.read_at).length;
 
-  const markRead = async (id: string) => {
+  const openNotif = async (n: NotifRow) => {
     await supabase
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", n.id);
     setItems((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
+      prev.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)),
     );
+    const link = n.link;
+    if (link) {
+      try {
+        const path = link.startsWith("http")
+          ? new URL(link).pathname + new URL(link).search
+          : link;
+        void navigate({ to: path as "/" });
+      } catch {
+        window.location.href = link;
+      }
+    }
   };
 
   const markAll = async () => {
@@ -198,7 +224,7 @@ export function NotificationsBell() {
                 <DropdownMenuItem
                   key={n.id}
                   className="flex flex-col items-start gap-1 px-3 py-2.5 cursor-pointer"
-                  onClick={() => markRead(n.id)}
+                  onClick={() => void openNotif(n)}
                 >
                   <div className="flex w-full items-center gap-2">
                     <span className="font-medium text-sm truncate flex-1">
@@ -222,15 +248,6 @@ export function NotificationsBell() {
                   )}
                   {isFollow && mutual && (
                     <span className="text-[11px] text-emerald-400">You follow each other</span>
-                  )}
-                  {n.link && (
-                    <Link
-                      to={n.link as "/"}
-                      className="text-[11px] text-brand-glow hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Open
-                    </Link>
                   )}
                 </DropdownMenuItem>
               );
