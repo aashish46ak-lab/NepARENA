@@ -7,6 +7,7 @@ import {
   applyOrganizerThemeVars,
   getOrganizerThemeContext,
 } from "@/lib/organizer-context";
+import { getTheme } from "@/lib/themes";
 
 export function PageShell({
   children,
@@ -21,9 +22,22 @@ export function PageShell({
 
   useEffect(() => {
     if (mode === "organizer") {
-      applyOrganizerThemeVars(getOrganizerThemeContext());
+      const ctx = getOrganizerThemeContext();
+      if (ctx?.theme_id || ctx?.primary_color) {
+        const preset = getTheme(ctx.theme_id, {
+          start: ctx.primary_color,
+          end: ctx.secondary_color,
+          accent: ctx.secondary_color || ctx.primary_color,
+        });
+        applyOrganizerThemeVars({
+          ...ctx,
+          primary_color: ctx.primary_color || preset.swatch[0],
+          secondary_color: ctx.secondary_color || preset.swatch[1],
+        });
+      } else {
+        applyOrganizerThemeVars(ctx);
+      }
     } else {
-      // Platform pages keep default brand; clear org theme vars
       applyOrganizerThemeVars(null);
     }
   }, [mode, pathname]);
