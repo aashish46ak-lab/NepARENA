@@ -16,6 +16,7 @@ import {
 } from "@/lib/organizers";
 import {
   setOrganizerContext,
+  setOrganizerThemeContext,
   organizerShareUrl,
 } from "@/lib/organizer-context";
 import { supabase } from "@/lib/supabase";
@@ -31,7 +32,6 @@ import {
   Info,
   Swords,
   Medal,
-  Globe,
   Megaphone,
   Pin,
 } from "lucide-react";
@@ -105,6 +105,12 @@ function OrganizerPublicPage() {
       id: organizer.id,
       name: organizer.name,
       logo_url: organizer.logo_url,
+    });
+    setOrganizerThemeContext({
+      slug: organizer.slug,
+      theme_id: (organizer as { theme_id?: string | null }).theme_id,
+      primary_color: organizer.primary_color,
+      secondary_color: organizer.secondary_color,
     });
   }, [organizer]);
 
@@ -448,7 +454,12 @@ function OrganizerPublicPage() {
                   </Button>
                   <Button
                     size="sm"
-                    className={following ? "bg-white/10 text-foreground hover:bg-white/15" : "bg-neutral-100 text-black hover:bg-white"}
+                    className={following ? "bg-white/10 text-foreground hover:bg-white/15" : ""}
+                    style={
+                      following
+                        ? undefined
+                        : { background: theme.cover, color: "#0a0a0a" }
+                    }
                     disabled={followBusy}
                     onClick={() => void toggleFollow()}
                   >
@@ -565,7 +576,11 @@ function OrganizerPublicPage() {
                           ) : st === "pending" ? (
                             <Button size="sm" variant="secondary" disabled>Request pending</Button>
                           ) : t.registration_open || t.status === "registration_open" ? (
-                            <Button size="sm" className="bg-neutral-100 text-black hover:bg-white" onClick={() => void requestJoin(t.id)}>
+                            <Button
+                              size="sm"
+                              style={{ background: theme.cover, color: "#0a0a0a" }}
+                              onClick={() => void requestJoin(t.id)}
+                            >
                               Request to join
                             </Button>
                           ) : (
