@@ -5,13 +5,13 @@ import { buildSeoHead } from "@/lib/seo";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/penalty")({
+export const Route = createFileRoute("/games/penalty")({
   head: () => ({
     ...buildSeoHead({
       title: "Penalty Shootout — NepARENA",
       description:
         "Play Penalty Shootout on NepARENA — swipe to shoot, beat the keeper in five kicks.",
-      path: "/penalty",
+      path: "/games/penalty",
     }),
   }),
   component: PenaltyPage,
