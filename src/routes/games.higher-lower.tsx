@@ -5,12 +5,12 @@ import { buildSeoHead } from "@/lib/seo";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/higher-lower")({
+export const Route = createFileRoute("/games/higher-lower")({
   head: () => ({
     ...buildSeoHead({
       title: "Higher or Lower — NepARENA",
       description: "Guess the next football legend overall rating on NepARENA.",
-      path: "/higher-lower",
+      path: "/games/higher-lower",
     }),
   }),
   component: HigherLowerPage,
