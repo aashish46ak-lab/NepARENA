@@ -12,6 +12,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { GamesHub } from "@/components/GamesHub";
 import { StreakAssistant } from "@/components/StreakAssistant";
+import { HomeStreakBadge } from "@/components/HomeStreakBadge";
+import { HomeMessagesPreview } from "@/components/HomeMessagesPreview";
+import { SocialFeed } from "@/components/SocialFeed";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { buildSeoHead } from "@/lib/seo";
 import {
@@ -230,6 +233,7 @@ function PlatformProfilePage() {
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{PLATFORM_NAME}</h1>
+            <HomeStreakBadge />
             <Badge className="gap-1 bg-sky-500/20 text-sky-300 hover:bg-sky-500/20">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Verified
@@ -284,6 +288,17 @@ function PlatformProfilePage() {
               <ChevronDown className={aboutOpen ? "h-4 w-4 rotate-180 transition" : "h-4 w-4 transition"} />
             </button>
           </div>
+        </div>
+      </section>
+
+      <HomeMessagesPreview />
+
+      <section className="border-t border-white/5">
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500">
+            Feed
+          </h2>
+          <SocialFeed />
         </div>
       </section>
 
