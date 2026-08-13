@@ -34,7 +34,7 @@ function FeedPage() {
     <PageShell force="platform" hideChrome>
       <div className="min-h-screen bg-[#0a0a0a]">
         <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-md">
-          <div className="mx-auto flex h-14 max-w-xl items-center gap-3 px-3">
+          <div className="mx-auto flex h-14 max-w-md items-center gap-3 px-3">
             <Link to="/" className="flex shrink-0 items-center gap-2">
               <img
                 src="/neparena-logo.png"
@@ -79,7 +79,7 @@ function FeedPage() {
             </div>
           </div>
           {searchOpen && (
-            <div className="mx-auto flex max-w-xl items-center gap-2 border-t border-white/5 px-3 py-2">
+            <div className="mx-auto flex max-w-md items-center gap-2 border-t border-white/5 px-3 py-2">
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -99,7 +99,7 @@ function FeedPage() {
               </button>
             </div>
           )}
-          <div className="mx-auto flex max-w-xl border-t border-white/5">
+          <div className="mx-auto flex max-w-md border-t border-white/5">
             <button
               type="button"
               onClick={() => setTab("for_you")}
@@ -127,7 +127,7 @@ function FeedPage() {
           </div>
         </header>
 
-        <div className="mx-auto max-w-xl px-3 pb-28 pt-4">
+        <div className="mx-auto max-w-md px-3 pb-28 pt-4">
           {query.trim() && (
             <p className="mb-3 text-xs text-neutral-500">
               Filtering posts containing “{query.trim()}”
