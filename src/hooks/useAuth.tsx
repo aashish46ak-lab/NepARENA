@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, OWNER_EMAIL, type Profile, type Role } from "@/lib/supabase";
+import { analytics } from "@/lib/analytics";
 
 interface AuthContextValue {
   session: Session | null;
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const trackedLogin = useRef<string | null>(null);
 
   const loadProfileAndRoles = async (userId: string) => {
     const [{ data: profileData }, { data: roleData }] = await Promise.all([
@@ -46,13 +48,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
         void loadProfileAndRoles(newSession.user.id);
+        if (
+          (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
+          trackedLogin.current !== newSession.user.id
+        ) {
+          trackedLogin.current = newSession.user.id;
+          if (event === "SIGNED_IN") {
+            analytics.login("supabase");
+          }
+        }
       } else {
         setProfile(null);
         setRoles([]);
+        trackedLogin.current = null;
       }
     });
 
