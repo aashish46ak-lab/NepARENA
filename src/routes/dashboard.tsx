@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Shield, Loader2, Trophy, Users, Settings, LayoutDashboard, Megaphone,
   Award, History, Images, Handshake, Link2, ShieldCheck, Flag, MessageCircle,
+  Newspaper,
 } from "lucide-react";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
 import { TournamentsPanel } from "@/components/admin/TournamentsPanel";
@@ -21,6 +22,7 @@ import { OwnerModeratorsPanel } from "@/components/admin/OwnerModeratorsPanel";
 import { ReportsPanel } from "@/components/admin/ReportsPanel";
 import { SiteSettingsPanel } from "@/components/admin/SiteSettingsPanel";
 import { MessagesInbox } from "@/components/MessagesInbox";
+import { SocialFeed } from "@/components/SocialFeed";
 import { getDefaultOrganizer } from "@/lib/organizers";
 import { supabase } from "@/lib/supabase";
 
@@ -47,6 +49,7 @@ interface Section {
 
 const SECTIONS: Section[] = [
   { id: "dashboard", label: "Overview", icon: LayoutDashboard },
+  { id: "feed", label: "Feed", icon: Newspaper },
   { id: "messages", label: "Messages", icon: MessageCircle },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "players", label: "Players", icon: Users, ownerOnly: true },
@@ -61,7 +64,7 @@ const SECTIONS: Section[] = [
   { id: "settings", label: "Site Settings", icon: Settings },
 ];
 
-const MOD_ALLOWED = new Set(["tournaments", "reports", "announcements", "messages"]);
+const MOD_ALLOWED = new Set(["tournaments", "reports", "announcements", "messages", "feed"]);
 
 function DashboardPage() {
   const { user, loading, isAdmin, isOwner, roles } = useAuth();
@@ -208,6 +211,17 @@ function DashboardPage() {
 
           <main className="min-w-0 flex-1">
             {active === "dashboard" && <DashboardOverview />}
+            {active === "feed" && (
+              <div className="mx-auto max-w-xl">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold">Community Feed</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Post, like, comment, and repost like on the main Feed.
+                  </p>
+                </div>
+                <SocialFeed />
+              </div>
+            )}
             {active === "messages" && (
               orgId ? (
                 <MessagesInbox mode="organizer" organizerId={orgId} />
