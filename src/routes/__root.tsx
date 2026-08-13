@@ -33,6 +33,9 @@ import {
 const ENABLE_LOGIN_POPUPS = false;
 /** Set true to show Install FAB again */
 const ENABLE_INSTALL_FAB = false;
+/** Load AdSense after first paint / idle — prevents 100s of early network requests */
+const ENABLE_ADSENSE = true;
+const ADSENSE_CLIENT = "ca-pub-3033911443659343";
 
 function NotFoundComponent() {
   return (
@@ -118,6 +121,40 @@ class ClientErrorBoundary extends Component<
   }
 }
 
+/** Inject AdSense only after idle so it cannot block LCP / inflate early request count */
+function useDeferredAdSense() {
+  useEffect(() => {
+    if (!ENABLE_ADSENSE || typeof document === "undefined") return;
+    if (document.querySelector(`script[data-neparena-adsense]`)) return;
+
+    const inject = () => {
+      if (document.querySelector(`script[data-neparena-adsense]`)) return;
+      const s = document.createElement("script");
+      s.async = true;
+      s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
+      s.crossOrigin = "anonymous";
+      s.dataset.neparenaAdsense = "1";
+      document.head.appendChild(s);
+    };
+
+    // Prefer idle; fall back to timeout after first paint
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ric = (window as any).requestIdleCallback as
+      | undefined
+      | ((cb: () => void, opts?: { timeout: number }) => number);
+    if (typeof ric === "function") {
+      const id = ric(inject, { timeout: 4000 });
+      return () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cic = (window as any).cancelIdleCallback as undefined | ((n: number) => void);
+        cic?.(id);
+      };
+    }
+    const t = window.setTimeout(inject, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -133,7 +170,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
       },
       { name: "googlebot", content: "index, follow" },
-      { name: "google-adsense-account", content: "ca-pub-3033911443659343" },
+      { name: "google-adsense-account", content: ADSENSE_CLIENT },
       { name: "theme-color", content: "#0a0a0a" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "application-name", content: SITE_NAME },
@@ -159,6 +196,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/neparena-logo.png", type: "image/png", sizes: "any" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      // DNS/TLS warmup for known third parties (cheap, helps later AdSense)
+      { rel: "dns-prefetch", href: "https://pagead2.googlesyndication.com" },
+      { rel: "preconnect", href: "https://jssexmnwpwjzkqxkevqf.supabase.co", crossOrigin: "anonymous" },
+      // LCP candidates
+      { rel: "preload", href: "/neparena-logo.png", as: "image", type: "image/png" },
     ],
     scripts: [
       {
@@ -169,11 +211,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "application/ld+json",
         children: websiteJsonLd(),
       },
-      {
-        async: true,
-        src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3033911443659343",
-        crossOrigin: "anonymous",
-      },
+      // AdSense intentionally NOT here — injected idle via useDeferredAdSense
     ],
   }),
   shellComponent: RootShell,
@@ -205,18 +243,18 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  // Home only: show on full load / refresh (root remounts). SPA route changes keep splashDone.
   const [splashDone, setSplashDone] = useState(() => {
     if (typeof window === "undefined") return true;
     const p = window.location.pathname;
     return p !== "/" && p !== "";
   });
 
+  useDeferredAdSense();
+
   useEffect(() => {
     void registerPWA();
   }, []);
 
-  // Client-side return to home must NOT replay splash
   const showSplash = !splashDone && (pathname === "/" || pathname === "");
 
   return (
@@ -236,7 +274,6 @@ function RootComponent() {
   );
 }
 
-/** Install FAB only on platform paths — hidden on organizer pages */
 function PlatformInstallFab() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const show =
