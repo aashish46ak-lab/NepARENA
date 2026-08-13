@@ -4,6 +4,8 @@ export function isPlatformPath(pathname: string): boolean {
   const platformPrefixes = [
     "/organizers",
     "/following",
+    "/following-people",
+    "/followers",
     "/platform",
     "/users",
     "/ownership",
@@ -12,6 +14,10 @@ export function isPlatformPath(pathname: string): boolean {
     "/reset-password",
     "/games",
     "/vote",
+    "/feed",
+    "/messages",
+    "/members",
+    "/profile",
   ];
   return platformPrefixes.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
