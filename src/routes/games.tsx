@@ -18,7 +18,7 @@ export const Route = createFileRoute("/games")({
 const GAMES = [
   {
     id: "blind-ranking",
-    href: "/blind-ranking",
+    href: "/games/blind-ranking",
     title: "Blind Ranking",
     desc: "Spin face cards, place ranks, export your vertical PNG card.",
     tag: "Viral",
@@ -27,7 +27,7 @@ const GAMES = [
   },
   {
     id: "penalty",
-    href: "/penalty",
+    href: "/games/penalty",
     title: "Penalty Shootout",
     desc: "Swipe to shoot. Random keeper dive. Five kicks.",
     tag: "New",
@@ -36,14 +36,14 @@ const GAMES = [
   },
   {
     id: "higher-lower",
-    href: "/higher-lower",
+    href: "/games/higher-lower",
     title: "Higher or Lower",
     desc: "Guess the next football legend overall rating.",
     tag: "Live",
     icon: TrendingUp,
     accent: "from-amber-950/70 to-black border-amber-500/20",
   },
-];
+] as const;
 
 function GamesLobbyPage() {
   return (
@@ -91,9 +91,9 @@ function GamesLobbyPage() {
                       size="sm"
                       className="mt-3 bg-neutral-100 font-semibold text-black hover:bg-white"
                     >
-                      <a href={g.href}>
+                      <Link to={g.href}>
                         <Play className="mr-1.5 h-3.5 w-3.5" /> Play
-                      </a>
+                      </Link>
                     </Button>
                   </div>
                 </div>
