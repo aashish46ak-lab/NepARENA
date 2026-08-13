@@ -1,4 +1,4 @@
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,9 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
   const [activeMenu, setActiveMenu] = useState<(typeof ADMIN_NAV)[number] | null>(null);
   const settings = useSiteSettings();
   const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hidePlatformSearch =
+    pathname === "/platform" || pathname.startsWith("/platform/");
 
   const initials = (profile?.username ?? user?.email ?? "U").slice(0, 2).toUpperCase();
 
@@ -256,7 +259,7 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
         </div>
       </div>
 
-      {mode === "platform" && (
+      {mode === "platform" && !hidePlatformSearch && (
         <div className="border-t border-white/5 bg-[#0a0a0a]/95">
           <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2">
             <GlobalSearchBar />
