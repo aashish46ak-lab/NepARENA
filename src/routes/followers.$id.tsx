@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
 import { listFollowers } from "@/lib/user-follows";
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/followers/$id")({
 
 function FollowersPage() {
   const { id } = Route.useParams();
+  const router = useRouter();
 
   const { data: profile } = useQuery({
     queryKey: ["followers_header", id],
@@ -64,13 +65,25 @@ function FollowersPage() {
     },
   });
 
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    void router.navigate({ to: "/members/$id", params: { id } });
+  };
+
   return (
     <PageShell force="platform">
       <div className="mx-auto max-w-lg px-4 py-8">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-neutral-400">
-          <Link to="/members/$id" params={{ id }}>
-            <ArrowLeft className="mr-1 h-4 w-4" /> Profile
-          </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 mb-4 text-neutral-400"
+          onClick={goBack}
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
         </Button>
         <h1 className="flex items-center gap-2 text-xl font-bold text-white">
           <Users className="h-5 w-5 text-neutral-400" />
