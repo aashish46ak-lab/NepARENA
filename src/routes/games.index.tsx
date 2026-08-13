@@ -1,14 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { buildSeoHead } from "@/lib/seo";
-import { Gamepad2, Play, Shuffle, Target, TrendingUp, ArrowLeft } from "lucide-react";
+import { Gamepad2, Play, Shuffle, Target, TrendingUp, ArrowLeft, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/games/")({
   head: () => ({
     ...buildSeoHead({
       title: "Play Games — NepARENA",
-      description: "Blind Ranking, Penalty Shootout, Higher or Lower and more on NepARENA.",
+      description: "Blind Ranking, Penalty, Higher or Lower, Daily Quiz and more on NepARENA.",
       path: "/games",
     }),
   }),
@@ -16,6 +16,15 @@ export const Route = createFileRoute("/games/")({
 });
 
 const GAMES = [
+  {
+    id: "daily-quiz",
+    href: "/games/daily-quiz",
+    title: "Daily Football Quiz",
+    desc: "10 timed questions · shuffled daily · history to eFootball.",
+    tag: "Daily",
+    icon: Brain,
+    accent: "from-violet-950/80 to-black border-violet-500/25",
+  },
   {
     id: "blind-ranking",
     href: "/games/blind-ranking",
@@ -29,8 +38,8 @@ const GAMES = [
     id: "penalty",
     href: "/games/penalty",
     title: "Penalty Shootout",
-    desc: "Swipe to shoot. Random keeper dive. Five kicks.",
-    tag: "New",
+    desc: "Swipe to shoot & dive · 5 each · sudden death.",
+    tag: "Live",
     icon: Target,
     accent: "from-emerald-950/80 to-black border-emerald-500/20",
   },
@@ -38,8 +47,8 @@ const GAMES = [
     id: "higher-lower",
     href: "/games/higher-lower",
     title: "Higher or Lower",
-    desc: "Guess the next football legend overall rating.",
-    tag: "Live",
+    desc: "Fresh decks every run · multi-stat comparisons.",
+    tag: "Updated",
     icon: TrendingUp,
     accent: "from-amber-950/70 to-black border-amber-500/20",
   },
@@ -71,9 +80,7 @@ function GamesLobbyPage() {
         <ul className="space-y-3">
           {GAMES.map((g) => (
             <li key={g.id}>
-              <div
-                className={`overflow-hidden rounded-3xl border bg-gradient-to-br p-5 ${g.accent}`}
-              >
+              <div className={`overflow-hidden rounded-3xl border bg-gradient-to-br p-5 ${g.accent}`}>
                 <div className="flex items-start gap-3">
                   <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-black/50 ring-1 ring-white/10">
                     <g.icon className="h-5 w-5 text-white" />
