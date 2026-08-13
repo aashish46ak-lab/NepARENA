@@ -2,11 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { SocialFeed } from "@/components/SocialFeed";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageShell } from "@/components/PageShell";
 import { buildSeoHead } from "@/lib/seo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { PLATFORM_NAME } from "@/lib/organizers";
 
 export const Route = createFileRoute("/feed")({
@@ -25,12 +26,13 @@ function FeedPage() {
   const [tab, setTab] = useState<"for_you" | "following">("for_you");
   const [composerOpen, setComposerOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const initials = (profile?.username ?? user?.email ?? "U").slice(0, 2).toUpperCase();
 
   return (
     <PageShell force="platform" hideChrome>
       <div className="min-h-screen bg-[#0a0a0a]">
-        {/* Social top bar — not homepage nav */}
         <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-xl items-center gap-3 px-3">
             <Link to="/" className="flex shrink-0 items-center gap-2">
@@ -47,13 +49,14 @@ function FeedPage() {
               </span>
             </Link>
             <div className="ml-auto flex items-center gap-2">
-              <Link
-                to="/"
+              <button
+                type="button"
+                onClick={() => setSearchOpen((v) => !v)}
                 className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 hover:bg-white/5 hover:text-white"
-                aria-label="Search"
+                aria-label="Search feed"
               >
                 <Search className="h-5 w-5" />
-              </Link>
+              </button>
               {user ? (
                 <Link
                   to="/members/$id"
@@ -75,6 +78,27 @@ function FeedPage() {
               )}
             </div>
           </div>
+          {searchOpen && (
+            <div className="mx-auto flex max-w-xl items-center gap-2 border-t border-white/5 px-3 py-2">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search posts by text…"
+                className="border-white/10 bg-black/30"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setSearchOpen(false);
+                }}
+                className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 hover:bg-white/5"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <div className="mx-auto flex max-w-xl border-t border-white/5">
             <button
               type="button"
@@ -104,6 +128,11 @@ function FeedPage() {
         </header>
 
         <div className="mx-auto max-w-xl px-3 pb-28 pt-4">
+          {query.trim() && (
+            <p className="mb-3 text-xs text-neutral-500">
+              Filtering posts containing “{query.trim()}”
+            </p>
+          )}
           <SocialFeed
             key={`${tab}-${refreshKey}`}
             mode={tab}
@@ -114,6 +143,7 @@ function FeedPage() {
               setComposerOpen(false);
               setRefreshKey((k) => k + 1);
             }}
+            filterQuery={query}
           />
         </div>
 
