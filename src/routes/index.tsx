@@ -3,17 +3,14 @@
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PLATFORM_NAME } from "@/lib/organizers";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { BeAnOrganizer } from "@/components/BeAnOrganizer";
 import { GamesHub } from "@/components/GamesHub";
-import { GoatVoteBooth } from "@/components/GoatVoteBooth";
-import { ThisOrThatBooth } from "@/components/ThisOrThatBooth";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { buildSeoHead } from "@/lib/seo";
 import {
@@ -30,6 +27,17 @@ import {
   ChevronDown,
   Mail,
 } from "lucide-react";
+
+// Heavy interactive blocks — load after first paint
+const GoatVoteBooth = lazy(() =>
+  import("@/components/GoatVoteBooth").then((m) => ({ default: m.GoatVoteBooth })),
+);
+const ThisOrThatBooth = lazy(() =>
+  import("@/components/ThisOrThatBooth").then((m) => ({ default: m.ThisOrThatBooth })),
+);
+const BeAnOrganizer = lazy(() =>
+  import("@/components/BeAnOrganizer").then((m) => ({ default: m.BeAnOrganizer })),
+);
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -93,6 +101,12 @@ const ABOUT_BLOCKS = [
   },
 ];
 
+function SectionFallback() {
+  return (
+    <div className="h-40 animate-pulse rounded-2xl border border-white/5 bg-white/[0.03]" />
+  );
+}
+
 function PlatformProfilePage() {
   const { user } = useAuth();
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -100,11 +114,13 @@ function PlatformProfilePage() {
   const { data: stats } = useQuery({
     queryKey: ["platform_home_stats"],
     queryFn: platformStats,
+    staleTime: 120_000,
   });
 
   const { data: followingOrgs = [] } = useQuery({
     queryKey: ["home_following_orgs", user?.id],
     enabled: !!user?.id,
+    staleTime: 60_000,
     queryFn: async () => {
       const { data: follows } = await supabase
         .from("organizer_followers")
@@ -148,6 +164,7 @@ function PlatformProfilePage() {
   const { data: followedTournaments = [] } = useQuery({
     queryKey: ["home_followed_tournaments", user?.id],
     enabled: !!user?.id,
+    staleTime: 60_000,
     queryFn: async () => {
       const { data: parts } = await supabase
         .from("tournament_participants")
@@ -183,6 +200,10 @@ function PlatformProfilePage() {
           <img
             src="/neparena-cover.png"
             alt="NepARENA cover"
+            width={1600}
+            height={640}
+            fetchPriority="high"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover object-center"
             onError={(e) => {
               e.currentTarget.onerror = null;
@@ -196,6 +217,10 @@ function PlatformProfilePage() {
           <img
             src="/neparena-logo.png"
             alt={PLATFORM_NAME}
+            width={128}
+            height={128}
+            fetchPriority="high"
+            decoding="async"
             className="-mt-14 h-28 w-28 rounded-3xl object-contain bg-black p-1 shadow-2xl ring-4 ring-[#0a0a0a] sm:h-32 sm:w-32"
             onError={(e) => {
               e.currentTarget.src = "/pwa-192x192.png";
@@ -274,7 +299,15 @@ function PlatformProfilePage() {
                   className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-white/25"
                 >
                   {tour.banner_url ? (
-                    <img src={tour.banner_url} alt="" className="h-24 w-full object-cover" />
+                    <img
+                      src={tour.banner_url}
+                      alt=""
+                      width={640}
+                      height={160}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-24 w-full object-cover"
+                    />
                   ) : (
                     <div className="h-24 w-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
                   )}
@@ -323,11 +356,19 @@ function PlatformProfilePage() {
         <div className="mx-auto max-w-3xl space-y-8 px-4 py-12">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Vote your GOAT</h2>
-            <div className="mt-4"><GoatVoteBooth /></div>
+            <div className="mt-4">
+              <Suspense fallback={<SectionFallback />}>
+                <GoatVoteBooth />
+              </Suspense>
+            </div>
           </div>
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">This or That</h2>
-            <div className="mt-4"><ThisOrThatBooth /></div>
+            <div className="mt-4">
+              <Suspense fallback={<SectionFallback />}>
+                <ThisOrThatBooth />
+              </Suspense>
+            </div>
           </div>
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Play Games</h2>
@@ -337,7 +378,9 @@ function PlatformProfilePage() {
         </div>
       </section>
 
-      <BeAnOrganizer />
+      <Suspense fallback={<SectionFallback />}>
+        <BeAnOrganizer />
+      </Suspense>
 
       <section className="border-t border-white/5 bg-white/[0.015]">
         <div className="mx-auto max-w-3xl px-4 py-12">
