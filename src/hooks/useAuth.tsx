@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, OWNER_EMAIL, type Profile, type Role } from "@/lib/supabase";
 import { analytics } from "@/lib/analytics";
+import { recordLoginStreak } from "@/lib/streaks";
 
 interface AuthContextValue {
   session: Session | null;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const trackedLogin = useRef<string | null>(null);
+  const streakOnce = useRef<string | null>(null);
 
   const loadProfileAndRoles = async (userId: string) => {
     const [{ data: profileData }, { data: roleData }] = await Promise.all([
@@ -31,6 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
     setProfile((profileData as Profile) ?? null);
     setRoles((roleData ?? []).map((r: { role: Role }) => r.role));
+  };
+
+  const bumpStreak = (userId: string) => {
+    if (streakOnce.current === userId) return;
+    streakOnce.current = userId;
+    void recordLoginStreak().then(() => {
+      void loadProfileAndRoles(userId);
+    });
   };
 
   useEffect(() => {
@@ -43,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loadProfileAndRoles(data.session.user.id).finally(() => {
           if (mounted) setLoading(false);
         });
+        bumpStreak(data.session.user.id);
       } else {
         setLoading(false);
       }
@@ -61,10 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             analytics.login("supabase");
           }
         }
+        bumpStreak(newSession.user.id);
       } else {
         setProfile(null);
         setRoles([]);
         trackedLogin.current = null;
+        streakOnce.current = null;
       }
     });
 
