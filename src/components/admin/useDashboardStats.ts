@@ -44,12 +44,15 @@ function perDay(rows: { created_at: string }[], cumulative: boolean): DayPoint[]
     const k = dayKey(r.created_at);
     counts.set(k, (counts.get(k) ?? 0) + 1);
   }
-  const before = rows.filter((r) => dayKey(r.created_at) < days[0]).length;
+  const before = rows.filter((r) => dayKey(r.created_at) < days[0]!).length;
   let run = cumulative ? before : 0;
   return days.map((d) => {
     run += counts.get(d) ?? 0;
     return {
-      day: new Date(d + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      day: new Date(d + "T00:00:00").toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      }),
       count: cumulative ? run : (counts.get(d) ?? 0),
     };
   });
@@ -57,21 +60,44 @@ function perDay(rows: { created_at: string }[], cumulative: boolean): DayPoint[]
 
 export function useDashboardStats(): DashboardData {
   const query = useQuery({
-    queryKey: ["admin_dashboard_stats"],
+    queryKey: ["admin_dashboard_stats_followers_v2"],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const [profiles, tournaments, matches, matchdays, participants, reports, activity] =
+      // Default active organizer — followers of THIS page only
+      const { data: defaultOrg } = await supabase
+        .from("organizers")
+        .select("id")
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const organizerId =
+        (defaultOrg?.id as string | undefined) ??
+        "00000000-0000-0000-0000-000000000000";
+
+      const [followers, tournaments, matches, matchdays, participants, reports, activity] =
         await Promise.all([
-          supabase.from("profiles").select("id, created_at"),
+          supabase
+            .from("organizer_followers")
+            .select("user_id, created_at")
+            .eq("organizer_id", organizerId),
           supabase.from("tournaments").select("*").order("created_at", { ascending: false }),
-          supabase.from("matches").select("id, tournament_id, matchday_id, played, home_score, away_score"),
+          supabase
+            .from("matches")
+            .select("id, tournament_id, matchday_id, played, home_score, away_score"),
           supabase.from("matchdays").select("id, tournament_id, name, sort_order"),
-          supabase.from("tournament_participants").select("id, tournament_id, status, created_at"),
+          supabase
+            .from("tournament_participants")
+            .select("id, tournament_id, status, created_at"),
           supabase.from("reports").select("id, status, created_at"),
-          supabase.from("activity_logs").select("id, action, created_at").order("created_at", { ascending: false }).limit(8),
+          supabase
+            .from("activity_logs")
+            .select("id, action, created_at")
+            .order("created_at", { ascending: false })
+            .limit(8),
         ]);
 
-      const profs = profiles.data ?? [];
+      const profs = (followers.data ?? []) as { user_id?: string; created_at: string }[];
       const tours = (tournaments.data ?? []) as Tournament[];
       const ms = matches.data ?? [];
       const mds = matchdays.data ?? [];
@@ -79,7 +105,10 @@ export function useDashboardStats(): DashboardData {
       const reps = reports.data ?? [];
 
       const played = ms.filter((m) => m.played);
-      const goals = played.reduce((s, m) => s + (m.home_score ?? 0) + (m.away_score ?? 0), 0);
+      const goals = played.reduce(
+        (s, m) => s + (m.home_score ?? 0) + (m.away_score ?? 0),
+        0,
+      );
       const weekAgo = Date.now() - 7 * 86400000;
 
       const mdName = new Map(mds.map((d) => [d.id, d.name]));
@@ -87,32 +116,43 @@ export function useDashboardStats(): DashboardData {
       for (const m of played) {
         if (!m.matchday_id) continue;
         const name = mdName.get(m.matchday_id) ?? "Round";
-        goalsByMd.set(name, (goalsByMd.get(name) ?? 0) + (m.home_score ?? 0) + (m.away_score ?? 0));
+        goalsByMd.set(
+          name,
+          (goalsByMd.get(name) ?? 0) + (m.home_score ?? 0) + (m.away_score ?? 0),
+        );
       }
       const goalsPerMatchday = [...goalsByMd.entries()]
         .map(([md, g]) => ({ md, goals: g }))
         .slice(0, 12);
 
-      const statusSplit = Object.entries(
-        tours.reduce<Record<string, number>>((acc, t) => {
-          const k = t.status.replace(/_/g, " ");
-          acc[k] = (acc[k] ?? 0) + 1;
-          return acc;
-        }, {}),
-      ).map(([name, value]) => ({ name, value }));
+      const statusCounts = new Map<string, number>();
+      for (const t of tours) {
+        const s = t.status || "unknown";
+        statusCounts.set(s, (statusCounts.get(s) ?? 0) + 1);
+      }
+      const statusSplit = [...statusCounts.entries()].map(([name, value]) => ({
+        name,
+        value,
+      }));
 
       return {
         tours,
         activity: activity.data ?? [],
         computed: {
           totalMembers: profs.length,
-          newMembers7d: profs.filter((p) => new Date(p.created_at).getTime() > weekAgo).length,
+          newMembers7d: profs.filter(
+            (p) => new Date(p.created_at).getTime() >= weekAgo,
+          ).length,
           totalTournaments: tours.length,
-          liveTournaments: tours.filter((t) => ["live", "ongoing", "check_in"].includes(t.status)).length,
+          liveTournaments: tours.filter((t) =>
+            ["live", "ongoing", "check_in"].includes(t.status),
+          ).length,
           totalMatches: ms.length,
           playedMatches: played.length,
           totalGoals: goals,
-          pendingReports: reps.filter((r) => r.status === "pending" || r.status === "in_review").length,
+          pendingReports: reps.filter(
+            (r) => r.status === "pending" || r.status === "in_review",
+          ).length,
           totalPlayers: parts.filter((p) => p.status === "approved").length,
           memberGrowth: perDay(profs, true),
           registrations: perDay(parts, false),
@@ -152,13 +192,22 @@ export function useTournamentScopedStats(tournamentId: string | null) {
     enabled: !!tournamentId,
     queryFn: async () => {
       const [parts, matches] = await Promise.all([
-        supabase.from("tournament_participants").select("id, status").eq("tournament_id", tournamentId!),
-        supabase.from("matches").select("id, played, home_score, away_score").eq("tournament_id", tournamentId!),
+        supabase
+          .from("tournament_participants")
+          .select("id, status")
+          .eq("tournament_id", tournamentId!),
+        supabase
+          .from("matches")
+          .select("id, played, home_score, away_score")
+          .eq("tournament_id", tournamentId!),
       ]);
       const ps = parts.data ?? [];
       const ms = matches.data ?? [];
       const played = ms.filter((m) => m.played);
-      const goals = played.reduce((s, m) => s + (m.home_score ?? 0) + (m.away_score ?? 0), 0);
+      const goals = played.reduce(
+        (s, m) => s + (m.home_score ?? 0) + (m.away_score ?? 0),
+        0,
+      );
       return {
         approved: ps.filter((p) => p.status === "approved").length,
         pending: ps.filter((p) => p.status === "pending").length,
