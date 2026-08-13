@@ -13,8 +13,6 @@ import { supabase } from "@/lib/supabase";
 import { GamesHub } from "@/components/GamesHub";
 import { StreakAssistant } from "@/components/StreakAssistant";
 import { HomeStreakBadge } from "@/components/HomeStreakBadge";
-import { HomeMessagesPreview } from "@/components/HomeMessagesPreview";
-import { SocialFeed } from "@/components/SocialFeed";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { buildSeoHead } from "@/lib/seo";
 import {
@@ -291,14 +289,23 @@ function PlatformProfilePage() {
         </div>
       </section>
 
-      <HomeMessagesPreview />
-
       <section className="border-t border-white/5">
         <div className="mx-auto max-w-3xl px-4 py-8">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-neutral-500">
-            Feed
-          </h2>
-          <SocialFeed />
+          <Link
+            to="/feed"
+            className="group flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-gradient-to-r from-sky-950/50 to-white/[0.03] p-5 transition hover:border-sky-500/30"
+          >
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-sky-500/15 text-2xl ring-1 ring-sky-500/25">
+                📰
+              </div>
+              <div>
+                <p className="text-base font-semibold text-white group-hover:text-sky-100">Go to Feed</p>
+                <p className="text-xs text-neutral-500">Posts, likes, comments & community updates</p>
+              </div>
+            </div>
+            <ArrowRight className="h-5 w-5 text-neutral-500 transition group-hover:translate-x-0.5 group-hover:text-sky-300" />
+          </Link>
         </div>
       </section>
 
