@@ -222,7 +222,13 @@ function RootShell({ children }: { children: ReactNode }) {
         <style
           dangerouslySetInnerHTML={{
             __html:
-              "html,body{margin:0;min-height:100%;background:#0a0a0a;color:#f5f5f5}",
+              "html,body{margin:0;min-height:100%;background:#0a0a0a;color:#f5f5f5}" +
+              "html.neparena-splash-pending [data-neparena-app]{visibility:hidden!important}",
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var k='neparena_splash_seen_v3';if(!sessionStorage.getItem(k)&&location.pathname==='/'){document.documentElement.classList.add('neparena-splash-pending');}}catch(e){}})();`,
           }}
         />
       </head>
@@ -252,17 +258,36 @@ function RootComponent() {
 
   const showSplash = !splashDone && (pathname === "/" || pathname === "");
 
+  useEffect(() => {
+    if (!showSplash) {
+      try {
+        document.documentElement.classList.remove("neparena-splash-pending");
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [showSplash]);
+
+  const finishSplash = () => {
+    setSplashDone(true);
+    try {
+      document.documentElement.classList.remove("neparena-splash-pending");
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ClientErrorBoundary>
           <GoogleAnalytics />
-          {showSplash && (
-            <SplashScreen onDone={() => setSplashDone(true)} />
-          )}
-          <RoleRedirect />
-          <Outlet />
-          {ENABLE_INSTALL_FAB && <PlatformInstallFab />}
+          {showSplash && <SplashScreen onDone={finishSplash} />}
+          <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
+            <RoleRedirect />
+            <Outlet />
+            {ENABLE_INSTALL_FAB && <PlatformInstallFab />}
+          </div>
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
       </AuthProvider>
