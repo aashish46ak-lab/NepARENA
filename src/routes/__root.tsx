@@ -14,7 +14,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
-import { SplashScreen } from "@/components/SplashScreen";
+import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { InstallFAB } from "@/components/InstallFAB";
 import { registerPWA } from "@/lib/pwa-register";
 import {
@@ -29,11 +29,8 @@ import {
   websiteJsonLd,
 } from "@/lib/seo";
 
-/** Set true after AdSense / site verification is complete */
 const ENABLE_LOGIN_POPUPS = false;
-/** Set true to show Install FAB again */
 const ENABLE_INSTALL_FAB = false;
-/** Load AdSense after first paint / idle — prevents 100s of early network requests */
 const ENABLE_ADSENSE = true;
 const ADSENSE_CLIENT = "ca-pub-3033911443659343";
 
@@ -121,7 +118,6 @@ class ClientErrorBoundary extends Component<
   }
 }
 
-/** Inject AdSense only after idle so it cannot block LCP / inflate early request count */
 function useDeferredAdSense() {
   useEffect(() => {
     if (!ENABLE_ADSENSE || typeof document === "undefined") return;
@@ -137,7 +133,6 @@ function useDeferredAdSense() {
       document.head.appendChild(s);
     };
 
-    // Prefer idle; fall back to timeout after first paint
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ric = (window as any).requestIdleCallback as
       | undefined
@@ -196,10 +191,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/neparena-logo.png", type: "image/png", sizes: "any" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      // DNS/TLS warmup for known third parties (cheap, helps later AdSense)
       { rel: "dns-prefetch", href: "https://pagead2.googlesyndication.com" },
       { rel: "preconnect", href: "https://jssexmnwpwjzkqxkevqf.supabase.co", crossOrigin: "anonymous" },
-      // LCP candidates
       { rel: "preload", href: "/neparena-logo.png", as: "image", type: "image/png" },
     ],
     scripts: [
@@ -211,7 +204,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "application/ld+json",
         children: websiteJsonLd(),
       },
-      // AdSense intentionally NOT here — injected idle via useDeferredAdSense
     ],
   }),
   shellComponent: RootShell,
@@ -243,8 +235,10 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Session-once only; never on SPA navigations or mid-session refresh of non-home
   const [splashDone, setSplashDone] = useState(() => {
     if (typeof window === "undefined") return true;
+    if (!shouldShowSplash()) return true;
     const p = window.location.pathname;
     return p !== "/" && p !== "";
   });
