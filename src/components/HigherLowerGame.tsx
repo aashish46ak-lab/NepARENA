@@ -4,57 +4,24 @@ import { playerPhotoUrl, playerPhotoFallback } from "@/lib/player-photos";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowDown, ArrowUp, RotateCcw, TrendingUp } from "lucide-react";
+import { GameResultActions } from "@/components/GameResultActions";
 
-type StatKey =
-  | "overall"
-  | "goals"
-  | "caps"
-  | "trophies"
-  | "speed"
-  | "agePeak"
-  | "market";
-
-type StatDef = { key: StatKey; label: string; unit?: string };
-
-const STATS: StatDef[] = [
-  { key: "overall", label: "Overall rating" },
-  { key: "goals", label: "Career goals (est.)" },
-  { key: "caps", label: "International caps (est.)" },
-  { key: "trophies", label: "Major trophies (est.)" },
-  { key: "speed", label: "Speed rating" },
-  { key: "agePeak", label: "Peak age" },
-  { key: "market", label: "Peak market value (€m est.)" },
-];
-
-function hash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
+/** FIFA Mobile-style all-time peak overall (tight 78–99 band) */
+function fifaMobileOvr(name: string, base: number): number {
+  // Clamp to familiar mobile card range; slight name hash variance ±1
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const jitter = (h % 3) - 1; // -1, 0, 1
+  return Math.max(78, Math.min(99, base + jitter));
 }
 
-function statValue(name: string, overall: number, key: StatKey): number {
-  const h = hash(name + key);
-  switch (key) {
-    case "overall":
-      return overall;
-    case "goals":
-      return 80 + (h % 720) + Math.round((overall - 85) * 12);
-    case "caps":
-      return 20 + (h % 160);
-    case "trophies":
-      return 2 + (h % 28);
-    case "speed":
-      return 70 + (h % 30);
-    case "agePeak":
-      return 24 + (h % 10);
-    case "market":
-      return 15 + (h % 180) + Math.round((overall - 88) * 8);
-    default:
-      return overall;
-  }
+function mulberry32(seed: number) {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function shuffle<T>(arr: T[], rng: () => number): T[] {
@@ -66,44 +33,30 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
   return a;
 }
 
-/** Mulberry32 PRNG */
-function mulberry32(seed: number) {
-  return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+type CardPlayer = { name: string; ovr: number };
 
-type CardPlayer = { name: string; overall: number; value: number };
-
-function buildDeck(seed: number): { cards: CardPlayer[]; stat: StatDef } {
+function buildDeck(seed: number): CardPlayer[] {
   const rng = mulberry32(seed);
-  const stat = STATS[Math.floor(rng() * STATS.length)]!;
   const pool = shuffle(LEGEND_PLAYERS, rng);
-  // Prefer longer unique sequences; avoid adjacent same OVR when using overall
   const cards: CardPlayer[] = [];
   const used = new Set<string>();
   for (const p of pool) {
     if (used.has(p.name)) continue;
     used.add(p.name);
-    cards.push({
-      name: p.name,
-      overall: p.overall,
-      value: statValue(p.name, p.overall, stat.key),
-    });
-    if (cards.length >= 28) break;
+    cards.push({ name: p.name, ovr: fifaMobileOvr(p.name, p.overall) });
+    if (cards.length >= 30) break;
   }
-  return { cards, stat };
+  // Avoid long runs of identical OVR by light re-shuffle of ties
+  return cards;
 }
 
 export function HigherLowerGame({ compact = false }: { compact?: boolean }) {
   const [seed, setSeed] = useState(() => Date.now() ^ (Math.random() * 1e9));
-  const { cards: deck, stat } = useMemo(() => buildDeck(seed), [seed]);
+  const deck = useMemo(() => buildDeck(seed), [seed]);
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [best, setBest] = useState(0);
   const [reveal, setReveal] = useState(false);
   const [wrong, setWrong] = useState(false);
 
@@ -121,19 +74,20 @@ export function HigherLowerGame({ compact = false }: { compact?: boolean }) {
 
   const guess = (higher: boolean) => {
     if (!current || !next || reveal || wrong) return;
-    const isHigher = next.value >= current.value;
+    const isHigher = next.ovr >= current.ovr;
     const ok = higher ? isHigher : !isHigher;
     setReveal(true);
     if (ok) {
-      setScore((s) => s + 1);
+      setScore((s) => {
+        const n = s + 1;
+        setBest((b) => Math.max(b, n));
+        return n;
+      });
       setStreak((s) => s + 1);
       window.setTimeout(() => {
         setReveal(false);
-        if (idx + 1 >= deck.length - 1) {
-          setWrong(true);
-        } else {
-          setIdx((i) => i + 1);
-        }
+        if (idx + 1 >= deck.length - 1) setWrong(true);
+        else setIdx((i) => i + 1);
       }, 750);
     } else {
       setStreak(0);
@@ -144,9 +98,9 @@ export function HigherLowerGame({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="rounded-3xl border border-amber-500/20 bg-gradient-to-br from-slate-950 to-[#1a1205] p-5 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-400">OVR battle</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-400">FIFA Mobile OVR</p>
         <h3 className="mt-1 text-lg font-bold text-white">Higher or Lower</h3>
-        <p className="mt-1 text-xs text-slate-400">Fresh cards every run · multi-stat</p>
+        <p className="mt-1 text-xs text-slate-400">All-time peak overall · fresh deck every run</p>
         <Button asChild className="mt-4 bg-amber-500 font-semibold text-black hover:bg-amber-400">
           <a href="/games/higher-lower">
             <TrendingUp className="mr-2 h-4 w-4" /> Play now
@@ -158,9 +112,14 @@ export function HigherLowerGame({ compact = false }: { compact?: boolean }) {
 
   if (!current || !next) {
     return (
-      <div className="rounded-2xl border border-white/10 p-6 text-center">
+      <div className="space-y-3 rounded-2xl border border-white/10 p-6 text-center">
         <p className="font-bold text-white">Run complete — score {score}</p>
-        <Button className="mt-3" onClick={restart}>
+        <GameResultActions
+          game="Higher or Lower"
+          headline={`Scored ${score}`}
+          lines={[`Best this session: ${Math.max(best, score)}`, "FIFA Mobile-style OVR"]}
+        />
+        <Button className="mt-1" onClick={restart}>
           <RotateCcw className="mr-2 h-4 w-4" /> New deck
         </Button>
       </div>
@@ -172,7 +131,7 @@ export function HigherLowerGame({ compact = false }: { compact?: boolean }) {
       <div className="flex items-center justify-between border-b border-white/5 px-3 py-2">
         <div>
           <p className="text-sm font-bold text-white">Higher or Lower</p>
-          <p className="text-[10px] text-slate-500">{stat.label}</p>
+          <p className="text-[10px] text-slate-500">FIFA Mobile all-time peak OVR (78–99)</p>
         </div>
         <div className="text-right text-[11px] tabular-nums text-slate-400">
           <p>
@@ -183,24 +142,23 @@ export function HigherLowerGame({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 p-3">
-        <Card name={current.name} value={current.value} show label="Current" />
-        <Card
-          name={next.name}
-          value={next.value}
-          show={reveal || wrong}
-          label="Next"
-          highlight={reveal}
-        />
+        <Card name={current.name} ovr={current.ovr} show label="Current" />
+        <Card name={next.name} ovr={next.ovr} show={reveal || wrong} label="Next" highlight={reveal} />
       </div>
 
       {wrong ? (
-        <div className="space-y-2 px-3 pb-4 text-center">
+        <div className="space-y-3 px-3 pb-4 text-center">
           <p className="text-sm font-semibold text-rose-300">
             {idx + 1 >= deck.length - 1 && score > 0
               ? "Amazing run!"
-              : `Wrong — ${next.name}: ${next.value}`}
+              : `Wrong — ${next.name} is ${next.ovr} OVR`}
           </p>
           <p className="text-xs text-slate-400">Final score: {score}</p>
+          <GameResultActions
+            game="Higher or Lower"
+            headline={`Scored ${score}`}
+            lines={[`Best: ${Math.max(best, score)}`, `Last: ${next.name} (${next.ovr})`]}
+          />
           <Button onClick={restart} className="bg-amber-500 text-black hover:bg-amber-400">
             <RotateCcw className="mr-2 h-4 w-4" /> New random deck
           </Button>
@@ -229,13 +187,13 @@ export function HigherLowerGame({ compact = false }: { compact?: boolean }) {
 
 function Card({
   name,
-  value,
+  ovr,
   show,
   label,
   highlight,
 }: {
   name: string;
-  value: number;
+  ovr: number;
   show: boolean;
   label: string;
   highlight?: boolean;
@@ -262,7 +220,7 @@ function Card({
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-2 pb-2 pt-8">
           <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
           <p className="truncate text-xs font-bold text-white">{name}</p>
-          <p className="text-lg font-black tabular-nums text-amber-300">{show ? value : "?"}</p>
+          <p className="text-lg font-black tabular-nums text-amber-300">{show ? ovr : "?"}</p>
         </div>
       </div>
     </div>
