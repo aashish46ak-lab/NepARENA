@@ -25,7 +25,14 @@ export function NotificationsBell() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
-    setItems((data ?? []) as AppNotification[]);
+    const rows = ((data ?? []) as AppNotification[]).filter((n) => {
+      const t = ((n as { type?: string }).type ?? "").toLowerCase();
+      const title = (n.title ?? "").toLowerCase();
+      // Messages live in the Messages button — exclude from bell
+      if (t === "message" || t === "dm" || title.includes("sent you a message")) return false;
+      return true;
+    });
+    setItems(rows);
   };
 
   useEffect(() => {
