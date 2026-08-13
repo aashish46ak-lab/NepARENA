@@ -11,6 +11,7 @@ import { PLATFORM_NAME } from "@/lib/organizers";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { GamesHub } from "@/components/GamesHub";
+import { StreakAssistant } from "@/components/StreakAssistant";
 import { OrganizerCard } from "@/components/OrganizerCard";
 import { buildSeoHead } from "@/lib/seo";
 import {
@@ -28,7 +29,6 @@ import {
   Mail,
 } from "lucide-react";
 
-// Heavy interactive blocks — load after first paint
 const GoatVoteBooth = lazy(() =>
   import("@/components/GoatVoteBooth").then((m) => ({ default: m.GoatVoteBooth })),
 );
@@ -195,6 +195,7 @@ function PlatformProfilePage() {
 
   return (
     <PageShell force="platform">
+      <StreakAssistant />
       <section className="relative overflow-hidden">
         <div className="relative h-44 overflow-hidden bg-white sm:h-56">
           <img
