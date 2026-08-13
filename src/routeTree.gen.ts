@@ -152,18 +152,18 @@ const UsersRoute = UsersRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const GamesBlindRankingRoute = GamesBlindRankingRouteImport.update({
-  id: '/games/blind-ranking',
-  path: '/games/blind-ranking',
+  id: '/blind-ranking',
+  path: '/blind-ranking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GamesPenaltyRoute = GamesPenaltyRouteImport.update({
-  id: '/games/penalty',
-  path: '/games/penalty',
+  id: '/penalty',
+  path: '/penalty',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GamesHigherLowerRoute = GamesHigherLowerRouteImport.update({
-  id: '/games/higher-lower',
-  path: '/games/higher-lower',
+  id: '/higher-lower',
+  path: '/higher-lower',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VoteGoatRoute = VoteGoatRouteImport.update({
@@ -196,9 +196,9 @@ export interface FileRoutesByFullPath {
   '/organizers': typeof OrganizersRoute
   '/ownership': typeof OwnershipRoute
   '/users': typeof UsersRoute
-  '/games/blind-ranking': typeof GamesBlindRankingRoute
-  '/games/penalty': typeof GamesPenaltyRoute
-  '/games/higher-lower': typeof GamesHigherLowerRoute
+  '/blind-ranking': typeof GamesBlindRankingRoute
+  '/penalty': typeof GamesPenaltyRoute
+  '/higher-lower': typeof GamesHigherLowerRoute
   '/vote/goat': typeof VoteGoatRoute
 }
 export interface FileRoutesByTo {
@@ -225,9 +225,9 @@ export interface FileRoutesByTo {
   '/organizers': typeof OrganizersRoute
   '/ownership': typeof OwnershipRoute
   '/users': typeof UsersRoute
-  '/games/blind-ranking': typeof GamesBlindRankingRoute
-  '/games/penalty': typeof GamesPenaltyRoute
-  '/games/higher-lower': typeof GamesHigherLowerRoute
+  '/blind-ranking': typeof GamesBlindRankingRoute
+  '/penalty': typeof GamesPenaltyRoute
+  '/higher-lower': typeof GamesHigherLowerRoute
   '/vote/goat': typeof VoteGoatRoute
 }
 export interface FileRoutesById {
@@ -255,9 +255,9 @@ export interface FileRoutesById {
   '/organizers': typeof OrganizersRoute
   '/ownership': typeof OwnershipRoute
   '/users': typeof UsersRoute
-  '/games/blind-ranking': typeof GamesBlindRankingRoute
-  '/games/penalty': typeof GamesPenaltyRoute
-  '/games/higher-lower': typeof GamesHigherLowerRoute
+  '/blind-ranking': typeof GamesBlindRankingRoute
+  '/penalty': typeof GamesPenaltyRoute
+  '/higher-lower': typeof GamesHigherLowerRoute
   '/vote/goat': typeof VoteGoatRoute
 }
 export interface FileRouteTypes {
@@ -286,9 +286,9 @@ export interface FileRouteTypes {
     | '/organizers'
     | '/ownership'
     | '/users'
-    | '/games/blind-ranking'
-    | '/games/penalty'
-    | '/games/higher-lower'
+    | '/blind-ranking'
+    | '/penalty'
+    | '/higher-lower'
     | '/vote/goat'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -315,9 +315,9 @@ export interface FileRouteTypes {
     | '/organizers'
     | '/ownership'
     | '/users'
-    | '/games/blind-ranking'
-    | '/games/penalty'
-    | '/games/higher-lower'
+    | '/blind-ranking'
+    | '/penalty'
+    | '/higher-lower'
     | '/vote/goat'
   id:
     | '__root__'
@@ -344,9 +344,9 @@ export interface FileRouteTypes {
     | '/organizers'
     | '/ownership'
     | '/users'
-    | '/games/blind-ranking'
-    | '/games/penalty'
-    | '/games/higher-lower'
+    | '/blind-ranking'
+    | '/penalty'
+    | '/higher-lower'
     | '/vote/goat'
   fileRoutesById: FileRoutesById
 }
@@ -541,24 +541,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/games/blind-ranking': {
-      id: '/games/blind-ranking'
-      path: '/games/blind-ranking'
-      fullPath: '/games/blind-ranking'
+    '/blind-ranking': {
+      id: '/blind-ranking'
+      path: '/blind-ranking'
+      fullPath: '/blind-ranking'
       preLoaderRoute: typeof GamesBlindRankingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/games/penalty': {
-      id: '/games/penalty'
-      path: '/games/penalty'
-      fullPath: '/games/penalty'
+    '/penalty': {
+      id: '/penalty'
+      path: '/penalty'
+      fullPath: '/penalty'
       preLoaderRoute: typeof GamesPenaltyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/games/higher-lower': {
-      id: '/games/higher-lower'
-      path: '/games/higher-lower'
-      fullPath: '/games/higher-lower'
+    '/higher-lower': {
+      id: '/higher-lower'
+      path: '/higher-lower'
+      fullPath: '/higher-lower'
       preLoaderRoute: typeof GamesHigherLowerRouteImport
       parentRoute: typeof rootRouteImport
     }
