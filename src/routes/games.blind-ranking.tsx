@@ -6,13 +6,13 @@ import { ArrowLeft, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/blind-ranking")({
+export const Route = createFileRoute("/games/blind-ranking")({
   head: () => ({
     ...buildSeoHead({
       title: "Blind Ranking — NepARENA",
       description:
         "Play the viral Blind Ranking football legend test on NepARENA. Rank players one by one and share your results.",
-      path: "/blind-ranking",
+      path: "/games/blind-ranking",
     }),
   }),
   component: BlindRankingPage,
@@ -23,7 +23,7 @@ function BlindRankingPage() {
     const url =
       typeof window !== "undefined"
         ? window.location.href
-        : "https://neparena.xyz/blind-ranking";
+        : "https://neparena.xyz/games/blind-ranking";
     try {
       if (navigator.share) {
         await navigator.share({
