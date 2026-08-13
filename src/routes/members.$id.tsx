@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import {
   supabase,
@@ -11,9 +12,29 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AllTimeXiView, parseXi } from "@/components/AllTimeXi";
-import { Loader2, Trophy, ArrowLeft, Award, Building2 } from "lucide-react";
+import {
+  Loader2,
+  Trophy,
+  ArrowLeft,
+  Award,
+  Building2,
+  UserPlus,
+  UserMinus,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildSeoHead } from "@/lib/seo";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  followUser,
+  getUserFollowerCount,
+  getUserFollowingCount,
+  isFollowingUser,
+  listFollowers,
+  listFollowingUsers,
+  unfollowUser,
+} from "@/lib/user-follows";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/members/$id")({
   head: () => ({
@@ -37,6 +58,10 @@ function statusBadgeClass(status: string) {
 
 function MemberProfilePage() {
   const { id } = Route.useParams();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [followBusy, setFollowBusy] = useState(false);
+  const isOwn = !!user?.id && user.id === id;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["member_profile", id],
@@ -144,6 +169,7 @@ function MemberProfilePage() {
         }
       }
 
+      // Organizer follows (communities) — NOT user followers
       let followingOrgs: {
         id: string;
         name: string;
@@ -167,6 +193,15 @@ function MemberProfilePage() {
         followingOrgs = ((orgs ?? []) as typeof followingOrgs).filter(Boolean);
       }
 
+      // User ↔ user social graph
+      const [followerCount, followingCount, followers, followingUsers] =
+        await Promise.all([
+          getUserFollowerCount(id),
+          getUserFollowingCount(id),
+          listFollowers(id, 24),
+          listFollowingUsers(id, 24),
+        ]);
+
       return {
         profile,
         parts: partList,
@@ -174,13 +209,48 @@ function MemberProfilePage() {
         achievements,
         stats: { wins, draws, losses, goalsFor, goalsAgainst },
         followingOrgs,
+        followerCount,
+        followingCount,
+        followers,
+        followingUsers,
       };
     },
   });
 
+  const { data: iFollow = false, refetch: refetchFollow } = useQuery({
+    queryKey: ["user_follow", user?.id, id],
+    enabled: !!user?.id && !!id && user.id !== id,
+    queryFn: () => isFollowingUser(user!.id, id),
+  });
+
+  const toggleFollow = async () => {
+    if (!user) {
+      toast.message("Sign in to follow players");
+      return;
+    }
+    if (isOwn) return;
+    setFollowBusy(true);
+    try {
+      if (iFollow) {
+        await unfollowUser(user.id, id);
+        toast.success("Unfollowed");
+      } else {
+        const res = await followUser(user.id, id);
+        if (res.error) throw new Error(res.error.message);
+        toast.success("Following");
+      }
+      void refetchFollow();
+      void qc.invalidateQueries({ queryKey: ["member_profile", id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update follow");
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <PageShell>
+      <PageShell force="platform">
         <div className="grid min-h-[40vh] place-items-center">
           <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
@@ -190,14 +260,14 @@ function MemberProfilePage() {
 
   if (error || !data?.profile) {
     return (
-      <PageShell>
+      <PageShell force="platform">
         <div className="mx-auto max-w-lg space-y-3 py-20 text-center">
           <p className="text-muted-foreground">
             {error instanceof Error ? error.message : "Member not found"}
           </p>
           <Button asChild variant="outline">
-            <Link to="/members">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Members
+            <Link to="/users">
+              <ArrowLeft className="mr-1 h-4 w-4" /> Users
             </Link>
           </Button>
         </div>
@@ -205,7 +275,17 @@ function MemberProfilePage() {
     );
   }
 
-  const { profile, parts, tours, achievements, followingOrgs } = data;
+  const {
+    profile,
+    parts,
+    tours,
+    achievements,
+    followingOrgs,
+    followerCount,
+    followingCount,
+    followers,
+    followingUsers,
+  } = data;
   const tourMap = new Map(tours.map((t) => [t.id, t]));
   const displayName =
     profile.username?.trim() || profile.full_name?.trim() || "Player";
@@ -237,11 +317,11 @@ function MemberProfilePage() {
     );
 
   return (
-    <PageShell>
+    <PageShell force="platform">
       <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/members">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Members
+          <Link to="/users">
+            <ArrowLeft className="mr-1 h-4 w-4" /> Users
           </Link>
         </Button>
 
@@ -257,21 +337,45 @@ function MemberProfilePage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
           </div>
           <div className="relative px-4 pb-5 sm:px-6">
-            <Avatar className="-mt-12 h-24 w-24 ring-4 ring-[#0a0a0a] sm:h-28 sm:w-28">
-              <AvatarImage
-                src={profile.avatar_url ?? undefined}
-                className="object-cover"
-              />
-              <AvatarFallback className="bg-gradient-brand text-xl text-primary-foreground">
-                {displayName.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <Avatar className="-mt-12 h-24 w-24 ring-4 ring-[#0a0a0a] sm:h-28 sm:w-28">
+                <AvatarImage
+                  src={profile.avatar_url ?? undefined}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-gradient-brand text-xl text-primary-foreground">
+                  {displayName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {!isOwn && (
+                <Button
+                  size="sm"
+                  className={
+                    iFollow
+                      ? "border border-white/15 bg-white/10 text-white hover:bg-white/15"
+                      : "bg-neutral-100 text-black hover:bg-white"
+                  }
+                  disabled={followBusy}
+                  onClick={() => void toggleFollow()}
+                >
+                  {followBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : iFollow ? (
+                    <>
+                      <UserMinus className="mr-1.5 h-3.5 w-3.5" /> Following
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Follow
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
             <div className="mt-3 min-w-0 space-y-2">
               <h1 className="truncate text-2xl font-bold">{displayName}</h1>
               {realName && realName !== displayName && (
-                <p className="truncate text-sm text-muted-foreground">
-                  {realName}
-                </p>
+                <p className="truncate text-sm text-muted-foreground">{realName}</p>
               )}
               {profile.favourite_club && (
                 <p className="text-sm text-brand-glow">{profile.favourite_club}</p>
@@ -280,45 +384,24 @@ function MemberProfilePage() {
                 <p className="text-sm text-muted-foreground">{profile.bio}</p>
               )}
 
-              {followingOrgs.length > 0 && (
-                <div className="pt-2">
-                  <p className="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5" /> Following organizers
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {followingOrgs.map((o) => (
-                      <Link
-                        key={o.id}
-                        to="/o/$slug"
-                        params={{ slug: o.slug }}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] py-1 pl-1 pr-2.5 text-xs font-medium text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
-                      >
-                        {o.logo_url ? (
-                          <img
-                            src={o.logo_url}
-                            alt=""
-                            className="h-5 w-5 rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-700 text-[9px] font-bold">
-                            {o.name.slice(0, 1)}
-                          </span>
-                        )}
-                        <span className="truncate">{o.name}</span>
-                        {o.is_verified && (
-                          <span className="text-sky-400">✓</span>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-x-5 gap-y-1 pt-1 text-sm text-muted-foreground">
+                <span>
+                  <strong className="text-foreground">{followerCount}</strong>{" "}
+                  followers
+                </span>
+                <span>
+                  <strong className="text-foreground">{followingCount}</strong>{" "}
+                  following
+                </span>
+                <span>
+                  <strong className="text-foreground">{followingOrgs.length}</strong>{" "}
+                  organizers
+                </span>
+              </div>
 
               {joinedTags.length > 0 && (
                 <div className="pt-2">
-                  <p className="mb-1.5 text-xs text-muted-foreground">
-                    Tournaments
-                  </p>
+                  <p className="mb-1.5 text-xs text-muted-foreground">Tournaments</p>
                   <div className="flex flex-wrap gap-1.5">
                     {joinedTags.map((tag) => (
                       <Link
@@ -352,15 +435,102 @@ function MemberProfilePage() {
             { label: "Conceded", value: stats.goalsAgainst },
           ].map((s) => (
             <div key={s.label} className="glass rounded-xl p-3 text-center">
-              <div className="text-xl font-bold text-gradient-brand">
-                {s.value}
-              </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {s.label}
-              </div>
+              <div className="text-xl font-bold text-gradient-brand">{s.value}</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">{s.label}</div>
             </div>
           ))}
         </div>
+
+        {/* User followers / following — NOT organizer lists */}
+        {(followers.length > 0 || followingUsers.length > 0) && (
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <Users className="h-4 w-4" /> Followers
+              </h2>
+              <div className="space-y-1 rounded-2xl border border-white/10">
+                {followers.length === 0 && (
+                  <p className="p-4 text-sm text-muted-foreground">No followers yet</p>
+                )}
+                {followers.map((u) => (
+                  <Link
+                    key={u.id}
+                    to="/members/$id"
+                    params={{ id: u.id }}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-white/[0.04]"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={u.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[10px]">
+                        {(u.full_name || u.username || "?").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-sm">
+                      {u.full_name || u.username || "Player"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <Users className="h-4 w-4" /> Following people
+              </h2>
+              <div className="space-y-1 rounded-2xl border border-white/10">
+                {followingUsers.length === 0 && (
+                  <p className="p-4 text-sm text-muted-foreground">Not following anyone</p>
+                )}
+                {followingUsers.map((u) => (
+                  <Link
+                    key={u.id}
+                    to="/members/$id"
+                    params={{ id: u.id }}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-white/[0.04]"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={u.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[10px]">
+                        {(u.full_name || u.username || "?").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-sm">
+                      {u.full_name || u.username || "Player"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Organizer communities — clearly labeled, separate from people */}
+        {followingOrgs.length > 0 && (
+          <div>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <Building2 className="h-4 w-4" /> Following organizers
+            </h2>
+            <div className="flex flex-wrap gap-1.5">
+              {followingOrgs.map((o) => (
+                <Link
+                  key={o.id}
+                  to="/o/$slug"
+                  params={{ slug: o.slug }}
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] py-1 pl-1 pr-2.5 text-xs font-medium text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+                >
+                  {o.logo_url ? (
+                    <img src={o.logo_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+                  ) : (
+                    <span className="grid h-5 w-5 place-items-center rounded-full bg-neutral-700 text-[9px] font-bold">
+                      {o.name.slice(0, 1)}
+                    </span>
+                  )}
+                  <span className="truncate">{o.name}</span>
+                  {o.is_verified && <span className="text-sky-400">✓</span>}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="glass rounded-2xl p-4">
           {xi && xi.slots.some((s) => s.name) ? (
@@ -399,9 +569,7 @@ function MemberProfilePage() {
             Tournament history ({parts.length})
           </h2>
           {parts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Not joined any tournament yet.
-            </p>
+            <p className="text-sm text-muted-foreground">Not joined any tournament yet.</p>
           ) : (
             <div className="space-y-2">
               {parts.map((p) => {
@@ -414,9 +582,7 @@ function MemberProfilePage() {
                     className="glass flex items-center justify-between gap-3 rounded-xl p-3 transition hover:bg-accent/30"
                   >
                     <div className="min-w-0">
-                      <div className="truncate font-medium">
-                        {t?.name ?? "Tournament"}
-                      </div>
+                      <div className="truncate font-medium">{t?.name ?? "Tournament"}</div>
                       <div className="truncate text-xs text-muted-foreground">
                         {p.club || p.player_name}
                       </div>
