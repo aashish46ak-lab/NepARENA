@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase, type AppNotification } from "@/lib/supabase";
+import { followUser, isFollowingUser } from "@/lib/user-follows";
+import { notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,10 +14,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Bell } from "lucide-react";
+import { toast } from "sonner";
+
+type NotifRow = AppNotification & {
+  type?: string;
+  actor_id?: string | null;
+  meta?: Record<string, unknown> | null;
+};
 
 export function NotificationsBell() {
   const { user } = useAuth();
-  const [items, setItems] = useState<AppNotification[]>([]);
+  const [items, setItems] = useState<NotifRow[]>([]);
+  const [mutualMap, setMutualMap] = useState<Record<string, boolean>>({});
+  const [followingBack, setFollowingBack] = useState<Record<string, boolean>>({});
 
   const load = async () => {
     if (!user) return;
@@ -24,15 +35,34 @@ export function NotificationsBell() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(20);
-    const rows = ((data ?? []) as AppNotification[]).filter((n) => {
-      const t = ((n as { type?: string }).type ?? "").toLowerCase();
+      .limit(25);
+    const rows = ((data ?? []) as NotifRow[]).filter((n) => {
+      const t = (n.type ?? "").toLowerCase();
       const title = (n.title ?? "").toLowerCase();
-      // Messages live in the Messages button — exclude from bell
       if (t === "message" || t === "dm" || title.includes("sent you a message")) return false;
       return true;
     });
     setItems(rows);
+
+    const actors = [
+      ...new Set(
+        rows
+          .filter((n) => (n.type ?? "").toLowerCase() === "follow" && n.actor_id)
+          .map((n) => n.actor_id as string),
+      ),
+    ];
+    const fmap: Record<string, boolean> = {};
+    const mmap: Record<string, boolean> = {};
+    await Promise.all(
+      actors.map(async (aid) => {
+        const iFollow = await isFollowingUser(user.id, aid);
+        const theyFollow = await isFollowingUser(aid, user.id);
+        fmap[aid] = iFollow;
+        mmap[aid] = iFollow && theyFollow;
+      }),
+    );
+    setFollowingBack(fmap);
+    setMutualMap(mmap);
   };
 
   useEffect(() => {
@@ -50,10 +80,7 @@ export function NotificationsBell() {
         },
         (payload) => {
           void load();
-          const row = payload.new as {
-            title?: string;
-            body?: string | null;
-          } | null;
+          const row = payload.new as { title?: string; body?: string | null } | null;
           if (
             row?.title &&
             typeof Notification !== "undefined" &&
@@ -78,10 +105,7 @@ export function NotificationsBell() {
       )
       .subscribe();
 
-    if (
-      typeof Notification !== "undefined" &&
-      Notification.permission === "default"
-    ) {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
       void Notification.requestPermission();
     }
 
@@ -100,9 +124,7 @@ export function NotificationsBell() {
       .update({ read_at: new Date().toISOString() })
       .eq("id", id);
     setItems((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, read_at: new Date().toISOString() } : n,
-      ),
+      prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
     );
   };
 
@@ -114,6 +136,24 @@ export function NotificationsBell() {
       .eq("user_id", user.id)
       .is("read_at", null);
     void load();
+  };
+
+  const followBack = async (actorId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !actorId) return;
+    await followUser(user.id, actorId);
+    setFollowingBack((m) => ({ ...m, [actorId]: true }));
+    setMutualMap((m) => ({ ...m, [actorId]: true }));
+    await notify({
+      userId: actorId,
+      title: "followed you back",
+      body: "You follow each other now",
+      type: "follow",
+      link: `/members/${user.id}`,
+      actorId: user.id,
+    });
+    toast.success("Followed back");
   };
 
   return (
@@ -147,36 +187,54 @@ export function NotificationsBell() {
             No notifications
           </div>
         ) : (
-          <div className="max-h-[320px] overflow-y-auto">
-            {items.map((n) => (
-              <DropdownMenuItem
-                key={n.id}
-                className="flex flex-col items-start gap-0.5 px-3 py-2 cursor-pointer"
-                onClick={() => markRead(n.id)}
-              >
-                <div className="flex w-full items-center gap-2">
-                  <span className="font-medium text-sm truncate flex-1">
-                    {n.title}
-                  </span>
-                  {!n.read_at && (
-                    <span className="h-2 w-2 rounded-full bg-brand shrink-0" />
+          <div className="max-h-[360px] overflow-y-auto">
+            {items.map((n) => {
+              const isFollow = (n.type ?? "").toLowerCase() === "follow";
+              const actorId = n.actor_id ?? null;
+              const mutual = actorId ? mutualMap[actorId] : false;
+              const iFollow = actorId ? followingBack[actorId] : false;
+
+              return (
+                <DropdownMenuItem
+                  key={n.id}
+                  className="flex flex-col items-start gap-1 px-3 py-2.5 cursor-pointer"
+                  onClick={() => markRead(n.id)}
+                >
+                  <div className="flex w-full items-center gap-2">
+                    <span className="font-medium text-sm truncate flex-1">
+                      {isFollow && mutual ? "You follow each other" : n.title}
+                    </span>
+                    {!n.read_at && (
+                      <span className="h-2 w-2 rounded-full bg-brand shrink-0" />
+                    )}
+                  </div>
+                  {n.body && !isFollow && (
+                    <span className="text-xs text-muted-foreground line-clamp-2">{n.body}</span>
                   )}
-                </div>
-                {n.body && (
-                  <span className="text-xs text-muted-foreground line-clamp-2">
-                    {n.body}
-                  </span>
-                )}
-                {n.link && (
-                  <Link
-                    to={n.link as "/"}
-                    className="text-[11px] text-brand-glow hover:underline"
-                  >
-                    Open
-                  </Link>
-                )}
-              </DropdownMenuItem>
-            ))}
+                  {isFollow && actorId && !iFollow && (
+                    <button
+                      type="button"
+                      onClick={(e) => void followBack(actorId, e)}
+                      className="mt-1 rounded-full bg-sky-500 px-3 py-1 text-[11px] font-semibold text-white hover:bg-sky-400"
+                    >
+                      Follow Back
+                    </button>
+                  )}
+                  {isFollow && mutual && (
+                    <span className="text-[11px] text-emerald-400">You follow each other</span>
+                  )}
+                  {n.link && (
+                    <Link
+                      to={n.link as "/"}
+                      className="text-[11px] text-brand-glow hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Open
+                    </Link>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
           </div>
         )}
       </DropdownMenuContent>
