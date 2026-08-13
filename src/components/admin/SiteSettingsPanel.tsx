@@ -17,6 +17,7 @@ import {
 } from "@/lib/themes";
 import { DEFAULT_ORGANIZER_SLUG } from "@/lib/organizers";
 import { saveOrganizerTheme } from "@/lib/save-organizer-theme";
+import { setOrganizerThemeContext } from "@/lib/organizer-context";
 import { cn } from "@/lib/utils";
 
 export function SiteSettingsPanel() {
@@ -116,7 +117,13 @@ export function SiteSettingsPanel() {
         .update({ theme_id: themeId } as Record<string, unknown>)
         .eq("id", row.id);
 
-      toast.success(`Theme “${theme.label}” saved — open public organizer page`);
+      setOrganizerThemeContext({
+        slug: DEFAULT_ORGANIZER_SLUG,
+        theme_id: themeId,
+        primary_color: startColor,
+        secondary_color: endColor,
+      });
+      toast.success(`Theme “${theme.label}” saved — applied across organizer pages`);
       qc.invalidateQueries({ queryKey: ["site_settings"] });
       qc.invalidateQueries({ queryKey: ["organizer"] });
       qc.invalidateQueries({ queryKey: ["active_organizers_page"] });
