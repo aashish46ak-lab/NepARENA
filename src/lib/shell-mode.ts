@@ -10,6 +10,8 @@ export function isPlatformPath(pathname: string): boolean {
     "/auth",
     "/invite",
     "/reset-password",
+    "/games",
+    "/vote",
   ];
   return platformPrefixes.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
