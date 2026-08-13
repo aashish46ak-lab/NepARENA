@@ -6,22 +6,20 @@ import {
 } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
-/**
- * Single router factory used by client boot.
- * Existing Supabase schema / SQL is unchanged — only the JS boot path is new.
- */
 export function getRouter() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: 1,
         refetchOnWindowFocus: false,
-        staleTime: 30_000,
+        refetchOnReconnect: false,
+        // Fewer duplicate network round-trips across navigations
+        staleTime: 60_000,
+        gcTime: 10 * 60_000,
       },
     },
   });
 
-  // Always attach history so router.stores is created (required by TanStack hydrate).
   const history =
     typeof document !== "undefined"
       ? createBrowserHistory()
@@ -32,10 +30,10 @@ export function getRouter() {
     history,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreload: "intent",
+    defaultPreloadStaleTime: 30_000,
   });
 
-  // Guarantee stores exist before any hydrateStart / hydrate() call.
   const r = router as unknown as {
     stores?: { ids: { get: () => unknown[] } };
     update: (o?: object) => void;
