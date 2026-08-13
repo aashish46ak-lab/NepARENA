@@ -20,7 +20,7 @@ import {
   Building2,
   UserPlus,
   UserMinus,
-  Users,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildSeoHead } from "@/lib/seo";
@@ -30,18 +30,17 @@ import {
   getUserFollowerCount,
   getUserFollowingCount,
   isFollowingUser,
-  listFollowers,
-  listFollowingUsers,
   unfollowUser,
 } from "@/lib/user-follows";
 import { toast } from "sonner";
 import { MessageProfileButton } from "@/components/MessageProfileButton";
 import { SocialFeed } from "@/components/SocialFeed";
+import { InlineStreak } from "@/components/StreakBadge";
 
 export const Route = createFileRoute("/members/$id")({
   head: () => ({
     ...buildSeoHead({
-      title: "Profile",
+      title: "Profile — NepARENA",
       description: "Player profile on NepARENA",
       path: "/members",
     }),
@@ -63,6 +62,7 @@ function MemberProfilePage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [followBusy, setFollowBusy] = useState(false);
+  const [showXi, setShowXi] = useState(false);
   const isOwn = !!user?.id && user.id === id;
 
   const { data, isLoading, error } = useQuery({
@@ -105,14 +105,11 @@ function MemberProfilePage() {
 
       const { data: parts } = await supabase
         .from("tournament_participants")
-        .select(
-          "id, tournament_id, player_name, club, status, photo_url, created_at",
-        )
+        .select("id, tournament_id, player_name, club, status, photo_url, created_at")
         .eq("user_id", id)
         .order("created_at", { ascending: false });
 
       const partList = (parts ?? []) as TournamentParticipant[];
-
       const { data: hof } = await supabase.from("hall_of_fame").select("*");
 
       const names = new Set<string>();
@@ -128,7 +125,6 @@ function MemberProfilePage() {
       );
 
       const tournamentIds = [...new Set(partList.map((p) => p.tournament_id))];
-
       let tours: { id: string; name: string; status: string }[] = [];
       if (tournamentIds.length) {
         const { data: t } = await supabase
@@ -136,39 +132,6 @@ function MemberProfilePage() {
           .select("id, name, status")
           .in("id", tournamentIds);
         tours = (t ?? []) as typeof tours;
-      }
-
-      const partIds = partList.map((p) => p.id);
-      let wins = 0,
-        draws = 0,
-        losses = 0,
-        goalsFor = 0,
-        goalsAgainst = 0;
-      if (partIds.length) {
-        const orFilter =
-          partIds.map((pid) => "home_id.eq." + pid).join(",") +
-          "," +
-          partIds.map((pid) => "away_id.eq." + pid).join(",");
-        const { data: matchRows } = await supabase
-          .from("matches")
-          .select("home_id, away_id, home_score, away_score, played")
-          .eq("played", true)
-          .or(orFilter);
-        for (const m of matchRows ?? []) {
-          const hs = Number(m.home_score);
-          const ascore = Number(m.away_score);
-          if (!Number.isFinite(hs) || !Number.isFinite(ascore)) continue;
-          const isHome = partIds.includes(m.home_id as string);
-          const isAway = partIds.includes(m.away_id as string);
-          if (!isHome && !isAway) continue;
-          const my = isHome ? hs : ascore;
-          const opp = isHome ? ascore : hs;
-          goalsFor += my;
-          goalsAgainst += opp;
-          if (my > opp) wins += 1;
-          else if (my < opp) losses += 1;
-          else draws += 1;
-        }
       }
 
       let followingOrgs: {
@@ -182,9 +145,7 @@ function MemberProfilePage() {
         .from("organizer_followers")
         .select("organizer_id")
         .eq("user_id", id);
-      const orgIds = (follows ?? []).map(
-        (f: { organizer_id: string }) => f.organizer_id,
-      );
+      const orgIds = (follows ?? []).map((f: { organizer_id: string }) => f.organizer_id);
       if (orgIds.length) {
         const { data: orgs } = await supabase
           .from("organizers")
@@ -194,25 +155,24 @@ function MemberProfilePage() {
         followingOrgs = ((orgs ?? []) as typeof followingOrgs).filter(Boolean);
       }
 
-      const [followerCount, followingCount, followers, followingUsers] =
-        await Promise.all([
-          getUserFollowerCount(id),
-          getUserFollowingCount(id),
-          listFollowers(id, 24),
-          listFollowingUsers(id, 24),
-        ]);
+      const [followerCount, followingCount] = await Promise.all([
+        getUserFollowerCount(id),
+        getUserFollowingCount(id),
+      ]);
+
+      const streak = Number(
+        (profile as Profile & { login_streak?: number }).login_streak ?? 0,
+      );
 
       return {
         profile,
         parts: partList,
         tours,
         achievements,
-        stats: { wins, draws, losses, goalsFor, goalsAgainst },
         followingOrgs,
         followerCount,
         followingCount,
-        followers,
-        followingUsers,
+        streak,
       };
     },
   });
@@ -283,23 +243,15 @@ function MemberProfilePage() {
     followingOrgs,
     followerCount,
     followingCount,
-    followers,
-    followingUsers,
+    streak,
   } = data;
   const tourMap = new Map(tours.map((t) => [t.id, t]));
   const displayName =
     profile.username?.trim() || profile.full_name?.trim() || "Player";
   const realName = profile.full_name?.trim() || null;
-  const stats = data.stats ?? {
-    wins: 0,
-    draws: 0,
-    losses: 0,
-    goalsFor: 0,
-    goalsAgainst: 0,
-  };
-
   const links = (profile.social_links ?? {}) as Record<string, string>;
   const xi = parseXi(links.all_time_xi);
+  const hasXi = !!(xi && xi.slots.some((s) => s.name));
 
   const joinedTags = parts
     .map((p) => {
@@ -308,7 +260,6 @@ function MemberProfilePage() {
         tournamentId: p.tournament_id,
         name: t?.name ?? "Tournament",
         tourStatus: t?.status ?? "unknown",
-        joinStatus: p.status,
       };
     })
     .filter(
@@ -318,15 +269,15 @@ function MemberProfilePage() {
 
   return (
     <PageShell force="platform">
-      <div className="mx-auto max-w-3xl space-y-8 px-4 py-10">
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 text-neutral-400">
           <Link to="/users">
             <ArrowLeft className="mr-1 h-4 w-4" /> Users
           </Link>
         </Button>
 
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-          <div className="relative h-36 bg-gradient-to-br from-sky-900 via-slate-900 to-violet-950 sm:h-44">
+          <div className="relative h-32 bg-gradient-to-br from-sky-900 via-slate-900 to-violet-950 sm:h-40">
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -339,10 +290,7 @@ function MemberProfilePage() {
           <div className="relative px-4 pb-5 sm:px-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <Avatar className="-mt-12 h-24 w-24 ring-4 ring-[#0a0a0a] sm:h-28 sm:w-28">
-                <AvatarImage
-                  src={profile.avatar_url ?? undefined}
-                  className="object-cover"
-                />
+                <AvatarImage src={profile.avatar_url ?? undefined} className="object-cover" />
                 <AvatarFallback className="bg-gradient-brand text-xl text-primary-foreground">
                   {displayName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -375,8 +323,12 @@ function MemberProfilePage() {
                 </div>
               )}
             </div>
+
             <div className="mt-3 min-w-0 space-y-2">
-              <h1 className="truncate text-2xl font-bold">{displayName}</h1>
+              <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold">
+                <span className="truncate">{displayName}</span>
+                <InlineStreak streak={streak} className="text-sm" />
+              </h1>
               {realName && realName !== displayName && (
                 <p className="truncate text-sm text-muted-foreground">{realName}</p>
               )}
@@ -384,131 +336,61 @@ function MemberProfilePage() {
                 <p className="text-sm text-brand-glow">{profile.favourite_club}</p>
               )}
               {profile.bio && (
-                <p className="text-sm text-muted-foreground">{profile.bio}</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">{profile.bio}</p>
               )}
 
-              <div className="flex flex-wrap gap-x-5 gap-y-1 pt-1 text-sm text-muted-foreground">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground">
+                <Link to="/followers/$id" params={{ id }} className="hover:text-foreground">
+                  <strong className="text-foreground">{followerCount}</strong> Followers
+                </Link>
+                <span className="text-white/20">•</span>
+                <Link to="/following-people/$id" params={{ id }} className="hover:text-foreground">
+                  <strong className="text-foreground">{followingCount}</strong> Following
+                </Link>
+                <span className="text-white/20">•</span>
                 <span>
-                  <strong className="text-foreground">{followerCount}</strong>{" "}
-                  followers
-                </span>
-                <span>
-                  <strong className="text-foreground">{followingCount}</strong>{" "}
-                  following
-                </span>
-                <span>
-                  <strong className="text-foreground">{followingOrgs.length}</strong>{" "}
-                  organizers
+                  <strong className="text-foreground">{followingOrgs.length}</strong> Organizers
                 </span>
               </div>
 
               {joinedTags.length > 0 && (
-                <div className="pt-2">
-                  <p className="mb-1.5 text-xs text-muted-foreground">Tournaments</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {joinedTags.map((tag) => (
-                      <Link
-                        key={tag.tournamentId}
-                        to="/tournaments/$id"
-                        params={{ id: tag.tournamentId }}
-                      >
-                        <Badge
-                          className={cn(
-                            "cursor-pointer border-0 capitalize",
-                            statusBadgeClass(tag.tourStatus),
-                          )}
-                        >
-                          {tag.name}
-                        </Badge>
-                      </Link>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {joinedTags.slice(0, 8).map((tag) => (
+                    <Link key={tag.tournamentId} to="/tournaments/$id" params={{ id: tag.tournamentId }}>
+                      <Badge className={cn("cursor-pointer border-0 capitalize", statusBadgeClass(tag.tourStatus))}>
+                        🏆 {tag.name}
+                      </Badge>
+                    </Link>
+                  ))}
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {[
-            { label: "Wins", value: stats.wins },
-            { label: "Draws", value: stats.draws },
-            { label: "Losses", value: stats.losses },
-            { label: "Goals", value: stats.goalsFor },
-            { label: "Conceded", value: stats.goalsAgainst },
-          ].map((s) => (
-            <div key={s.label} className="glass rounded-xl p-3 text-center">
-              <div className="text-xl font-bold text-gradient-brand">{s.value}</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {(followers.length > 0 || followingUsers.length > 0) && (
-          <div className="grid gap-6 sm:grid-cols-2">
+        {hasXi && (
+          <button
+            type="button"
+            onClick={() => setShowXi((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-emerald-950/40 to-white/[0.03] px-4 py-4 text-left transition hover:border-emerald-500/30"
+          >
             <div>
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                <Users className="h-4 w-4" /> Followers
-              </h2>
-              <div className="space-y-1 rounded-2xl border border-white/10">
-                {followers.length === 0 && (
-                  <p className="p-4 text-sm text-muted-foreground">No followers yet</p>
-                )}
-                {followers.map((u) => (
-                  <Link
-                    key={u.id}
-                    to="/members/$id"
-                    params={{ id: u.id }}
-                    className="flex items-center gap-3 px-3 py-2 hover:bg-white/[0.04]"
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={u.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[10px]">
-                        {(u.full_name || u.username || "?").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate text-sm">
-                      {u.full_name || u.username || "Player"}
-                    </span>
-                  </Link>
-                ))}
-              </div>
+              <p className="text-sm font-semibold text-white">⚽ View Their All-Time XI</p>
+              <p className="text-xs text-neutral-500">Tap to {showXi ? "hide" : "open"} lineup</p>
             </div>
-            <div>
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                <Users className="h-4 w-4" /> Following people
-              </h2>
-              <div className="space-y-1 rounded-2xl border border-white/10">
-                {followingUsers.length === 0 && (
-                  <p className="p-4 text-sm text-muted-foreground">Not following anyone</p>
-                )}
-                {followingUsers.map((u) => (
-                  <Link
-                    key={u.id}
-                    to="/members/$id"
-                    params={{ id: u.id }}
-                    className="flex items-center gap-3 px-3 py-2 hover:bg-white/[0.04]"
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={u.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[10px]">
-                        {(u.full_name || u.username || "?").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate text-sm">
-                      {u.full_name || u.username || "Player"}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            <ChevronRight className={cn("h-5 w-5 text-neutral-400 transition", showXi && "rotate-90")} />
+          </button>
+        )}
+        {showXi && hasXi && (
+          <div className="glass rounded-2xl p-4">
+            <AllTimeXiView xi={xi!} />
           </div>
         )}
 
         {followingOrgs.length > 0 && (
           <div>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              <Building2 className="h-4 w-4" /> Following organizers
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <Building2 className="h-4 w-4" /> Organizers
             </h2>
             <div className="flex flex-wrap gap-1.5">
               {followingOrgs.map((o) => (
@@ -533,33 +415,14 @@ function MemberProfilePage() {
           </div>
         )}
 
-        <div className="glass rounded-2xl p-4">
-          {xi && xi.slots.some((s) => s.name) ? (
-            <AllTimeXiView xi={xi} />
-          ) : (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No All-Time XI published yet
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-lg font-bold">Posts</h2>
-          <SocialFeed authorId={id} />
-        </div>
-
         {achievements.length > 0 && (
           <div>
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-              <Award className="h-5 w-5 text-amber-300" />
-              Achievements
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <Award className="h-4 w-4 text-amber-300" /> Achievements
             </h2>
             <div className="flex flex-wrap gap-2">
               {achievements.map((a) => (
-                <Badge
-                  key={a.id}
-                  className="border-amber-500/30 bg-amber-500/15 text-amber-300"
-                >
+                <Badge key={a.id} className="border-amber-500/30 bg-amber-500/15 text-amber-300">
                   <Trophy className="mr-1 h-3 w-3" />
                   {a.achievement}
                   {a.tournament ? " · " + a.tournament : ""}
@@ -570,37 +433,8 @@ function MemberProfilePage() {
         )}
 
         <div>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
-            <Trophy className="h-5 w-5 text-brand-glow" />
-            Tournament history ({parts.length})
-          </h2>
-          {parts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Not joined any tournament yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {parts.map((p) => {
-                const t = tourMap.get(p.tournament_id);
-                return (
-                  <Link
-                    key={p.id}
-                    to="/tournaments/$id"
-                    params={{ id: p.tournament_id }}
-                    className="glass flex items-center justify-between gap-3 rounded-xl p-3 transition hover:bg-accent/30"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{t?.name ?? "Tournament"}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {p.club || p.player_name}
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="shrink-0 capitalize">
-                      {p.status}
-                    </Badge>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Posts</h2>
+          <SocialFeed authorId={id} />
         </div>
       </div>
     </PageShell>
