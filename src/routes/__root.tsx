@@ -31,7 +31,7 @@ import {
 } from "@/lib/seo";
 
 const ENABLE_LOGIN_POPUPS = false;
-const ENABLE_INSTALL_FAB = false;
+const ENABLE_INSTALL_FAB = true;
 const ENABLE_ADSENSE = true;
 const ADSENSE_CLIENT = "ca-pub-3033911443659343";
 
@@ -303,7 +303,9 @@ function PlatformInstallFab() {
     pathname.startsWith("/following") ||
     pathname.startsWith("/users") ||
     pathname.startsWith("/ownership") ||
-    pathname.startsWith("/platform");
+    pathname.startsWith("/platform") ||
+    pathname.startsWith("/feed") ||
+    pathname.startsWith("/about");
   if (!show) return null;
   return <InstallFAB />;
 }
