@@ -91,7 +91,14 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
       className={
         mode === "platform"
           ? "sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-md"
-          : "sticky top-0 z-40 border-b border-border/60 glass"
+          : "sticky top-0 z-40 border-b border-white/10 bg-black/80 backdrop-blur-md"
+      }
+      style={
+        mode === "organizer"
+          ? {
+              borderBottomColor: "color-mix(in srgb, var(--org-accent, #525252) 35%, transparent)",
+            }
+          : undefined
       }
     >
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
@@ -113,7 +120,12 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
             className={
               mode === "platform"
                 ? "text-base font-semibold tracking-tight text-neutral-100"
-                : "font-semibold text-gradient-brand"
+                : "text-base font-semibold tracking-tight"
+            }
+            style={
+              mode === "organizer"
+                ? { color: "var(--org-accent, #e5e5e5)" }
+                : undefined
             }
           >
             {brandName}
@@ -163,6 +175,13 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
                     <UserIcon className="mr-2 h-4 w-4" /> Profile
                   </Link>
                 </DropdownMenuItem>
+                {user?.id && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/members/$id" params={{ id: user.id }}>
+                      <UserIcon className="mr-2 h-4 w-4" /> Public profile
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 {isSuperAdmin && (
                   <DropdownMenuItem asChild>
                     <Link to="/platform">
