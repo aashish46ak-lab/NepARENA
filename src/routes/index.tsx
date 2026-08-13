@@ -39,9 +39,9 @@ const BeAnOrganizer = lazy(() =>
 export const Route = createFileRoute("/")({
   head: () => ({
     ...buildSeoHead({
-      title: "NepARENA – Nepal's Multi Organizer Esports Platform",
+      title: "NepARENA – Worldwide Multi Organizer Esports Platform",
       description:
-        "NepARENA is Nepal's multi-organizer esports platform where tournament organizers manage competitions, members, communities and events.",
+        "NepARENA is a worldwide multi-organizer esports platform where tournament organizers manage competitions, members, communities and events.",
       path: "/",
     }),
   }),
@@ -217,8 +217,8 @@ function PlatformProfilePage() {
           </div>
 
           <p className="mt-6 text-base leading-relaxed text-neutral-300">
-            Nepal's Multi-Organizer eFootball Platform where verified tournament
-            organizers build and manage their own esports communities.
+            Worldwide multi-organizer esports platform where verified tournament
+            organizers build and manage their own communities.
           </p>
 
           <Link
@@ -232,21 +232,29 @@ function PlatformProfilePage() {
       </section>
 
       <section className="border-t border-white/5">
-        <div className="mx-auto max-w-3xl px-4 py-8">
+        <div className="mx-auto max-w-3xl px-4 py-10">
           <Link
             to="/feed"
-            className="group flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-gradient-to-r from-sky-950/50 to-white/[0.03] p-5 transition hover:border-sky-500/30"
+            className="group relative flex flex-col gap-4 overflow-hidden rounded-[28px] border border-sky-500/25 bg-gradient-to-br from-sky-600/25 via-sky-950/40 to-white/[0.03] p-6 shadow-lg shadow-sky-900/20 transition hover:border-sky-400/40 sm:flex-row sm:items-center sm:justify-between sm:p-8"
           >
-            <div className="flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-sky-500/15 text-2xl ring-1 ring-sky-500/25">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-400/10 blur-2xl" />
+            <div className="flex items-center gap-4">
+              <div className="grid h-16 w-16 place-items-center rounded-3xl bg-sky-500/20 text-3xl ring-1 ring-sky-400/30 sm:h-20 sm:w-20 sm:text-4xl">
                 📰
               </div>
               <div>
-                <p className="text-base font-semibold text-white group-hover:text-sky-100">Go to Feed</p>
-                <p className="text-xs text-neutral-500">Posts, likes, comments & community updates</p>
+                <p className="text-xl font-bold tracking-tight text-white group-hover:text-sky-50 sm:text-2xl">
+                  Go to Feed
+                </p>
+                <p className="mt-1 max-w-sm text-sm text-neutral-300">
+                  Posts, likes, comments, reposts & community updates — open the social feed
+                </p>
               </div>
             </div>
-            <ArrowRight className="h-5 w-5 text-neutral-500 transition group-hover:translate-x-0.5 group-hover:text-sky-300" />
+            <span className="inline-flex items-center gap-2 self-start rounded-full bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-500/30 transition group-hover:bg-sky-400 sm:self-center">
+              Open Feed
+              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
           </Link>
         </div>
       </section>
