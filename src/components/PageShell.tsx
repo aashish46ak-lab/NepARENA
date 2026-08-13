@@ -12,9 +12,12 @@ import { getTheme } from "@/lib/themes";
 export function PageShell({
   children,
   force,
+  hideChrome = false,
 }: {
   children: ReactNode;
   force?: "platform" | "organizer";
+  /** Hide site Header/Footer (immersive feed / messages) */
+  hideChrome?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const mode =
@@ -58,9 +61,9 @@ export function PageShell({
           : undefined
       }
     >
-      <Header mode={mode} />
+      {!hideChrome && <Header mode={mode} />}
       <main className="flex-1">{children}</main>
-      <Footer mode={mode} />
+      {!hideChrome && <Footer mode={mode} />}
     </div>
   );
 }
