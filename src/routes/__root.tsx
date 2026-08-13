@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { InstallFAB } from "@/components/InstallFAB";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { registerPWA } from "@/lib/pwa-register";
 import {
   SITE_TITLE,
@@ -192,6 +193,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "dns-prefetch", href: "https://pagead2.googlesyndication.com" },
+      { rel: "dns-prefetch", href: "https://www.googletagmanager.com" },
       { rel: "preconnect", href: "https://jssexmnwpwjzkqxkevqf.supabase.co", crossOrigin: "anonymous" },
       { rel: "preload", href: "/neparena-logo.png", as: "image", type: "image/png" },
     ],
@@ -235,7 +237,6 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  // Session-once only; never on SPA navigations or mid-session refresh of non-home
   const [splashDone, setSplashDone] = useState(() => {
     if (typeof window === "undefined") return true;
     if (!shouldShowSplash()) return true;
@@ -255,6 +256,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ClientErrorBoundary>
+          <GoogleAnalytics />
           {showSplash && (
             <SplashScreen onDone={() => setSplashDone(true)} />
           )}
