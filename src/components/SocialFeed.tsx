@@ -5,9 +5,10 @@ import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Heart, MessageCircle, Share2, Loader2, Send } from "lucide-react";
+import { Heart, MessageCircle, Share2, Loader2, Send, Repeat2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { InlineStreak } from "@/components/StreakBadge";
 
 export type FeedPost = {
   id: string;
@@ -21,6 +22,7 @@ export type FeedPost = {
   like_count: number;
   comment_count: number;
   liked_by_me: boolean;
+  author_streak?: number;
 };
 
 const PAGE = 12;
@@ -63,7 +65,7 @@ export function SocialFeed({ authorId }: { authorId?: string }) {
         authorIds.length
           ? supabase
               .from("profiles")
-              .select("id, username, full_name, avatar_url")
+              .select("id, username, full_name, avatar_url, login_streak")
               .in("id", authorIds)
           : Promise.resolve({
               data: [] as {
@@ -71,6 +73,7 @@ export function SocialFeed({ authorId }: { authorId?: string }) {
                 username: string | null;
                 full_name: string | null;
                 avatar_url: string | null;
+                login_streak?: number | null;
               }[],
             }),
         ids.length
@@ -88,6 +91,7 @@ export function SocialFeed({ authorId }: { authorId?: string }) {
             username: string | null;
             full_name: string | null;
             avatar_url: string | null;
+            login_streak?: number | null;
           }[]
         ).map((p) => [p.id, p]),
       );
@@ -108,6 +112,7 @@ export function SocialFeed({ authorId }: { authorId?: string }) {
           ...r,
           author_name: a?.full_name?.trim() || a?.username?.trim() || "Player",
           author_avatar: a?.avatar_url ?? null,
+          author_streak: Number(a?.login_streak ?? 0),
           like_count: likeCount.get(r.id) ?? 0,
           comment_count: cCount.get(r.id) ?? 0,
           liked_by_me: likedMe.has(r.id),
@@ -238,6 +243,7 @@ export function SocialFeed({ authorId }: { authorId?: string }) {
                 >
                   {p.author_name}
                 </Link>
+                <InlineStreak streak={p.author_streak} />
                 {p.pinned && (
                   <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
                     Pinned
@@ -285,8 +291,17 @@ export function SocialFeed({ authorId }: { authorId?: string }) {
                 </button>
                 <button
                   type="button"
+                  onClick={() => toast.message("Repost coming soon")}
+                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-neutral-400 transition hover:bg-white/5"
+                  title="Repost"
+                >
+                  <Repeat2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => void sharePost(p)}
                   className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-neutral-400 transition hover:bg-white/5"
+                  title="Share"
                 >
                   <Share2 className="h-3.5 w-3.5" />
                 </button>
@@ -311,12 +326,7 @@ export function SocialFeed({ authorId }: { authorId?: string }) {
 
       {more && !loading && (
         <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-white/15"
-            onClick={() => void load(false)}
-          >
+          <Button variant="outline" size="sm" className="border-white/15" onClick={() => void load(false)}>
             Load more
           </Button>
         </div>
