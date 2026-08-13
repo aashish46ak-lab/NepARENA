@@ -3,8 +3,9 @@ import { Link } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Search, X, Building2, User } from "lucide-react";
+import { Search, X, Building2, User, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InlineStreak } from "@/components/StreakBadge";
 
 type Hit =
   | {
@@ -13,6 +14,7 @@ type Hit =
       title: string;
       subtitle: string | null;
       avatar: string | null;
+      streak?: number;
     }
   | {
       kind: "organizer";
@@ -21,7 +23,61 @@ type Hit =
       title: string;
       subtitle: string | null;
       avatar: string | null;
+    }
+  | {
+      kind: "tournament";
+      id: string;
+      title: string;
+      subtitle: string | null;
     };
+
+export function GlobalSearchBar({ className }: { className?: string }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+
+  return (
+    <div className={cn("relative min-w-0 flex-1", className)}>
+      <div
+        className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 transition focus-within:border-sky-500/40 focus-within:bg-white/[0.07]"
+        onClick={() => setOpen(true)}
+      >
+        <Search className="h-4 w-4 shrink-0 text-neutral-500" />
+        <Input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search players, organizers or tournaments..."
+          className="h-9 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
+        />
+        {q && (
+          <button
+            type="button"
+            className="text-neutral-500 hover:text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              setQ("");
+            }}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {open && (
+        <SearchResults
+          q={q}
+          onClose={() => {
+            setOpen(false);
+            setQ("");
+          }}
+          embedded
+        />
+      )}
+    </div>
+  );
+}
 
 export function GlobalSearchButton() {
   const [open, setOpen] = useState(false);
@@ -42,9 +98,6 @@ export function GlobalSearchButton() {
 
 function SearchOverlay({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState("");
-  const [hits, setHits] = useState<Hit[]>([]);
-  const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -52,65 +105,6 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  useEffect(() => {
-    const term = q.trim();
-    if (term.length < 1) {
-      setHits([]);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    const t = window.setTimeout(async () => {
-      const like = `%${term}%`;
-      const [users, orgs] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, username, full_name, avatar_url")
-          .or(`username.ilike.${like},full_name.ilike.${like}`)
-          .limit(8),
-        supabase
-          .from("organizers")
-          .select("id, slug, name, logo_url, tagline")
-          .eq("status", "active")
-          .ilike("name", like)
-          .limit(6),
-      ]);
-      if (cancelled) return;
-      const uHits: Hit[] = ((users.data ?? []) as {
-        id: string;
-        username: string | null;
-        full_name: string | null;
-        avatar_url: string | null;
-      }[]).map((u) => ({
-        kind: "user",
-        id: u.id,
-        title: u.full_name?.trim() || u.username?.trim() || "Player",
-        subtitle: u.username ? `@${u.username}` : null,
-        avatar: u.avatar_url,
-      }));
-      const oHits: Hit[] = ((orgs.data ?? []) as {
-        id: string;
-        slug: string;
-        name: string;
-        logo_url: string | null;
-        tagline: string | null;
-      }[]).map((o) => ({
-        kind: "organizer",
-        id: o.id,
-        slug: o.slug,
-        title: o.name,
-        subtitle: o.tagline,
-        avatar: o.logo_url,
-      }));
-      setHits([...oHits, ...uHits]);
-      setLoading(false);
-    }, 180);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [q]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 px-3 pt-16 backdrop-blur-sm sm:pt-24">
@@ -121,61 +115,203 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search players & organizers…"
+            placeholder="Search players, organizers or tournaments..."
             className="border-0 bg-transparent focus-visible:ring-0"
           />
           <button type="button" onClick={onClose} className="p-1 text-neutral-400 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="max-h-80 overflow-y-auto p-2">
-          {loading && <p className="p-3 text-xs text-neutral-500">Searching…</p>}
-          {!loading && q.trim() && hits.length === 0 && (
-            <p className="p-3 text-xs text-neutral-500">No results</p>
-          )}
-          {hits.map((h) =>
-            h.kind === "user" ? (
-              <Link
-                key={`u-${h.id}`}
-                to="/members/$id"
-                params={{ id: h.id }}
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]"
-              >
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={h.avatar ?? undefined} />
-                  <AvatarFallback>{h.title.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">{h.title}</p>
-                  <p className="truncate text-[11px] text-neutral-500">{h.subtitle}</p>
-                </div>
-                <User className="h-3.5 w-3.5 text-neutral-600" />
-              </Link>
-            ) : (
-              <Link
-                key={`o-${h.id}`}
-                to="/o/$slug"
-                params={{ slug: h.slug }}
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]"
-              >
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={h.avatar ?? undefined} />
-                  <AvatarFallback>{h.title.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">{h.title}</p>
-                  <p className={cn("truncate text-[11px] text-neutral-500")}>
-                    {h.subtitle || "Organizer"}
-                  </p>
-                </div>
-                <Building2 className="h-3.5 w-3.5 text-neutral-600" />
-              </Link>
-            ),
-          )}
-        </div>
+        <SearchResults q={q} onClose={onClose} />
       </div>
+    </div>
+  );
+}
+
+function SearchResults({
+  q,
+  onClose,
+  embedded,
+}: {
+  q: string;
+  onClose: () => void;
+  embedded?: boolean;
+}) {
+  const [hits, setHits] = useState<Hit[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!embedded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest?.["data-search-panel" as never] && !t.closest?.("[data-search-panel]"))
+        onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const t = window.setTimeout(() => window.addEventListener("click", onClick), 0);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("click", onClick);
+      clearTimeout(t);
+    };
+  }, [embedded, onClose]);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 1) {
+      setHits([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const timer = window.setTimeout(async () => {
+      const like = `%${term}%`;
+      const [users, orgs, tours] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url, login_streak")
+          .or(`username.ilike.${like},full_name.ilike.${like}`)
+          .limit(8),
+        supabase
+          .from("organizers")
+          .select("id, slug, name, logo_url, tagline")
+          .eq("status", "active")
+          .ilike("name", like)
+          .limit(5),
+        supabase
+          .from("tournaments")
+          .select("id, name, status")
+          .eq("is_published", true)
+          .ilike("name", like)
+          .limit(5),
+      ]);
+      if (cancelled) return;
+      const uHits: Hit[] = (
+        (users.data ?? []) as {
+          id: string;
+          username: string | null;
+          full_name: string | null;
+          avatar_url: string | null;
+          login_streak?: number | null;
+        }[]
+      ).map((u) => ({
+        kind: "user",
+        id: u.id,
+        title: u.full_name?.trim() || u.username?.trim() || "Player",
+        subtitle: u.username ? `@${u.username}` : null,
+        avatar: u.avatar_url,
+        streak: Number(u.login_streak ?? 0),
+      }));
+      const oHits: Hit[] = (
+        (orgs.data ?? []) as {
+          id: string;
+          slug: string;
+          name: string;
+          logo_url: string | null;
+          tagline: string | null;
+        }[]
+      ).map((o) => ({
+        kind: "organizer",
+        id: o.id,
+        slug: o.slug,
+        title: o.name,
+        subtitle: o.tagline,
+        avatar: o.logo_url,
+      }));
+      const tHits: Hit[] = (
+        (tours.data ?? []) as { id: string; name: string; status: string | null }[]
+      ).map((t) => ({
+        kind: "tournament",
+        id: t.id,
+        title: t.name,
+        subtitle: (t.status ?? "").replaceAll("_", " ") || "Tournament",
+      }));
+      setHits([...tHits, ...oHits, ...uHits]);
+      setLoading(false);
+    }, 180);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [q]);
+
+  if (!q.trim() && embedded) return null;
+
+  return (
+    <div
+      data-search-panel
+      className={cn(
+        embedded
+          ? "absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-80 overflow-y-auto rounded-2xl border border-white/15 bg-[#0c0c0c] p-2 shadow-2xl"
+          : "max-h-80 overflow-y-auto p-2",
+      )}
+    >
+      {loading && <p className="p-3 text-xs text-neutral-500">Searching…</p>}
+      {!loading && q.trim() && hits.length === 0 && (
+        <p className="p-3 text-xs text-neutral-500">No results</p>
+      )}
+      {hits.map((h) =>
+        h.kind === "user" ? (
+          <Link
+            key={`u-${h.id}`}
+            to="/members/$id"
+            params={{ id: h.id }}
+            onClick={onClose}
+            className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]"
+          >
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={h.avatar ?? undefined} />
+              <AvatarFallback>{h.title.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1.5 truncate text-sm font-medium text-white">
+                {h.title}
+                <InlineStreak streak={h.streak} />
+              </p>
+              <p className="truncate text-[11px] text-neutral-500">{h.subtitle}</p>
+            </div>
+            <User className="h-3.5 w-3.5 text-neutral-600" />
+          </Link>
+        ) : h.kind === "organizer" ? (
+          <Link
+            key={`o-${h.id}`}
+            to="/o/$slug"
+            params={{ slug: h.slug }}
+            onClick={onClose}
+            className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]"
+          >
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={h.avatar ?? undefined} />
+              <AvatarFallback>{h.title.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">{h.title}</p>
+              <p className="truncate text-[11px] text-neutral-500">{h.subtitle || "Organizer"}</p>
+            </div>
+            <Building2 className="h-3.5 w-3.5 text-neutral-600" />
+          </Link>
+        ) : (
+          <Link
+            key={`t-${h.id}`}
+            to="/tournaments/$id"
+            params={{ id: h.id }}
+            onClick={onClose}
+            className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]"
+          >
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-amber-500/15 text-amber-300">
+              <Trophy className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">{h.title}</p>
+              <p className="truncate text-[11px] capitalize text-neutral-500">{h.subtitle}</p>
+            </div>
+            <Trophy className="h-3.5 w-3.5 text-neutral-600" />
+          </Link>
+        ),
+      )}
     </div>
   );
 }
