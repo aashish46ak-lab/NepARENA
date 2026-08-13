@@ -72,6 +72,7 @@ function DashboardPage() {
   const navigate = useNavigate({ from: "/dashboard" });
   const { t } = Route.useSearch();
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgMeta, setOrgMeta] = useState<{ name: string; logo_url: string | null; slug: string | null } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -80,7 +81,16 @@ function DashboardPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    void getDefaultOrganizer().then((o) => setOrgId(o?.id ?? null));
+    void getDefaultOrganizer().then((o) => {
+      setOrgId(o?.id ?? null);
+      if (o) {
+        setOrgMeta({
+          name: o.name,
+          logo_url: (o as { logo_url?: string | null }).logo_url ?? null,
+          slug: o.slug,
+        });
+      }
+    });
   }, []);
 
   const { data: unreadCount = 0 } = useQuery({
@@ -214,12 +224,19 @@ function DashboardPage() {
             {active === "feed" && (
               <div className="mx-auto max-w-xl">
                 <div className="mb-4">
-                  <h2 className="text-lg font-semibold">Community Feed</h2>
+                  <h2 className="text-lg font-semibold">Organizer Feed</h2>
                   <p className="text-sm text-muted-foreground">
-                    Post, like, comment, and repost like on the main Feed.
+                    Posts here appear under your organizer name and logo.
                   </p>
                 </div>
-                <SocialFeed />
+                <SocialFeed
+                  organizerId={orgId}
+                  organizerMeta={
+                    orgMeta
+                      ? { name: orgMeta.name, logo_url: orgMeta.logo_url, slug: orgMeta.slug }
+                      : null
+                  }
+                />
               </div>
             )}
             {active === "messages" && (
