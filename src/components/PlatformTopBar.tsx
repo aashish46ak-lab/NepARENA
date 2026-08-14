@@ -1,6 +1,6 @@
 /**
  * Instagram-style top bar.
- * Logo only on Home. + opens Create Post overlay modal (closes on outside tap).
+ * Logo, + and notifications ONLY on Home. Other pages: title only (no + / bell).
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
@@ -24,6 +24,8 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isHome = pathname === "/" || pathname === "";
   const displayLogo = showLogo ?? isHome;
+  // + and notifications strictly home-only
+  const showActions = isHome;
 
   const openCreate = () => {
     if (onCreatePost) onCreatePost();
@@ -40,7 +42,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
       >
         <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-3">
           <div className="relative flex w-12 justify-start">
-            {user ? (
+            {showActions && user ? (
               <button
                 type="button"
                 onClick={openCreate}
@@ -74,11 +76,11 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
           </div>
 
           <div className="flex w-12 justify-end">
-            {user ? <NotificationsBell /> : <span className="w-9" />}
+            {showActions && user ? <NotificationsBell /> : <span className="w-9" />}
           </div>
         </div>
       </header>
-      {!onCreatePost && (
+      {!onCreatePost && showActions && (
         <CreatePostModal open={postModalOpen} onOpenChange={setPostModalOpen} />
       )}
     </>

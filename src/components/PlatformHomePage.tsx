@@ -1,7 +1,5 @@
 /**
- * NepARENA platform homepage — FEED FIRST.
- * Compact About/Members pills with icons. No GOAT section.
- * + opens centered CreatePostModal overlay.
+ * NepARENA platform homepage — FEED FIRST with For You / Following tabs.
  */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +15,7 @@ export function PlatformHomePage() {
   const [pillsVisible, setPillsVisible] = useState(true);
   const [postOpen, setPostOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
+  const [feedMode, setFeedMode] = useState<"for_you" | "following">("for_you");
   const lastY = useRef(0);
 
   useEffect(() => {
@@ -70,7 +69,34 @@ export function PlatformHomePage() {
               Open full feed
             </Link>
           </div>
-          <SocialFeed key={feedKey} mode="for_you" hideComposer />
+
+          <div className="mb-4 flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+            {(
+              [
+                ["for_you", "For You"],
+                ["following", "Following"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setFeedMode(id);
+                  setFeedKey((k) => k + 1);
+                }}
+                className={cn(
+                  "flex-1 rounded-full py-2 text-xs font-semibold transition",
+                  feedMode === id
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-300",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <SocialFeed key={feedKey} mode={feedMode} hideComposer />
         </div>
       </section>
 
