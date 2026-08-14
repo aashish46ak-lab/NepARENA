@@ -1,40 +1,9 @@
 /**
- * NepARENA = PLATFORM PROFILE homepage.
+ * NepARENA homepage route — page body in PlatformHomePage.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
-import { PageShell } from "@/components/PageShell";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { PLATFORM_NAME } from "@/lib/organizers";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
-import { GamesHub } from "@/components/GamesHub";
-import { StreakAssistant } from "@/components/StreakAssistant";
-import { HomeStreakBadge } from "@/components/HomeStreakBadge";
-import { OrganizerCard } from "@/components/OrganizerCard";
+import { createFileRoute } from "@tanstack/react-router";
 import { buildSeoHead } from "@/lib/seo";
-import {
-  Users,
-  Building2,
-  Trophy,
-  Sparkles,
-  CheckCircle2,
-  ArrowRight,
-  Calendar,
-  Mail,
-} from "lucide-react";
-
-const GoatVoteBooth = lazy(() =>
-  import("@/components/GoatVoteBooth").then((m) => ({ default: m.GoatVoteBooth })),
-);
-const ThisOrThatBooth = lazy(() =>
-  import("@/components/ThisOrThatBooth").then((m) => ({ default: m.ThisOrThatBooth })),
-);
-const BeAnOrganizer = lazy(() =>
-  import("@/components/BeAnOrganizer").then((m) => ({ default: m.BeAnOrganizer })),
-);
+import { PlatformHomePage } from "@/components/PlatformHomePage";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -45,5 +14,5 @@ export const Route = createFileRoute("/")({
       path: "/",
     }),
   }),
-  component: PlatformProfilePage,
+  component: PlatformHomePage,
 });
