@@ -1,6 +1,6 @@
 /**
  * Compact floating glass bottom nav — lifted ~0.5in from bottom.
- * Hidden on organizer public, game detail, dashboard, platform, auth.
+ * Island mode on organizer profiles, member profiles, tournaments, etc.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -83,22 +83,24 @@ export function BottomNav() {
     setIslandOpen(false);
   }, [pathname]);
 
-  // Fully hide bottom nav on deep / admin / organizer public / game detail
+  // Fully hide bottom nav on auth / admin / game detail
   if (pathname.startsWith("/auth") || pathname.startsWith("/reset-password")) return null;
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/platform")) return null;
-  if (pathname.startsWith("/o/")) return null;
   if (pathname.startsWith("/games/") && pathname !== "/games/" && pathname !== "/games") return null;
   if (pathname.startsWith("/vote/")) return null;
   if (pathname.startsWith("/admin/tournaments")) return null;
 
   const isOwnProfile = !!user?.id && pathname === `/members/${user.id}`;
+  // Island (floating circle → expand) on deep pages including organizer profiles
   const useIsland =
     !isOwnProfile &&
-    (pathname.startsWith("/members/") ||
+    (pathname.startsWith("/o/") ||
+      pathname.startsWith("/members/") ||
       (pathname.startsWith("/tournaments/") && pathname !== "/tournaments") ||
       pathname.startsWith("/hall-of-fame") ||
       pathname.startsWith("/history") ||
-      pathname.startsWith("/gallery"));
+      pathname.startsWith("/gallery") ||
+      pathname.startsWith("/about"));
 
   // ~0.5 inch lift from bottom edge
   const bottomPad = "pb-[calc(0.75rem+12px+env(safe-area-inset-bottom,0px))]";
@@ -148,7 +150,7 @@ export function BottomNav() {
         {islandOpen && (
           <button
             type="button"
-            className="pointer-events-auto fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="pointer-events-auto fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] animate-in fade-in duration-150"
             aria-label="Close navigation"
             onClick={() => setIslandOpen(false)}
           />
