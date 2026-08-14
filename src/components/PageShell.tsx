@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { BottomNav } from "./BottomNav";
 import { isPlatformPath } from "@/lib/shell-mode";
 import {
   applyOrganizerThemeVars,
@@ -16,7 +17,7 @@ export function PageShell({
 }: {
   children: ReactNode;
   force?: "platform" | "organizer";
-  /** Hide site Header/Footer (immersive feed / messages) */
+  /** Hide site Header/Footer (immersive feed / messages) — BottomNav still shows */
   hideChrome?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -45,6 +46,8 @@ export function PageShell({
     }
   }, [mode, pathname]);
 
+  const showBottomNav = mode === "platform";
+
   return (
     <div
       className={`min-h-screen flex flex-col ${
@@ -62,8 +65,9 @@ export function PageShell({
       }
     >
       {!hideChrome && <Header mode={mode} />}
-      <main className="flex-1">{children}</main>
+      <main className={`flex-1 ${showBottomNav ? "pb-24" : ""}`}>{children}</main>
       {!hideChrome && <Footer mode={mode} />}
+      {showBottomNav && <BottomNav />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Compact identity badge: 🔥12 — used beside usernames everywhere */
+/** Premium flame with number inside — used beside usernames everywhere */
 export function InlineStreak({
   streak,
   className,
@@ -13,13 +13,21 @@ export function InlineStreak({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums text-amber-300",
+        "relative inline-flex h-5 min-w-5 items-center justify-center",
         className,
       )}
       title={`${n} day login streak`}
     >
-      <span aria-hidden>🔥</span>
-      {n}
+      <span
+        className="pointer-events-none absolute inset-0 animate-pulse rounded-full bg-orange-500/25 blur-[6px]"
+        aria-hidden
+      />
+      <span className="relative text-[15px] leading-none drop-shadow-[0_0_6px_rgba(251,146,60,0.7)]" aria-hidden>
+        🔥
+      </span>
+      <span className="absolute inset-0 flex items-center justify-center pt-[3px] text-[9px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
+        {n > 99 ? "99+" : n}
+      </span>
     </span>
   );
 }
@@ -56,16 +64,15 @@ export function StreakBadge({
   return (
     <span
       className={cn(
-        "inline-flex flex-wrap items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-200",
+        "inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-100",
         className,
       )}
       title={longest ? `Best: ${longest} days` : undefined}
     >
-      <span aria-hidden>🔥⚽</span>
-      <span className="tabular-nums">{streak}</span>
-      <span className="font-medium text-amber-200/80">day streak</span>
+      <InlineStreak streak={streak} />
+      <span className="font-medium text-orange-200/90">day streak</span>
       {longest != null && longest > streak && (
-        <span className="font-normal text-amber-200/60">· best {longest}</span>
+        <span className="font-normal text-orange-200/55">· best {longest}</span>
       )}
     </span>
   );
