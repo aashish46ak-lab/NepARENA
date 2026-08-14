@@ -120,10 +120,20 @@ function DashboardPage() {
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-brand"><Shield className="h-5 w-5 text-white" /></div>
+            {orgMeta?.logo_url ? (
+              <img
+                src={orgMeta.logo_url}
+                alt=""
+                className="h-11 w-11 rounded-xl object-cover ring-1 ring-white/15 shadow-md"
+              />
+            ) : (
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-brand">
+                <Shield className="h-5 w-5 text-white" />
+              </div>
+            )}
             <div>
-              <h1 className="text-xl font-bold md:text-2xl">Organizer Dashboard</h1>
-              <p className="text-xs text-muted-foreground sm:text-sm">{orgMeta?.name ? `${orgMeta.name} · ` : ""}{user.email} · {roleLabel}</p>
+              <h1 className="text-xl font-bold md:text-2xl">{orgMeta?.name ?? "Organizer Dashboard"}</h1>
+              <p className="text-xs text-muted-foreground sm:text-sm">{user.email} · {roleLabel}</p>
             </div>
           </div>
           <div className="relative">
