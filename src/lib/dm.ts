@@ -328,6 +328,16 @@ export async function deleteDmMessage(messageId: string): Promise<{ error?: stri
   return {};
 }
 
+/** Platform admin hard-delete any DM message */
+export async function adminDeleteDmMessage(messageId: string): Promise<{ error?: string }> {
+  const { data, error } = await supabase.rpc("admin_delete_dm_message", {
+    p_message_id: messageId,
+  });
+  if (error) return { error: error.message };
+  if (!data) return { error: "Could not delete message" };
+  return {};
+}
+
 /** Edit own message text */
 export async function editDmMessage(
   messageId: string,
