@@ -1,20 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Trophy, Calendar, Users, ShieldAlert, List, Table2, FileText,
-  Award, Loader2, ExternalLink, UserPlus, CheckCircle2, ImagePlus, X,
-  ChevronLeft, ChevronRight, Banknote, Shuffle, Lock, GitBranch, Swords,
+  Trophy, Users, List, Table2, FileText,
+  Loader2, ExternalLink, Banknote, Lock,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { BracketTree } from "@/components/BracketTree";
-import { SubmitResultCard } from "@/components/SubmitResultCard";
 
 export const Route = createFileRoute("/tournaments/$id")({
   head: () => ({
@@ -95,6 +91,11 @@ function TournamentDetailPage() {
   const prize = tournament.prize_pool;
   const banner = tournament.banner_url as string | null;
 
+  const completed = data.matches.filter((m) => m.played).length;
+  const total = data.matches.length;
+  const remaining = Math.max(0, total - completed);
+  const completionPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
   const tabs = [
     { id: "overview", label: "Overview", icon: Trophy },
     { id: "fixtures", label: "Fixtures", icon: List },
@@ -152,16 +153,34 @@ function TournamentDetailPage() {
             <p className="text-sm text-muted-foreground">
               {description || "Follow fixtures, standings and rules for this tournament."}
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat label="Players" value={data.participants.length} />
-              <Stat label="Matches" value={data.matches.length} />
-              <Stat label="Status" value={status.replaceAll("_", " ")} />
+              <Stat label="Total matches" value={total} />
+              <Stat label="Completed" value={completed} />
+              <Stat label="Remaining" value={remaining} />
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <span className="text-neutral-400">Tournament progress</span>
+                <span className="font-semibold tabular-nums text-white">{completionPct}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-sky-500 transition-all duration-500"
+                  style={{ width: `${completionPct}%` }}
+                />
+              </div>
             </div>
           </div>
         )}
 
         {tab === "fixtures" && (
-          <FixturesList matches={data.matches} participants={data.participants} />
+          <FixturesByMatchday
+            matches={data.matches}
+            matchdays={data.matchdays}
+            participants={data.participants}
+            isStaff={false}
+          />
         )}
 
         {tab === "standings" && (
@@ -196,7 +215,7 @@ function TournamentDetailPage() {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
-      <div className="text-lg font-bold capitalize">{value}</div>
+      <div className="text-lg font-bold capitalize tabular-nums">{value}</div>
       <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
   );
@@ -207,19 +226,144 @@ function labelOf(participants: Record<string, unknown>[], pid: unknown) {
   return (p?.player_name as string) || (p?.club as string) || "TBD";
 }
 
-function FixturesList({ matches, participants }: { matches: Record<string, unknown>[]; participants: Record<string, unknown>[] }) {
-  if (!matches.length) return <p className="text-sm text-muted-foreground">No fixtures yet.</p>;
+function userIdOf(participants: Record<string, unknown>[], pid: unknown): string | null {
+  const p = participants.find((x) => x.id === pid);
+  return (p?.user_id as string | null) ?? null;
+}
+
+function FixturesByMatchday({
+  matches,
+  matchdays,
+  participants,
+}: {
+  matches: Record<string, unknown>[];
+  matchdays: Record<string, unknown>[];
+  participants: Record<string, unknown>[];
+  isStaff?: boolean;
+}) {
+  const groups = useMemo(() => {
+    type G = { id: string | null; name: string; published: boolean; matches: Record<string, unknown>[] };
+    const map = new Map<string, G>();
+    for (const m of matches) {
+      const md = matchdays.find((d) => d.id === m.matchday_id);
+      const name = String(md?.name ?? `Round ${m.round ?? "?"}`);
+      const key = name;
+      const existing = map.get(key);
+      if (existing) existing.matches.push(m);
+      else {
+        map.set(key, {
+          id: (md?.id as string) ?? (m.matchday_id as string) ?? null,
+          name,
+          published: !!md?.is_published,
+          matches: [m],
+        });
+      }
+    }
+    for (const md of matchdays) {
+      const name = String(md.name);
+      if (!map.has(name)) {
+        map.set(name, {
+          id: md.id as string,
+          name,
+          published: !!md.is_published,
+          matches: [],
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => {
+      const oa = Number(matchdays.find((d) => d.id === a.id)?.sort_order ?? 999);
+      const ob = Number(matchdays.find((d) => d.id === b.id)?.sort_order ?? 999);
+      return oa - ob;
+    });
+  }, [matches, matchdays]);
+
+  const [selected, setSelected] = useState<string | null>(null);
+  const activeName =
+    selected && groups.some((g) => g.name === selected)
+      ? selected
+      : groups[0]?.name ?? null;
+  const active = groups.find((g) => g.name === activeName);
+
+  if (!matches.length && !matchdays.length) {
+    return <p className="text-sm text-muted-foreground">No fixtures yet.</p>;
+  }
+
   return (
-    <div className="space-y-2">
-      {matches.map((m) => (
-        <div key={String(m.id)} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-sm">
-          <span className="truncate font-medium">{labelOf(participants, m.home_id)}</span>
-          <span className="shrink-0 font-bold tabular-nums text-sky-300">
-            {m.played ? `${m.home_score} - ${m.away_score}` : "vs"}
-          </span>
-          <span className="truncate text-right font-medium">{labelOf(participants, m.away_id)}</span>
+    <div className="space-y-4">
+      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {groups.map((g) => {
+          const isActive = g.name === activeName;
+          return (
+            <button
+              key={g.name}
+              type="button"
+              onClick={() => setSelected(g.name)}
+              className={cn(
+                "shrink-0 rounded-xl border px-3 py-2 text-center transition",
+                isActive
+                  ? "border-sky-500/50 bg-sky-500/15 text-white"
+                  : "border-white/10 bg-white/[0.03] text-neutral-400 hover:bg-white/[0.06]",
+              )}
+            >
+              <div className="text-xs font-semibold">{g.name}</div>
+              <div className="mt-0.5 text-[10px] opacity-70">
+                {g.matches.filter((m) => m.played).length}/{g.matches.length}
+                {g.published ? " · Live" : " · Locked"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {active && (
+        <div className="relative">
+          {!active.published && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-black/50 backdrop-blur-md">
+              <Lock className="mb-2 h-8 w-8 text-neutral-300" />
+              <p className="text-sm font-semibold text-white">Fixtures locked</p>
+              <p className="mt-1 max-w-xs text-center text-xs text-neutral-400">
+                This matchday is not published yet.
+              </p>
+            </div>
+          )}
+          <div className={cn("space-y-2", !active.published && "pointer-events-none select-none opacity-40")}>
+            {active.matches.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">No matches in this matchday.</p>
+            ) : (
+              active.matches.map((m) => {
+                const homeName = labelOf(participants, m.home_id);
+                const awayName = labelOf(participants, m.away_id);
+                const homeUid = userIdOf(participants, m.home_id);
+                const awayUid = userIdOf(participants, m.away_id);
+                return (
+                  <div
+                    key={String(m.id)}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-white/10 px-3 py-2.5 text-sm"
+                  >
+                    {homeUid ? (
+                      <Link to="/members/$id" params={{ id: homeUid }} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                        {homeName}
+                      </Link>
+                    ) : (
+                      <span className="min-w-0 flex-1 truncate font-medium">{homeName}</span>
+                    )}
+                    <span className="shrink-0 font-bold tabular-nums text-sky-300">
+                      {m.played ? `${m.home_score} - ${m.away_score}` : "vs"}
+                    </span>
+                    {awayUid ? (
+                      <Link to="/members/$id" params={{ id: awayUid }} className="min-w-0 flex-1 truncate text-right font-medium hover:underline">
+                        {awayName}
+                      </Link>
+                    ) : (
+                      <span className="min-w-0 flex-1 truncate text-right font-medium">{awayName}</span>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
