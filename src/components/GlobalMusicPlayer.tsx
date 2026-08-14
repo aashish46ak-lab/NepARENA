@@ -2,6 +2,7 @@
  * NepARENA Music — official YouTube IFrame API (real songs only).
  * Player stays in-viewport (YouTube policy) so play() works.
  */
+import { Link } from "@tanstack/react-router";
 import {
   createContext,
   useCallback,
@@ -116,6 +117,7 @@ type MusicApi = {
   seek: (t: number) => void;
   closePlayer: () => void;
   setExpanded: (v: boolean) => void;
+  playTrack: (t: Track) => void;
 };
 
 const MusicCtx = createContext<MusicApi | null>(null);
@@ -253,6 +255,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
+      setDuration(t.durationSec > 0 ? t.durationSec : 0);
+      setProgress(0);
       p.setVolume(volumeRef.current);
       p.unMute();
       p.loadVideoById({ videoId: t.youtubeId, startSeconds: 0 });
@@ -262,7 +266,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         } catch {
           /* ignore */
         }
-      }, 120);
+      }, 150);
       setPlaying(true);
       setActive(true);
     } catch {
@@ -301,6 +305,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
               setTrack(pending);
               setGenreId(pending.genre);
               setActive(true);
+              setDuration(pending.durationSec > 0 ? pending.durationSec : 0);
               try {
                 e.target.setVolume(volumeRef.current);
                 e.target.unMute();
@@ -327,6 +332,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
               if (exact) {
                 setTrack(exact);
                 setActive(true);
+                setDuration(exact.durationSec > 0 ? exact.durationSec : 0);
                 e.target.cueVideoById(exact.youtubeId);
                 e.target.setVolume(saved.volume ?? 80);
               }
@@ -339,6 +345,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
               setPlaying(true);
               setActive(true);
               errorSkipsRef.current = 0;
+              try {
+                const d = e.target.getDuration();
+                if (d > 0) setDuration(d);
+              } catch {
+                /* ignore */
+              }
             } else if (e.data === YT.PlayerState.PAUSED) {
               setPlaying(false);
             } else if (e.data === YT.PlayerState.ENDED) {
@@ -352,7 +364,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           },
           onError: () => {
             errorSkipsRef.current += 1;
-            if (errorSkipsRef.current > 6) return;
+            if (errorSkipsRef.current > 2) {
+              setPlaying(false);
+              return;
+            }
             const n = pickRandomTrack(genreRef.current, trackRef.current?.id);
             if (n) {
               setTrack(n);
@@ -400,8 +415,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       const p = playerRef.current;
       if (!p) return;
       try {
-        setProgress(p.getCurrentTime() || 0);
-        setDuration(p.getDuration() || 0);
+        const ct = p.getCurrentTime() || 0;
+        const dur = p.getDuration() || 0;
+        setProgress(ct);
+        setDuration(dur > 0 ? dur : trackRef.current?.durationSec || 0);
       } catch {
         /* ignore */
       }
@@ -411,10 +428,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const playTrack = useCallback(
     (t: Track) => {
+      errorSkipsRef.current = 0;
       setActive(true);
       setTrack(t);
       setGenreId(t.genre);
       setExpanded(true);
+      setDuration(t.durationSec > 0 ? t.durationSec : 0);
+      setProgress(0);
       if (!playerRef.current || !ready) {
         pendingPlayRef.current = t;
         return;
@@ -522,6 +542,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       seek,
       closePlayer,
       setExpanded,
+      playTrack,
     }),
     [
       active,
@@ -540,6 +561,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       prev,
       seek,
       closePlayer,
+      playTrack,
     ],
   );
 
@@ -583,31 +605,39 @@ export function useMusicOptional() {
 
 export function HomeMusicCard() {
   const music = useMusicOptional();
-  if (!music) return null;
+  const playing = !!(music?.playing && music?.active);
+  const cover = music?.track?.youtubeId
+    ? youtubeThumb(music.track.youtubeId)
+    : "/neparena-logo.png";
 
   return (
-    <button
-      type="button"
-      onClick={() => music.openSheet()}
-      className="group relative mt-4 w-full overflow-hidden rounded-[22px] border border-white/15 bg-gradient-to-br from-black/80 via-[#0c0c12]/90 to-black/70 px-4 py-3.5 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-xl transition hover:border-sky-400/35 hover:shadow-[0_0_28px_rgba(56,189,248,0.18)]"
+    <Link
+      to="/music"
+      className="group relative mt-4 block w-full overflow-hidden rounded-[22px] border border-white/15 bg-gradient-to-br from-black/85 via-[#0c1020]/95 to-black/80 px-4 py-4 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl transition hover:border-sky-400/40 hover:shadow-[0_0_40px_rgba(56,189,248,0.22)]"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(56,189,248,0.12),transparent_55%)]" />
-      <div className="relative flex items-center gap-3">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5 text-sky-300">
-          <Music2 className="h-5 w-5" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(56,189,248,0.16),transparent_50%)]" />
+      <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-violet-500/10 blur-2xl" />
+      <div className="relative flex items-center gap-3.5">
+        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/15 shadow-lg">
+          <img src={cover} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold tracking-tight text-white">NepARENA Music</p>
-          <p className="text-xs text-neutral-400">Real songs · official YouTube</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sky-400/90">
+            NepARENA Music
+          </p>
+          <p className="mt-0.5 text-base font-semibold tracking-tight text-white">
+            {music?.active && music.track ? music.track.title : "Discover real songs"}
+          </p>
+          <p className="truncate text-xs text-neutral-400">
+            {music?.active && music.track
+              ? `${music.playing ? "Playing" : "Paused"} · ${music.track.artist}`
+              : "Official YouTube · tap to open"}
+          </p>
         </div>
-        <EqualizerBars playing={music.playing && music.active} />
+        <EqualizerBars playing={playing} />
       </div>
-      {music.active && music.track && (
-        <p className="relative mt-2 truncate text-[11px] text-neutral-500">
-          {music.playing ? "Now playing" : "Paused"} · {music.track.title} — {music.track.artist}
-        </p>
-      )}
-    </button>
+    </Link>
   );
 }
 
@@ -641,7 +671,7 @@ function GenreSheet() {
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {GENRES.map((g) => (
+          {GENRES.filter((g) => g.id !== "random").map((g) => (
             <button
               key={g.id}
               type="button"
@@ -846,16 +876,13 @@ function FloatingDisc() {
             </div>
 
             <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  music.setExpanded(false);
-                  music.openSheet();
-                }}
-                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm font-medium text-neutral-200 hover:bg-white/[0.08]"
+              <Link
+                to="/music"
+                onClick={() => music.setExpanded(false)}
+                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-center text-sm font-medium text-neutral-200 hover:bg-white/[0.08]"
               >
-                Change genre
-              </button>
+                Browse library
+              </Link>
               <a
                 href={youtubeWatchUrl(music.track.youtubeId)}
                 target="_blank"
