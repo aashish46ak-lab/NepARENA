@@ -56,6 +56,7 @@ function SectionFallback() {
 }
 
 export function PlatformHomePage() {
+
   const { user } = useAuth();
   const { data: stats } = useQuery({
     queryKey: ["platform_home_stats"],
@@ -72,7 +73,9 @@ export function PlatformHomePage() {
         .from("organizer_followers")
         .select("organizer_id")
         .eq("user_id", user!.id);
-      const ids = (follows ?? []).map((f: { organizer_id: string }) => f.organizer_id);
+      const ids = (follows ?? []).map(
+        (f: { organizer_id: string }) => f.organizer_id,
+      );
       if (ids.length === 0) return [];
       const { data: orgs } = await supabase
         .from("organizers")
@@ -85,11 +88,17 @@ export function PlatformHomePage() {
         .limit(1)
         .maybeSingle();
       const brandLogo = (site as { logo_url?: string | null } | null)?.logo_url ?? null;
-      const brandBanner = (site as { hero_image_url?: string | null } | null)?.hero_image_url ?? null;
+      const brandBanner =
+        (site as { hero_image_url?: string | null } | null)?.hero_image_url ?? null;
       const brandTag = (site as { tagline?: string | null } | null)?.tagline ?? null;
       return ((orgs ?? []) as {
-        id: string; name: string; slug: string; logo_url: string | null;
-        banner_url: string | null; tagline: string | null; is_verified: boolean;
+        id: string;
+        name: string;
+        slug: string;
+        logo_url: string | null;
+        banner_url: string | null;
+        tagline: string | null;
+        is_verified: boolean;
       }[]).map((o) => ({
         ...o,
         logo_url: o.logo_url || brandLogo,
@@ -109,7 +118,11 @@ export function PlatformHomePage() {
         .select("tournament_id, status")
         .eq("user_id", user!.id)
         .in("status", ["approved", "registered", "pending"]);
-      const ids = [...new Set((parts ?? []).map((p: { tournament_id: string }) => p.tournament_id))];
+      const ids = [
+        ...new Set(
+          (parts ?? []).map((p: { tournament_id: string }) => p.tournament_id),
+        ),
+      ];
       if (ids.length === 0) return [];
       const { data: tours } = await supabase
         .from("tournaments")
@@ -118,7 +131,12 @@ export function PlatformHomePage() {
         .eq("is_published", true)
         .order("created_at", { ascending: false })
         .limit(12);
-      return (tours ?? []) as { id: string; name: string; status: string | null; banner_url: string | null }[];
+      return (tours ?? []) as {
+        id: string;
+        name: string;
+        status: string | null;
+        banner_url: string | null;
+      }[];
     },
   });
 
@@ -220,7 +238,15 @@ export function PlatformHomePage() {
                   className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-white/25"
                 >
                   {tour.banner_url ? (
-                    <img src={tour.banner_url} alt="" width={640} height={160} loading="lazy" decoding="async" className="h-24 w-full object-cover" />
+                    <img
+                      src={tour.banner_url}
+                      alt=""
+                      width={640}
+                      height={160}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-24 w-full object-cover"
+                    />
                   ) : (
                     <div className="h-24 w-full bg-gradient-to-br from-neutral-800 to-neutral-900" />
                   )}
@@ -340,9 +366,19 @@ export function PlatformHomePage() {
 }
 
 function FounderCard({
-  initials, role, name, email, focus, href,
+  initials,
+  role,
+  name,
+  email,
+  focus,
+  href,
 }: {
-  initials: string; role: string; name: string; email: string; focus: string; href: string;
+  initials: string;
+  role: string;
+  name: string;
+  email: string;
+  focus: string;
+  href: string;
 }) {
   return (
     <Link to={href} className="group rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-transparent p-5 transition hover:border-white/25">
