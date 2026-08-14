@@ -13,7 +13,6 @@ import { useEffect, useState, Component, type ErrorInfo, type ReactNode } from "
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
-import { GlobalMusicPlayer, MusicProvider } from "@/components/GlobalMusicPlayer";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { InstallFAB } from "@/components/InstallFAB";
@@ -281,19 +280,16 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MusicProvider>
-          <ClientErrorBoundary>
-            <GoogleAnalytics />
-            {showSplash && <SplashScreen onDone={finishSplash} />}
-            <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
-              <RoleRedirect />
-              <Outlet />
-              {ENABLE_INSTALL_FAB && <PlatformInstallFab />}
-            </div>
-            <Toaster richColors position="top-right" />
-            <GlobalMusicPlayer />
-          </ClientErrorBoundary>
-        </MusicProvider>
+        <ClientErrorBoundary>
+          <GoogleAnalytics />
+          {showSplash && <SplashScreen onDone={finishSplash} />}
+          <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
+            <RoleRedirect />
+            <Outlet />
+            {ENABLE_INSTALL_FAB && <PlatformInstallFab />}
+          </div>
+          <Toaster richColors position="top-right" />
+        </ClientErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   );
