@@ -160,7 +160,7 @@ function MessagesPage() {
     setBusy(true);
     const body = text.trim();
     setText("");
-    const res = await sendDmMessage(activeId, user.id, body);
+    const res = await sendDmMessage({ conversationId: activeId, senderId: user.id, body });
     setBusy(false);
     if (res.error) toast.error(res.error);
   };
@@ -376,7 +376,7 @@ function MessagesPage() {
                           <p className="truncate text-sm font-medium text-neutral-100">{t.peer_name}</p>
                           {t.unread > 0 && <span className="shrink-0 rounded-full bg-sky-500 px-1.5 text-[10px] font-semibold text-white">{t.unread}</span>}
                         </div>
-                        <p className="truncate text-xs text-neutral-500">{t.last_message || "Start chatting"}</p>
+                        <p className="truncate text-xs text-neutral-500">{t.last_body || "Start chatting"}</p>
                       </div>
                     </button>
                     {tab === "requests" && t.status === "request" && (
