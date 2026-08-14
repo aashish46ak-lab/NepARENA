@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Loader2, Trophy, UserPlus, UserMinus, ChevronRight,
-  Menu, Settings, LogOut, Pencil, LayoutDashboard, Plus, MoreVertical, MapPin,
+  Menu, Settings, LogOut, Pencil, LayoutDashboard, Plus, MoreVertical, MapPin, Palette, HelpCircle,
 } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
 import { useAuth } from "@/hooks/useAuth";
@@ -127,6 +127,7 @@ function MemberProfilePage() {
     if (isOwn || followBusy) return;
     setFollowBusy(true);
     const wasFollowing = iFollow;
+    // Optimistic update — keep UI stable; soft revalidate later
     qc.setQueryData(["user_follow", user.id, id], !wasFollowing);
     qc.setQueryData(["member_profile", id], (old: typeof data) => {
       if (!old) return old;
@@ -143,6 +144,11 @@ function MemberProfilePage() {
         if (res.error) throw new Error(res.error.message);
         toast.success("Following");
       }
+      // Delayed soft invalidate so optimistic count is not overwritten by stale read
+      window.setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["member_profile", id], refetchType: "none" });
+        void qc.invalidateQueries({ queryKey: ["user_follow", user.id, id] });
+      }, 1200);
     } catch (e) {
       qc.setQueryData(["user_follow", user.id, id], wasFollowing);
       qc.setQueryData(["member_profile", id], (old: typeof data) => {
@@ -153,8 +159,6 @@ function MemberProfilePage() {
       toast.error(e instanceof Error ? e.message : "Could not update follow");
     } finally {
       setFollowBusy(false);
-      void qc.invalidateQueries({ queryKey: ["member_profile", id] });
-      void qc.invalidateQueries({ queryKey: ["user_follow", user.id, id] });
     }
   };
 
@@ -219,7 +223,7 @@ function MemberProfilePage() {
                 {menuOpen && (
                   <>
                     <button type="button" className="fixed inset-0 z-40" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-11 z-50 min-w-[220px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl">
+                    <div className="absolute right-0 top-11 z-50 min-w-[220px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
                       {isOwn ? (
                         <>
                           <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => { setMenuOpen(false); setEditOpen(true); }}>
@@ -227,6 +231,9 @@ function MemberProfilePage() {
                           </button>
                           <Link to="/settings" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
                             <Settings className="h-4 w-4 text-neutral-400" /> Settings
+                          </Link>
+                          <Link to="/settings" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                            <Palette className="h-4 w-4 text-neutral-400" /> Appearance
                           </Link>
                           {ownedOrgs.map((o) => (
                             <Link key={o.id} to="/dashboard" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
@@ -236,11 +243,14 @@ function MemberProfilePage() {
                           ))}
                           {(isAdmin || isSuperAdmin) && (
                             <Link to="/platform" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
-                              <LayoutDashboard className="h-4 w-4 text-neutral-400" /> Platform admin
+                              <LayoutDashboard className="h-4 w-4 text-neutral-400" /> Platform Dashboard
                             </Link>
                           )}
+                          <a href="mailto:support@neparena.xyz" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                            <HelpCircle className="h-4 w-4 text-neutral-400" /> Help
+                          </a>
                           <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-rose-300 hover:bg-white/8" onClick={async () => { setMenuOpen(false); await signOut(); void navigate({ to: "/" }); }}>
-                            <LogOut className="h-4 w-4" /> Log out
+                            <LogOut className="h-4 w-4" /> Sign Out
                           </button>
                         </>
                       ) : (
