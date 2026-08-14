@@ -1,10 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
 import { listFollowingUsers } from "@/lib/user-follows";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users } from "lucide-react";
 import { InlineStreak } from "@/components/StreakBadge";
 import { buildSeoHead } from "@/lib/seo";
@@ -22,6 +21,7 @@ export const Route = createFileRoute("/following-people/$id")({
 
 function FollowingPeoplePage() {
   const { id } = Route.useParams();
+  const router = useRouter();
 
   const { data: profile } = useQuery({
     queryKey: ["following_people_header", id],
@@ -61,13 +61,18 @@ function FollowingPeoplePage() {
   });
 
   return (
-    <PageShell force="platform">
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-neutral-400">
-          <Link to="/members/$id" params={{ id }}>
-            <ArrowLeft className="mr-1 h-4 w-4" /> Profile
-          </Link>
-        </Button>
+    <PageShell force="platform" hideChrome>
+      <div className="mx-auto max-w-lg px-4 pb-24 pt-4">
+        <button
+          type="button"
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10"
+          onClick={() => {
+            if (window.history.length > 1) router.history.back();
+            else void router.navigate({ to: "/members/$id", params: { id } });
+          }}
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
         <h1 className="flex items-center gap-2 text-xl font-bold text-white">
           <Users className="h-5 w-5 text-neutral-400" />
           Following

@@ -4,7 +4,6 @@ import { PageShell } from "@/components/PageShell";
 import { listFollowers } from "@/lib/user-follows";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users } from "lucide-react";
 import { InlineStreak } from "@/components/StreakBadge";
 import { buildSeoHead } from "@/lib/seo";
@@ -65,26 +64,19 @@ function FollowersPage() {
     },
   });
 
-  const goBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    void router.navigate({ to: "/members/$id", params: { id } });
-  };
-
   return (
-    <PageShell force="platform">
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <Button
+    <PageShell force="platform" hideChrome>
+      <div className="mx-auto max-w-lg px-4 pb-24 pt-4">
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-4 text-neutral-400"
-          onClick={goBack}
+          className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10"
+          onClick={() => {
+            if (window.history.length > 1) router.history.back();
+            else void router.navigate({ to: "/members/$id", params: { id } });
+          }}
         >
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back
-        </Button>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
         <h1 className="flex items-center gap-2 text-xl font-bold text-white">
           <Users className="h-5 w-5 text-neutral-400" />
           Followers
