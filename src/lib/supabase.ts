@@ -30,6 +30,7 @@ export interface Profile {
   social_links: Record<string, string> | null;
   is_suspended: boolean;
   has_password: boolean;
+  is_verified?: boolean;
   created_at: string;
 }
 
