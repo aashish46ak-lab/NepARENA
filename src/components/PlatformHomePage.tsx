@@ -3,8 +3,9 @@
  */
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { PageShell } from "@/components/PageShell";
+import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PLATFORM_NAME } from "@/lib/organizers";
@@ -14,7 +15,6 @@ import { GamesHub } from "@/components/GamesHub";
 import { StreakAssistant } from "@/components/StreakAssistant";
 import { HomeStreakBadge } from "@/components/HomeStreakBadge";
 import { OrganizerCard } from "@/components/OrganizerCard";
-import { HomeMusicCard } from "@/components/GlobalMusicPlayer";
 import {
   Users,
   Building2,
@@ -25,6 +25,7 @@ import {
   Calendar,
   Mail,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const GoatVoteBooth = lazy(() =>
   import("@/components/GoatVoteBooth").then((m) => ({ default: m.GoatVoteBooth })),
@@ -58,6 +59,25 @@ function SectionFallback() {
 
 export function PlatformHomePage() {
   const { user } = useAuth();
+  const [pillsVisible, setPillsVisible] = useState(true);
+  const lastY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY || 0;
+      if (y < 40) {
+        setPillsVisible(true);
+      } else if (y > lastY.current + 8) {
+        setPillsVisible(false);
+      } else if (y < lastY.current - 8) {
+        setPillsVisible(true);
+      }
+      lastY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const { data: stats } = useQuery({
     queryKey: ["platform_home_stats"],
     queryFn: platformStats,
@@ -134,8 +154,39 @@ export function PlatformHomePage() {
   });
 
   return (
-    <PageShell force="platform">
+    <PageShell force="platform" hideChrome>
+      <PlatformTopBar
+        onCreatePost={() => {
+          window.location.href = "/feed";
+        }}
+      />
       <StreakAssistant />
+
+      <div
+        className={cn(
+          "sticky top-12 z-30 border-b border-white/5 bg-[#0a0a0a]/85 backdrop-blur-md transition-all duration-300",
+          pillsVisible
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-full opacity-0",
+        )}
+        data-tour="about-members"
+      >
+        <div className="mx-auto flex max-w-3xl items-center justify-center gap-2 px-4 py-2.5">
+          <Link
+            to="/about"
+            className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-1.5 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
+          >
+            About Us
+          </Link>
+          <Link
+            to="/members"
+            className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-1.5 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
+          >
+            Members
+          </Link>
+        </div>
+      </div>
+
       <section className="relative overflow-hidden">
         <div className="relative h-44 overflow-hidden bg-white sm:h-56">
           <img
@@ -201,23 +252,14 @@ export function PlatformHomePage() {
 
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
-              to="/about"
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-neutral-200 transition hover:border-sky-500/30 hover:bg-sky-500/10 hover:text-white"
-            >
-              About Us
-              <ArrowRight className="h-4 w-4 text-neutral-500" />
-            </Link>
-            <Link
               to="/feed"
               className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/15 px-5 py-2.5 text-sm font-semibold text-sky-100 transition hover:border-sky-400/50 hover:bg-sky-500/25 hover:text-white"
+              data-tour="feed"
             >
               Go to Feed
               <ArrowRight className="h-4 w-4 text-sky-300" />
             </Link>
           </div>
-
-          {/* Fixed Home Music Card — NOT floating */}
-          <HomeMusicCard />
         </div>
       </section>
 
@@ -305,7 +347,7 @@ export function PlatformHomePage() {
               </Suspense>
             </div>
           </div>
-          <div>
+          <div data-tour="games">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">Play Games</h2>
             <p className="mt-1 text-xs text-neutral-500">Tap the console to open the game list</p>
             <div className="mt-4"><GamesHub /></div>
