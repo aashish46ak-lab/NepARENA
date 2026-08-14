@@ -1,153 +1,141 @@
+/**
+ * Members directory — separate page with search.
+ * Clicking a user opens their profile (/members/$id).
+ */
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
-import { useEffect, useState } from "react";
-import { supabase, type Profile } from "@/lib/supabase";
+import { PlatformTopBar } from "@/components/PlatformTopBar";
+import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { buildSeoHead } from "@/lib/seo";
-import { getOrganizerContext } from "@/lib/organizer-context";
-import { getDefaultOrganizer } from "@/lib/organizers";
-
-const PAGE = 20;
+import { Search, Users, Loader2 } from "lucide-react";
+import { InlineStreak } from "@/components/StreakBadge";
 
 export const Route = createFileRoute("/members/")({
   head: () => ({
     ...buildSeoHead({
-      title: "Members",
-      description: "Players who follow this organizer on NepARENA.",
+      title: "Members — NepARENA",
+      description: "Browse registered players on NepARENA.",
       path: "/members",
     }),
   }),
-  component: MembersPage,
+  component: MembersIndexPage,
 });
 
-function MembersPage() {
-  const [members, setMembers] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-  const [orgName, setOrgName] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
+type MemberRow = {
+  id: string;
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  favourite_club: string | null;
+  current_streak?: number | null;
+};
 
-  const load = async (from: number) => {
-    setLoading(true);
-    try {
-      const ctx = getOrganizerContext();
-      let organizerId = ctx?.id ?? null;
-      if (!organizerId) {
-        const def = await getDefaultOrganizer();
-        organizerId = def?.id ?? null;
-        if (def) setOrgName(def.name);
-      } else if (ctx?.name) {
-        setOrgName(ctx.name);
-      }
+function MembersIndexPage() {
+  const [q, setQ] = useState("");
 
-      if (!organizerId) {
-        setMembers([]);
-        setDone(true);
-        return;
-      }
-
-      const { data: follows, count } = await supabase
-        .from("organizer_followers")
-        .select("user_id", { count: "exact" })
-        .eq("organizer_id", organizerId)
-        .order("created_at", { ascending: false })
-        .range(from, from + PAGE - 1);
-
-      if (from === 0) setTotal(count ?? 0);
-
-      const ids = (follows ?? []).map((f: { user_id: string }) => f.user_id);
-      if (ids.length === 0) {
-        if (from === 0) setMembers([]);
-        setDone(true);
-        return;
-      }
-
-      const { data: profiles } = await supabase
+  const { data: members = [], isLoading } = useQuery({
+    queryKey: ["members_directory"],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url, favourite_club, bio, created_at")
-        .in("id", ids);
+        .select("id, display_name, username, avatar_url, favourite_club, current_streak")
+        .order("display_name", { ascending: true })
+        .limit(200);
+      if (error) {
+        console.warn("members list", error.message);
+        return [] as MemberRow[];
+      }
+      return (data ?? []) as MemberRow[];
+    },
+    staleTime: 30_000,
+  });
 
-      const map = new Map(((profiles ?? []) as Profile[]).map((p) => [p.id, p]));
-      const rows = ids.map((id) => map.get(id)).filter(Boolean) as Profile[];
-
-      setMembers((prev) => (from === 0 ? rows : [...prev, ...rows]));
-      if (ids.length < PAGE) setDone(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load(0);
-  }, []);
+  const filtered = useMemo(() => {
+    if (!q.trim()) return members;
+    const s = q.toLowerCase();
+    return members.filter(
+      (m) =>
+        (m.display_name ?? "").toLowerCase().includes(s) ||
+        (m.username ?? "").toLowerCase().includes(s) ||
+        (m.favourite_club ?? "").toLowerCase().includes(s),
+    );
+  }, [members, q]);
 
   return (
-    <PageShell>
-      <div className="mx-auto max-w-2xl px-4 py-12">
-        <div className="mb-10 text-center">
-          <div className="text-5xl font-bold text-gradient-brand md:text-6xl">
-            {total || members.length}
-          </div>
-          <div className="mt-2 text-muted-foreground">
-            {orgName ? `${orgName} followers` : "Organizer followers"}
-          </div>
-          <p className="mt-1 text-xs text-neutral-500">
-            Only people who follow this organizer appear here
-          </p>
+    <PageShell force="platform" hideChrome>
+      <PlatformTopBar showLogo={false} pageTitle="Members" />
+      <div className="mx-auto max-w-3xl px-4 pb-28 pt-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by username or display name…"
+            className="h-12 rounded-2xl border-white/10 bg-white/[0.05] pl-10"
+            autoFocus
+          />
         </div>
 
-        <ol className="space-y-2">
-          {members.map((m, index) => {
-            const name = m.full_name?.trim() || m.username?.trim() || "Player";
+        <div className="mt-5 flex items-center gap-2">
+          <Users className="h-4 w-4 text-neutral-400" />
+          <h2 className="text-sm font-semibold text-white">
+            Registered users
+            {!isLoading && (
+              <span className="ml-2 font-normal text-neutral-500">({filtered.length})</span>
+            )}
+          </h2>
+        </div>
+
+        {isLoading && (
+          <div className="mt-10 flex justify-center">
+            <Loader2 className="h-7 w-7 animate-spin text-neutral-500" />
+          </div>
+        )}
+
+        {!isLoading && filtered.length === 0 && (
+          <p className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-neutral-500">
+            No members match your search.
+          </p>
+        )}
+
+        <ul className="mt-4 space-y-1">
+          {filtered.map((m) => {
+            const name = m.display_name || m.username || "Player";
             return (
               <li key={m.id}>
                 <Link
                   to="/members/$id"
                   params={{ id: m.id }}
-                  className="glass flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-accent/25 sm:px-4 sm:py-3"
+                  className="flex items-center gap-3 rounded-2xl px-2 py-2.5 transition hover:bg-white/[0.05]"
                 >
-                  <span className="w-7 shrink-0 text-right text-sm font-bold tabular-nums text-muted-foreground">
-                    {index + 1}.
-                  </span>
-                  <Avatar className="h-11 w-11 shrink-0 ring-1 ring-border/50">
+                  <Avatar className="h-12 w-12 ring-1 ring-white/10">
                     <AvatarImage src={m.avatar_url ?? undefined} className="object-cover" />
-                    <AvatarFallback className="bg-gradient-brand text-xs text-primary-foreground">
+                    <AvatarFallback className="bg-gradient-to-br from-sky-600 to-violet-700 text-sm font-semibold text-white">
                       {name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{name}</div>
-                    {m.favourite_club && (
-                      <div className="truncate text-xs text-muted-foreground">{m.favourite_club}</div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-white">{name}</p>
+                      {m.current_streak != null && m.current_streak > 0 && (
+                        <InlineStreak streak={m.current_streak} className="text-xs" />
+                      )}
+                    </div>
+                    <p className="truncate text-xs text-neutral-500">
+                      {m.username ? `@${m.username}` : ""}
+                      {m.username && m.favourite_club ? " · " : ""}
+                      {m.favourite_club ?? ""}
+                    </p>
                   </div>
                 </Link>
               </li>
             );
           })}
-        </ol>
-
-        {members.length === 0 && !loading && (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            No followers yet. Share the organizer page so players can follow.
-          </p>
-        )}
-
-        {!done && members.length > 0 && (
-          <div className="mt-8 flex justify-center">
-            <Button variant="outline" disabled={loading} onClick={() => void load(members.length)}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load more"}
-            </Button>
-          </div>
-        )}
-
-        {loading && members.length === 0 && (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
+        </ul>
       </div>
     </PageShell>
   );
