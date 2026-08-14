@@ -57,6 +57,27 @@ export function SocialFeed({
   const [editBody, setEditBody] = useState("");
   const [myRepostIds, setMyRepostIds] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Dismiss 3-dot menu on outside click or Escape
+  useEffect(() => {
+    if (!menuId) return;
+    const onPointer = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node;
+      if (menuRef.current && !menuRef.current.contains(t)) setMenuId(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuId(null);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("touchstart", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("touchstart", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuId]);
 
   const load = useCallback(async (reset = false) => {
     setLoading(true);
@@ -231,10 +252,10 @@ export function SocialFeed({
                   {!isRepost && !p.is_organizer_post && <InlineStreak streak={p.author_streak} />}
                   <span className="text-[11px] text-neutral-500">{new Date(isRepost ? p.original!.created_at : p.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                   {(isMine || isPlatformAdmin) && (
-                    <div className="relative ml-auto z-50">
-                      <button type="button" onClick={() => setMenuId((id) => (id === p.id ? null : p.id))} className="rounded-full p-1 text-neutral-400 hover:bg-white/5"><MoreHorizontal className="h-4 w-4" /></button>
+                    <div className="relative ml-auto z-50" ref={menuId === p.id ? menuRef : undefined}>
+                      <button type="button" onClick={() => setMenuId((id) => (id === p.id ? null : p.id))} className="rounded-full p-1 text-neutral-400 hover:bg-white/5" aria-label="Post menu"><MoreHorizontal className="h-4 w-4" /></button>
                       {menuId === p.id && (
-                        <div className="absolute right-0 z-50 mt-1 min-w-[140px] rounded-xl border border-white/10 bg-[#151515] py-1 shadow-xl">
+                        <div className="absolute right-0 z-50 mt-1 min-w-[140px] rounded-xl border border-white/10 bg-[#151515] py-1 shadow-xl animate-in fade-in zoom-in-95 duration-150">
                           {isMine && !p.repost_of && <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-neutral-200 hover:bg-white/5" onClick={() => { setEditId(p.id); setEditBody(p.body ?? ""); setMenuId(null); }}><Pencil className="h-3.5 w-3.5" /> Edit</button>}
                           <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-rose-400 hover:bg-white/5" onClick={() => void deletePost(p)}><Trash2 className="h-3.5 w-3.5" /> {isPlatformAdmin && !isMine ? "Remove (admin)" : "Delete"}</button>
                         </div>
