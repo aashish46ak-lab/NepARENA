@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Shield, Loader2, Trophy, Users, Settings, LayoutDashboard, Megaphone,
   Award, History, Images, Handshake, Link2, ShieldCheck, Flag, MessageCircle,
-  Newspaper,
+  Newspaper, MoreVertical, User,
 } from "lucide-react";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
 import { TournamentsPanel } from "@/components/admin/TournamentsPanel";
@@ -55,8 +55,8 @@ const SECTIONS: Section[] = [
   { id: "players", label: "Players", icon: Users, ownerOnly: true },
   { id: "reports", label: "Reports", icon: Flag },
   { id: "announcements", label: "Announcements", icon: Megaphone },
-  { id: "hall-of-fame", label: "Hall of Fame", icon: Award },
   { id: "history", label: "History", icon: History },
+  { id: "hall-of-fame", label: "Hall of Fame", icon: Award },
   { id: "gallery", label: "Gallery", icon: Images },
   { id: "sponsors", label: "Sponsors", icon: Handshake },
   { id: "community", label: "Community Links", icon: Link2 },
@@ -73,23 +73,16 @@ function DashboardPage() {
   const { t } = Route.useSearch();
   const [orgId, setOrgId] = useState<string | null>(null);
   const [orgMeta, setOrgMeta] = useState<{ name: string; logo_url: string | null; slug: string | null } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.navigate({ to: "/auth" });
-    }
+    if (!loading && !user) router.navigate({ to: "/auth" });
   }, [loading, user, router]);
 
   useEffect(() => {
     void getDefaultOrganizer().then((o) => {
       setOrgId(o?.id ?? null);
-      if (o) {
-        setOrgMeta({
-          name: o.name,
-          logo_url: (o as { logo_url?: string | null }).logo_url ?? null,
-          slug: o.slug,
-        });
-      }
+      if (o) setOrgMeta({ name: o.name, logo_url: (o as { logo_url?: string | null }).logo_url ?? null, slug: o.slug });
     });
   }, []);
 
@@ -98,78 +91,63 @@ function DashboardPage() {
     enabled: !!orgId,
     refetchInterval: 20_000,
     queryFn: async () => {
-      const { count } = await supabase
-        .from("organizer_messages")
-        .select("id", { count: "exact", head: true })
-        .eq("organizer_id", orgId!)
-        .eq("is_from_organizer", false)
-        .eq("read_by_organizer", false);
+      const { count } = await supabase.from("organizer_messages").select("id", { count: "exact", head: true }).eq("organizer_id", orgId!).eq("is_from_organizer", false).eq("read_by_organizer", false);
       return count ?? 0;
     },
   });
 
   if (loading || !user) {
-    return (
-      <PageShell>
-        <div className="grid min-h-[70vh] place-items-center">
-          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-        </div>
-      </PageShell>
-    );
+    return (<PageShell force="platform" hideChrome><div className="grid min-h-[70vh] place-items-center"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div></PageShell>);
   }
-
   if (!isAdmin) {
-    return (
-      <PageShell>
-        <div className="mx-auto max-w-xl py-20 text-center">
-          <Shield className="mx-auto h-10 w-10 text-brand" />
-          <h1 className="mt-4 text-3xl font-bold">Admin Access Only</h1>
-          <Link to="/" className="mt-5 inline-block text-brand">
-            Back Home
-          </Link>
-        </div>
-      </PageShell>
-    );
+    return (<PageShell force="platform" hideChrome><div className="mx-auto max-w-xl py-20 text-center"><Shield className="mx-auto h-10 w-10 text-brand" /><h1 className="mt-4 text-3xl font-bold">Admin Access Only</h1><Link to="/" className="mt-5 inline-block text-brand">Back Home</Link></div></PageShell>);
   }
 
-  const isModeratorOnly =
-    !isOwner && roles.includes("moderator") && !roles.includes("admin");
-  const roleLabel = isOwner
-    ? "Owner"
-    : roles.includes("admin")
-      ? "Admin"
-      : "Moderator";
-
-  const visible = SECTIONS.filter((s) =>
-    isModeratorOnly ? MOD_ALLOWED.has(s.id) : !s.ownerOnly || isOwner,
-  );
-  const active = visible.some((s) => s.id === t)
-    ? t
-    : (visible[0]?.id ?? "dashboard");
+  const isModeratorOnly = !isOwner && roles.includes("moderator") && !roles.includes("admin");
+  const roleLabel = isOwner ? "Owner" : roles.includes("admin") ? "Admin" : "Moderator";
+  const visible = SECTIONS.filter((s) => isModeratorOnly ? MOD_ALLOWED.has(s.id) : !s.ownerOnly || isOwner);
+  const active = visible.some((s) => s.id === t) ? t : (visible[0]?.id ?? "dashboard");
 
   const NavLabel = ({ id, label }: { id: string; label: string }) => (
     <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
       <span className="truncate">{label}</span>
-      {id === "messages" && unreadCount > 0 && (
-        <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-          {unreadCount > 99 ? "99+" : unreadCount}
-        </span>
-      )}
+      {id === "messages" && unreadCount > 0 && (<span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>)}
     </span>
   );
 
   return (
-    <PageShell>
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-brand">
-            <Shield className="h-6 w-6 text-white" />
+    <PageShell force="platform" hideChrome>
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-brand"><Shield className="h-5 w-5 text-white" /></div>
+            <div>
+              <h1 className="text-xl font-bold md:text-2xl">Organizer Dashboard</h1>
+              <p className="text-xs text-muted-foreground sm:text-sm">{orgMeta?.name ? `${orgMeta.name} · ` : ""}{user.email} · {roleLabel}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold md:text-3xl">Organizer Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              {user.email} · {roleLabel}
-            </p>
+          <div className="relative">
+            <button type="button" onClick={() => setMenuOpen((v) => !v)} className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-white/[0.04] text-neutral-200 transition hover:bg-white/10" aria-label="Dashboard menu">
+              <MoreVertical className="h-5 w-5" />
+            </button>
+            {menuOpen && (
+              <>
+                <button type="button" className="fixed inset-0 z-40" aria-label="Close" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-11 z-50 min-w-[210px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                  <Link to="/members/$id" params={{ id: user.id }} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                    <User className="h-4 w-4 text-sky-400" /> Switch to personal profile
+                  </Link>
+                  {orgMeta?.slug && (
+                    <Link to="/o/$slug" params={{ slug: orgMeta.slug }} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                      <LayoutDashboard className="h-4 w-4 text-emerald-400" /> View public page
+                    </Link>
+                  )}
+                  <Link to="/" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                    <Newspaper className="h-4 w-4 text-neutral-400" /> Back to Home
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -177,77 +155,24 @@ function DashboardPage() {
           <aside className="hidden w-60 shrink-0 lg:block">
             <nav className="glass sticky top-20 space-y-1 rounded-2xl p-3">
               {visible.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => navigate({ search: { t: s.id } })}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition",
-                    active === s.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  <s.icon className="h-4 w-4 shrink-0" />
-                  <NavLabel id={s.id} label={s.label} />
+                <button key={s.id} type="button" onClick={() => navigate({ search: { t: s.id } })} className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition", active === s.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
+                  <s.icon className="h-4 w-4 shrink-0" /><NavLabel id={s.id} label={s.label} />
                 </button>
               ))}
             </nav>
           </aside>
-
           <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {visible.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => navigate({ search: { t: s.id } })}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition",
-                  active === s.id
-                    ? "bg-primary text-primary-foreground"
-                    : "glass text-muted-foreground",
-                )}
-              >
-                <s.icon className="h-4 w-4" />
-                {s.label}
-                {s.id === "messages" && unreadCount > 0 && (
-                  <span className="grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
+              <button key={s.id} type="button" onClick={() => navigate({ search: { t: s.id } })} className={cn("flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition", active === s.id ? "bg-primary text-primary-foreground" : "glass text-muted-foreground")}>
+                <s.icon className="h-4 w-4" />{s.label}
+                {s.id === "messages" && unreadCount > 0 && (<span className="grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>)}
               </button>
             ))}
           </div>
-
           <main className="min-w-0 flex-1">
             {active === "dashboard" && <DashboardOverview />}
-            {active === "feed" && (
-              <div className="mx-auto max-w-xl">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold">Organizer Feed</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Posts here appear under your organizer name and logo.
-                  </p>
-                </div>
-                <SocialFeed
-                  organizerId={orgId}
-                  organizerMeta={
-                    orgMeta
-                      ? { name: orgMeta.name, logo_url: orgMeta.logo_url, slug: orgMeta.slug }
-                      : null
-                  }
-                />
-              </div>
-            )}
-            {active === "messages" && (
-              orgId ? (
-                <MessagesInbox mode="organizer" organizerId={orgId} />
-              ) : (
-                <div className="grid place-items-center py-16">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              )
-            )}
+            {active === "feed" && (<div className="mx-auto max-w-xl"><div className="mb-4"><h2 className="text-lg font-semibold">Organizer Feed</h2><p className="text-sm text-muted-foreground">Posts here appear under your organizer name and logo.</p></div><SocialFeed organizerId={orgId} organizerMeta={orgMeta ? { name: orgMeta.name, logo_url: orgMeta.logo_url, slug: orgMeta.slug } : null} /></div>)}
+            {active === "messages" && (orgId ? <MessagesInbox mode="organizer" organizerId={orgId} /> : <div className="grid place-items-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>)}
             {active === "tournaments" && <TournamentsPanel />}
             {active === "players" && isOwner && <UsersPanel />}
             {active === "reports" && <ReportsPanel />}
