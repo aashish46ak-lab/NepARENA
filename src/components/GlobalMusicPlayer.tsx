@@ -1,7 +1,6 @@
 /**
- * NepARENA global music — official YouTube embeds only.
- * Real commercial songs via YouTube IFrame Player API.
- * UI unchanged: HomeMusicCard, genre sheet, floating disc, mini player.
+ * NepARENA Music — official YouTube IFrame API (real songs only).
+ * Player stays in-viewport (YouTube policy) so play() works.
  */
 import {
   createContext,
@@ -34,9 +33,10 @@ import {
   Volume2,
   VolumeX,
   ExternalLink,
+  Maximize2,
 } from "lucide-react";
 
-const LS_KEY = "neparena_music_yt_v1";
+const LS_KEY = "neparena_music_yt_v2";
 const POS_KEY = "neparena_music_pos_v1";
 
 declare global {
@@ -57,6 +57,7 @@ declare global {
         },
       ) => YTPlayer;
       PlayerState: {
+        UNSTARTED: number;
         ENDED: number;
         PLAYING: number;
         PAUSED: number;
@@ -73,7 +74,7 @@ type YTPlayer = {
   pauseVideo: () => void;
   stopVideo: () => void;
   loadVideoById: (id: string | { videoId: string; startSeconds?: number }) => void;
-  cueVideoById: (id: string) => void;
+  cueVideoById: (id: string | { videoId: string }) => void;
   setVolume: (v: number) => void;
   getVolume: () => number;
   mute: () => void;
@@ -212,11 +213,11 @@ function loadYouTubeApi(): Promise<void> {
         window.clearInterval(check);
         resolve();
       }
-    }, 100);
+    }, 80);
     window.setTimeout(() => {
       window.clearInterval(check);
       resolve();
-    }, 8000);
+    }, 10000);
   });
   return ytApiPromise;
 }
@@ -226,6 +227,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const playerRef = useRef<YTPlayer | null>(null);
   const trackRef = useRef<Track | null>(null);
   const genreRef = useRef<MusicGenreId>("trending");
+  const pendingPlayRef = useRef<Track | null>(null);
+  const volumeRef = useRef(80);
+  const errorSkipsRef = useRef(0);
 
   const [active, setActive] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -240,6 +244,31 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   trackRef.current = track;
   genreRef.current = genreId;
+  volumeRef.current = volume;
+
+  const doLoadAndPlay = useCallback((t: Track) => {
+    const p = playerRef.current;
+    if (!p) {
+      pendingPlayRef.current = t;
+      return;
+    }
+    try {
+      p.setVolume(volumeRef.current);
+      p.unMute();
+      p.loadVideoById({ videoId: t.youtubeId, startSeconds: 0 });
+      window.setTimeout(() => {
+        try {
+          p.playVideo();
+        } catch {
+          /* ignore */
+        }
+      }, 120);
+      setPlaying(true);
+      setActive(true);
+    } catch {
+      setPlaying(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -247,23 +276,47 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       await loadYouTubeApi();
       if (cancelled || !hostRef.current || !window.YT?.Player) return;
       if (playerRef.current) return;
+
       playerRef.current = new window.YT.Player(hostRef.current, {
-        height: "200",
-        width: "200",
+        height: "180",
+        width: "320",
         playerVars: {
           autoplay: 0,
-          controls: 0,
-          disablekb: 1,
+          controls: 1,
+          disablekb: 0,
           fs: 0,
           modestbranding: 1,
           rel: 0,
           playsinline: 1,
+          enablejsapi: 1,
           origin: typeof window !== "undefined" ? window.location.origin : "",
         },
         events: {
           onReady: (e) => {
-            e.target.setVolume(volume);
+            e.target.setVolume(volumeRef.current);
             setReady(true);
+            const pending = pendingPlayRef.current;
+            if (pending) {
+              pendingPlayRef.current = null;
+              setTrack(pending);
+              setGenreId(pending.genre);
+              setActive(true);
+              try {
+                e.target.setVolume(volumeRef.current);
+                e.target.unMute();
+                e.target.loadVideoById(pending.youtubeId);
+                window.setTimeout(() => {
+                  try {
+                    e.target.playVideo();
+                  } catch {
+                    /* ignore */
+                  }
+                }, 150);
+              } catch {
+                /* ignore */
+              }
+              return;
+            }
             const saved = loadState();
             if (saved?.active) {
               setGenreId(saved.genreId);
@@ -285,22 +338,25 @@ export function MusicProvider({ children }: { children: ReactNode }) {
             if (e.data === YT.PlayerState.PLAYING) {
               setPlaying(true);
               setActive(true);
+              errorSkipsRef.current = 0;
             } else if (e.data === YT.PlayerState.PAUSED) {
               setPlaying(false);
             } else if (e.data === YT.PlayerState.ENDED) {
               setPlaying(false);
               const n = pickRandomTrack(genreRef.current, trackRef.current?.id);
-              if (n && playerRef.current) {
+              if (n) {
                 setTrack(n);
-                playerRef.current.loadVideoById(n.youtubeId);
+                doLoadAndPlay(n);
               }
             }
           },
           onError: () => {
+            errorSkipsRef.current += 1;
+            if (errorSkipsRef.current > 6) return;
             const n = pickRandomTrack(genreRef.current, trackRef.current?.id);
-            if (n && playerRef.current) {
+            if (n) {
               setTrack(n);
-              playerRef.current.loadVideoById(n.youtubeId);
+              doLoadAndPlay(n);
             }
           },
         },
@@ -315,8 +371,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       }
       playerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [doLoadAndPlay]);
 
   useEffect(() => {
     saveState({
@@ -329,7 +384,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (playerRef.current && ready) {
-      playerRef.current.setVolume(volume);
+      try {
+        playerRef.current.setVolume(volume);
+        if (volume === 0) playerRef.current.mute();
+        else playerRef.current.unMute();
+      } catch {
+        /* ignore */
+      }
     }
   }, [volume, ready]);
 
@@ -353,18 +414,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       setActive(true);
       setTrack(t);
       setGenreId(t.genre);
-      const p = playerRef.current;
-      if (!p) return;
-      try {
-        p.loadVideoById(t.youtubeId);
-        p.setVolume(volume);
-        p.playVideo();
-        setPlaying(true);
-      } catch {
-        setPlaying(false);
+      setExpanded(true);
+      if (!playerRef.current || !ready) {
+        pendingPlayRef.current = t;
+        return;
       }
+      doLoadAndPlay(t);
     },
-    [volume],
+    [doLoadAndPlay, ready],
   );
 
   const selectGenre = useCallback(
@@ -421,6 +478,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    pendingPlayRef.current = null;
     setPlaying(false);
     setActive(false);
     setExpanded(false);
@@ -488,10 +546,25 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   return (
     <MusicCtx.Provider value={api}>
       <div
-        className="pointer-events-none fixed -left-[240px] -top-[240px] h-[200px] w-[200px] opacity-0"
-        aria-hidden
+        className={cn(
+          "fixed z-[72] overflow-hidden rounded-xl border border-white/15 bg-black shadow-2xl transition-all",
+          active
+            ? "pointer-events-auto bottom-20 right-3 h-[160px] w-[280px] opacity-100 sm:bottom-6 sm:right-6"
+            : "pointer-events-none -left-[400px] top-0 h-[180px] w-[320px] opacity-0",
+        )}
+        aria-hidden={!active}
       >
-        <div ref={hostRef} id="neparena-yt-host" />
+        <div ref={hostRef} id="neparena-yt-host" className="h-full w-full" />
+        {active && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-md bg-black/60 text-white/80 hover:bg-black/80"
+            aria-label="Expand player"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       {children}
     </MusicCtx.Provider>
@@ -555,7 +628,9 @@ function GenreSheet() {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">Pick a vibe</h2>
-            <p className="text-xs text-neutral-500">Official songs via YouTube</p>
+            <p className="text-xs text-neutral-500">
+              {music.ready ? "Official songs via YouTube" : "Loading player…"}
+            </p>
           </div>
           <button
             type="button"
@@ -669,7 +744,6 @@ function FloatingDisc() {
               style={{ animationDuration: "8s" }}
               draggable={false}
             />
-            <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-sky-400/40" />
           </button>
         </div>
       )}
@@ -688,11 +762,7 @@ function FloatingDisc() {
               <img
                 src={thumb}
                 alt=""
-                className={cn(
-                  "h-20 w-20 shrink-0 rounded-2xl object-cover ring-1 ring-white/15",
-                  music.playing && "animate-spin",
-                )}
-                style={{ animationDuration: "12s" }}
+                className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-1 ring-white/15"
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-semibold text-white">{music.track.title}</p>
@@ -709,7 +779,11 @@ function FloatingDisc() {
               </button>
             </div>
 
-            <div className="mt-4">
+            <p className="mt-3 text-[11px] text-neutral-500">
+              Video plays in the bottom-right YouTube window (required for sound).
+            </p>
+
+            <div className="mt-3">
               <input
                 type="range"
                 min={0}
@@ -792,9 +866,6 @@ function FloatingDisc() {
                 YouTube
               </a>
             </div>
-            <p className="mt-2 text-center text-[10px] text-neutral-600">
-              Powered by official YouTube embed · rights belong to artists & labels
-            </p>
           </div>
         </div>
       )}
