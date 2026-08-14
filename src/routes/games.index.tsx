@@ -1,10 +1,9 @@
 /**
- * Games hub — premium square cards, title + search.
+ * Games hub — premium square cards, title + search. No home header.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
-import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { buildSeoHead } from "@/lib/seo";
 import { Input } from "@/components/ui/input";
 import { Search, Gamepad2, Target, Trophy, Brain, Footprints, Shuffle } from "lucide-react";
@@ -68,7 +67,6 @@ const GAMES = [
 
 function GamesIndexPage() {
   const [q, setQ] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
 
   const list = useMemo(() => {
     if (!q.trim()) return GAMES;
@@ -80,31 +78,17 @@ function GamesIndexPage() {
 
   return (
     <PageShell force="platform" hideChrome>
-      <PlatformTopBar showLogo={false} pageTitle="Games" />
       <div className="mx-auto max-w-3xl px-4 pb-28 pt-4">
-        <div className="mb-5 flex items-center gap-2">
-          <h1 className="text-lg font-semibold tracking-tight text-white">Games</h1>
-          <button
-            type="button"
-            onClick={() => setSearchOpen((v) => !v)}
-            className="ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-neutral-300 transition hover:bg-white/10 active:scale-95"
-            aria-label="Search games"
-          >
-            <Search className="h-4 w-4" />
-          </button>
+        <h1 className="mb-3 text-lg font-semibold tracking-tight text-white">Games</h1>
+        <div className="relative mb-5">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search games…"
+            className="h-11 rounded-2xl border-white/10 bg-white/[0.05] pl-10"
+          />
         </div>
-
-        {searchOpen && (
-          <div className="mb-5 animate-in fade-in slide-in-from-top-1 duration-200">
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search games…"
-              className="h-11 rounded-2xl border-white/10 bg-white/[0.05]"
-              autoFocus
-            />
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
           {list.map((g) => {
