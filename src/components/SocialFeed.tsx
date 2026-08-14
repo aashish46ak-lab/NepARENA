@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Heart, MessageCircle, Share2, Loader2, Send, Repeat2, ImagePlus, X, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Loader2, Send, Repeat2, ImagePlus, X, MoreHorizontal, Pencil, Trash2, Newspaper } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { InlineStreak } from "@/components/StreakBadge";
@@ -260,7 +260,23 @@ export function SocialFeed({
         );
       })}
       {loading && <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-neutral-500" /></div>}
-      {!loading && filteredPosts.length === 0 && <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-neutral-500">{mode === "following" ? "Follow people to see their posts." : "No posts yet."}</p>}
+      {!loading && filteredPosts.length === 0 && (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/12 bg-white/[0.03] px-6 py-12 text-center">
+          <div className="grid h-14 w-14 place-items-center rounded-full bg-white/[0.06]">
+            <Newspaper className="h-6 w-6 text-neutral-500" />
+          </div>
+          <p className="text-base font-semibold text-white">No posts yet</p>
+          <p className="max-w-xs text-sm text-neutral-500">
+            {mode === "following"
+              ? "Follow users or organizers to see their posts here."
+              : "Follow users or organizers to see posts. Be the first to share something!"}
+          </p>
+          <div className="mt-1 flex flex-wrap justify-center gap-2">
+            <Link to="/organizers" className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-neutral-200 hover:border-sky-400/40 hover:bg-sky-500/10">Find organizers</Link>
+            <Link to="/members" className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-neutral-200 hover:border-sky-400/40 hover:bg-sky-500/10">Find members</Link>
+          </div>
+        </div>
+      )}
       {more && !loading && <div className="flex justify-center"><Button variant="outline" size="sm" className="border-white/15" onClick={() => void load(false)}>Load more</Button></div>}
       <Dialog open={!!shareTarget} onOpenChange={(o) => !o && setShareTarget(null)}>
         <DialogContent className="border-white/10 bg-[#111] sm:max-w-md">
