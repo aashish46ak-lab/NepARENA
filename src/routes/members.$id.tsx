@@ -11,12 +11,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AllTimeXiView, parseXi } from "@/components/AllTimeXi";
+import { parseXi } from "@/components/AllTimeXi";
 import {
-  Loader2, Trophy, Award, Building2, UserPlus, UserMinus, ChevronRight,
-  Menu, Settings, LogOut, Pencil, LayoutDashboard, Users,
+  Loader2, Trophy, UserPlus, UserMinus, ChevronRight,
+  Menu, Settings, LogOut, Pencil, LayoutDashboard, Plus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { buildSeoHead } from "@/lib/seo";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -28,6 +27,7 @@ import { SocialFeed } from "@/components/SocialFeed";
 import { InlineStreak } from "@/components/StreakBadge";
 import { isSuperAdminEmail } from "@/lib/organizers";
 import { EditProfileModal } from "@/components/EditProfileModal";
+import { CreatePostModal } from "@/components/CreatePostModal";
 
 export const Route = createFileRoute("/members/$id")({
   head: () => ({
@@ -40,22 +40,16 @@ export const Route = createFileRoute("/members/$id")({
   component: MemberProfilePage,
 });
 
-function statusBadgeClass(status: string) {
-  if (status === "completed" || status === "archived") return "bg-muted text-muted-foreground";
-  if (status === "live" || status === "ongoing") return "bg-brand/25 text-brand-glow";
-  if (status === "registration_open") return "bg-emerald-500/20 text-emerald-300";
-  return "bg-secondary text-secondary-foreground";
-}
-
 function MemberProfilePage() {
   const { id } = Route.useParams();
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [followBusy, setFollowBusy] = useState(false);
-  const [showXi, setShowXi] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [postOpen, setPostOpen] = useState(false);
+  const [feedKey, setFeedKey] = useState(0);
   const isOwn = !!user?.id && user.id === id;
   const isSuperAdmin = isSuperAdminEmail(user?.email);
 
@@ -122,7 +116,7 @@ function MemberProfilePage() {
     },
   });
 
-  const { data: iFollow = false, refetch: refetchFollow } = useQuery({
+  const { data: iFollow = false } = useQuery({
     queryKey: ["user_follow", user?.id, id],
     enabled: !!user?.id && !!id && user.id !== id,
     queryFn: () => isFollowingUser(user!.id, id),
@@ -130,20 +124,39 @@ function MemberProfilePage() {
 
   const toggleFollow = async () => {
     if (!user) { toast.message("Sign in to follow players"); return; }
-    if (isOwn) return;
+    if (isOwn || followBusy) return;
     setFollowBusy(true);
+    const wasFollowing = iFollow;
+    // Optimistic UI
+    qc.setQueryData(["user_follow", user.id, id], !wasFollowing);
+    qc.setQueryData(["member_profile", id], (old: typeof data) => {
+      if (!old) return old;
+      const delta = wasFollowing ? -1 : 1;
+      return { ...old, followerCount: Math.max(0, (old.followerCount ?? 0) + delta) };
+    });
     try {
-      if (iFollow) { await unfollowUser(user.id, id); toast.success("Unfollowed"); }
-      else {
+      if (wasFollowing) {
+        await unfollowUser(user.id, id);
+        toast.success("Unfollowed");
+      } else {
         const res = await followUser(user.id, id);
         if (res.error) throw new Error(res.error.message);
         toast.success("Following");
       }
-      void refetchFollow();
-      void qc.invalidateQueries({ queryKey: ["member_profile", id] });
     } catch (e) {
+      // Revert
+      qc.setQueryData(["user_follow", user.id, id], wasFollowing);
+      qc.setQueryData(["member_profile", id], (old: typeof data) => {
+        if (!old) return old;
+        const delta = wasFollowing ? 1 : -1;
+        return { ...old, followerCount: Math.max(0, (old.followerCount ?? 0) + delta) };
+      });
       toast.error(e instanceof Error ? e.message : "Could not update follow");
-    } finally { setFollowBusy(false); }
+    } finally {
+      setFollowBusy(false);
+      void qc.invalidateQueries({ queryKey: ["member_profile", id] });
+      void qc.invalidateQueries({ queryKey: ["user_follow", user.id, id] });
+    }
   };
 
   if (isLoading) {
@@ -166,12 +179,10 @@ function MemberProfilePage() {
     );
   }
 
-  const { profile, parts, tours, achievements, followingOrgs, ownedOrgs = [], followerCount, followingCount, streak } = data;
-  const tourMap = new Map(tours.map((t) => [t.id, t]));
+  const { profile, achievements, followingOrgs, ownedOrgs = [], followerCount, followingCount, streak } = data;
   const displayName = profile.username?.trim() || profile.full_name?.trim() || "Player";
   const realName = profile.full_name?.trim() || null;
   const links = (profile.social_links ?? {}) as Record<string, string>;
-  const xi = parseXi(links.all_time_xi);
   const banner = links.banner_url || null;
 
   return (
@@ -248,13 +259,13 @@ function MemberProfilePage() {
               {realName && profile.username && <p className="text-sm text-neutral-400">{realName}</p>}
               {profile.bio && <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-300">{profile.bio}</p>}
               <div className="mt-3 flex flex-wrap gap-3 text-sm text-neutral-400">
-                <span><strong className="text-white">{followerCount}</strong> followers</span>
-                <span><strong className="text-white">{followingCount}</strong> following</span>
+                <span><strong className="text-white tabular-nums">{followerCount}</strong> followers</span>
+                <span><strong className="text-white tabular-nums">{followingCount}</strong> following</span>
                 {streak > 0 && <InlineStreak streak={streak} />}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {isOwn ? (
-                  <Button size="sm" className="rounded-full bg-sky-500 text-white hover:bg-sky-400" onClick={() => setEditOpen(true)}>
+                  <Button size="sm" className="rounded-full bg-neutral-100 text-black hover:bg-white" onClick={() => setEditOpen(true)}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit Profile
                   </Button>
                 ) : (
@@ -303,12 +314,30 @@ function MemberProfilePage() {
           </div>
         </div>
 
+        {isOwn && (
+          <button
+            type="button"
+            onClick={() => setPostOpen(true)}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-white transition hover:border-sky-400/40 hover:bg-sky-500/10 active:scale-[0.99]"
+          >
+            <Plus className="h-4 w-4 text-sky-400" /> Create a post
+          </button>
+        )}
+
         <div className="mt-5 px-1">
           <h2 className="mb-3 px-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Posts</h2>
-          <SocialFeed authorId={id} />
+          <SocialFeed key={feedKey} authorId={id} />
         </div>
       </div>
       <EditProfileModal open={editOpen} onOpenChange={setEditOpen} />
+      <CreatePostModal
+        open={postOpen}
+        onOpenChange={setPostOpen}
+        onPosted={() => {
+          setPostOpen(false);
+          setFeedKey((k) => k + 1);
+        }}
+      />
     </PageShell>
   );
 }
