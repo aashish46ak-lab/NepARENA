@@ -2,14 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Trophy, Users, List, Table2, FileText,
+  Trophy, Users, List, Table2, FileText, ShieldAlert,
   Loader2, ExternalLink, Banknote, Lock,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { OrganizerSubnav } from "@/components/OrganizerSubnav";
+import { ReportForm } from "@/components/ReportForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { supabase } from "@/lib/supabase";
+import { supabase, type Tournament, type TournamentParticipant } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tournaments/$id")({
@@ -62,7 +64,8 @@ function TournamentDetailPage() {
 
   if (isLoading) {
     return (
-      <PageShell>
+      <PageShell force="organizer" hideChrome>
+        <OrganizerSubnav title="Tournament" />
         <div className="grid min-h-[50vh] place-items-center">
           <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
@@ -72,7 +75,8 @@ function TournamentDetailPage() {
 
   if (error || !data?.tournament) {
     return (
-      <PageShell>
+      <PageShell force="organizer" hideChrome>
+        <OrganizerSubnav title="Tournament" />
         <div className="mx-auto max-w-lg py-20 text-center space-y-3">
           <p className="text-muted-foreground">Tournament not found</p>
           <Button asChild variant="outline"><Link to="/tournaments">Back to tournaments</Link></Button>
@@ -101,24 +105,25 @@ function TournamentDetailPage() {
     { id: "standings", label: "Standings", icon: Table2 },
     { id: "players", label: "Players", icon: Users },
     { id: "rules", label: "Rules", icon: FileText },
+    { id: "report", label: "Report", icon: ShieldAlert },
   ];
 
-  return (
-    <PageShell>
-      <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/tournaments">← Tournaments</Link>
-        </Button>
+  const tournamentTyped = tournament as unknown as Tournament;
+  const playersTyped = data.participants as unknown as TournamentParticipant[];
 
+  return (
+    <PageShell force="organizer" hideChrome>
+      <OrganizerSubnav title={name} />
+      <div className="mx-auto max-w-3xl space-y-6 px-4 pb-24 pt-2">
         <div className="overflow-hidden rounded-2xl border border-white/10">
           {banner ? (
             <img src={banner} alt="" className="h-40 w-full object-cover sm:h-52" />
           ) : (
             <div className="h-32 bg-gradient-to-br from-sky-900 to-violet-950 sm:h-40" />
           )}
-          <div className="p-5 space-y-2">
+          <div className="space-y-2 p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{name}</h1>
+              <h1 className="text-2xl font-bold text-white">{name}</h1>
               <Badge variant="secondary" className="capitalize">{status.replaceAll("_", " ")}</Badge>
             </div>
             {description && <p className="text-sm text-muted-foreground">{description}</p>}
@@ -190,8 +195,8 @@ function TournamentDetailPage() {
         )}
 
         {tab === "rules" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-            <h2 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> Tournament rules</h2>
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4" /> Tournament rules</h2>
             {rulesText ? (
               <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{rulesText}</p>
             ) : rulesUrl ? (
@@ -203,6 +208,12 @@ function TournamentDetailPage() {
             ) : (
               <p className="text-sm text-muted-foreground">No rules published yet.</p>
             )}
+          </div>
+        )}
+
+        {tab === "report" && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <ReportForm tournament={tournamentTyped} players={playersTyped} />
           </div>
         )}
       </div>
@@ -423,7 +434,7 @@ function StandingsTable({ standings, participants }: { standings: Record<string,
             const ga = Number(row.goals_against ?? row.ga ?? 0);
             const gd = Number(row.goal_difference ?? row.gd ?? gf - ga);
             const nameCell = (
-              <span className="flex items-center gap-2 min-w-0">
+              <span className="flex min-w-0 items-center gap-2">
                 <Avatar className="h-7 w-7 shrink-0">
                   <AvatarImage src={photo ?? undefined} />
                   <AvatarFallback className="text-[9px]">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
@@ -468,7 +479,7 @@ function PlayersList({ participants }: { participants: Record<string, unknown>[]
         const photo = (p.photo_url as string | null) ?? null;
         const inner = (
           <div className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2.5 text-sm">
-            <span className="flex items-center gap-2 min-w-0">
+            <span className="flex min-w-0 items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={photo ?? undefined} />
                 <AvatarFallback className="text-[10px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
@@ -480,7 +491,7 @@ function PlayersList({ participants }: { participants: Record<string, unknown>[]
         );
         return uid ? (
           <li key={String(p.id)}>
-            <Link to="/members/$id" params={{ id: uid }} className="block transition hover:bg-white/[0.03] rounded-xl">
+            <Link to="/members/$id" params={{ id: uid }} className="block rounded-xl transition hover:bg-white/[0.03]">
               {inner}
             </Link>
           </li>
