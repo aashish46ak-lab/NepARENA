@@ -13,6 +13,7 @@ import { useEffect, useState, Component, type ErrorInfo, type ReactNode } from "
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
+import { GlobalMusicPlayer } from "@/components/GlobalMusicPlayer";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { InstallFAB } from "@/components/InstallFAB";
@@ -289,6 +290,7 @@ function RootComponent() {
             {ENABLE_INSTALL_FAB && <PlatformInstallFab />}
           </div>
           <Toaster richColors position="top-right" />
+          <GlobalMusicPlayer />
         </ClientErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
