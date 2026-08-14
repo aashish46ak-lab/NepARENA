@@ -1,10 +1,6 @@
-/* NepARENA service worker — NepARENA assets only */
-const CACHE = "neparena-static-v3";
-const PRECACHE = [
-  "/",
-  "/neparena-logo.png",
-  "/manifest.webmanifest",
-];
+/* NepARENA service worker — cache + web push */
+const CACHE = "neparena-static-v4";
+const PRECACHE = ["/", "/neparena-logo.png", "/manifest.webmanifest", "/pwa-192x192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -46,4 +42,48 @@ self.addEventListener("fetch", (event) => {
       ),
     );
   }
+});
+
+/** Background push (phone screen off) — payload JSON: { title, body, url } */
+self.addEventListener("push", (event) => {
+  let data = { title: "NepARENA", body: "New notification", url: "/" };
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch {
+    try {
+      data.body = event.data ? event.data.text() : data.body;
+    } catch {
+      /* ignore */
+    }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "NepARENA", {
+      body: data.body || "",
+      icon: "/pwa-192x192.png",
+      badge: "/pwa-192x192-maskable.png",
+      data: { url: data.url || data.link || "/" },
+      vibrate: [120, 60, 120],
+      tag: data.tag || "neparena",
+      renotify: true,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ("focus" in c) {
+          c.navigate?.(target);
+          return c.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    }),
+  );
 });
