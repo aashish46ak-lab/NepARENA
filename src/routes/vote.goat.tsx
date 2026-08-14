@@ -1,8 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { PageShell } from "@/components/PageShell";
 import { GoatVoteBooth } from "@/components/GoatVoteBooth";
 import { buildSeoHead } from "@/lib/seo";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +18,7 @@ export const Route = createFileRoute("/vote/goat")({
 });
 
 function GoatVotePage() {
+  const router = useRouter();
   const share = async () => {
     const url =
       typeof window !== "undefined"
@@ -41,17 +41,23 @@ function GoatVotePage() {
   };
 
   return (
-    <PageShell force="platform">
-      <div className="mx-auto max-w-lg px-3 py-6">
+    <PageShell force="platform" hideChrome>
+      <div className="mx-auto max-w-lg px-3 pb-10 pt-3">
         <div className="mb-4 flex items-center justify-between">
-          <Button asChild variant="ghost" size="sm" className="-ml-2 text-neutral-400">
-            <Link to="/">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Home
-            </Link>
-          </Button>
-          <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}>
-            <Share2 className="mr-1.5 h-3.5 w-3.5" /> Share poll
-          </Button>
+          <button
+            type="button"
+            onClick={() => router.history.back()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <button
+            type="button"
+            onClick={() => void share()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-sm text-neutral-200 hover:bg-white/10"
+          >
+            <Share2 className="h-3.5 w-3.5" /> Share
+          </button>
         </div>
         <GoatVoteBooth />
       </div>
