@@ -17,7 +17,7 @@ export function PageShell({
 }: {
   children: ReactNode;
   force?: "platform" | "organizer";
-  /** Hide site Header/Footer (immersive feed / messages) — BottomNav still shows */
+  /** Hide site Header/Footer — BottomNav still decides visibility itself */
   hideChrome?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -47,6 +47,7 @@ export function PageShell({
   }, [mode, pathname]);
 
   const showBottomNav = mode === "platform";
+  const padBottom = showBottomNav;
 
   return (
     <div
@@ -65,7 +66,7 @@ export function PageShell({
       }
     >
       {!hideChrome && <Header mode={mode} />}
-      <main className={`flex-1 ${showBottomNav ? "pb-24" : ""}`}>{children}</main>
+      <main className={`flex-1 ${padBottom ? "pb-24" : ""}`}>{children}</main>
       {!hideChrome && <Footer mode={mode} />}
       {showBottomNav && <BottomNav />}
     </div>
