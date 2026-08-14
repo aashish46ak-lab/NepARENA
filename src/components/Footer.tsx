@@ -36,6 +36,8 @@ function OrganizerFooter() {
     void supabase.rpc("increment_community_click", { _id: id });
   };
 
+  const activeLinks = links ?? [];
+
   return (
     <footer className="mt-24 border-t border-border/60">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 md:grid-cols-3">
@@ -80,7 +82,7 @@ function OrganizerFooter() {
         <div>
           <div className="mb-2 text-sm font-semibold">Community</div>
           <ul className="space-y-1 text-sm text-muted-foreground">
-            {(links ?? []).map((l) => (
+            {activeLinks.map((l) => (
               <li key={l.id}>
                 <a
                   href={l.url}
@@ -93,8 +95,8 @@ function OrganizerFooter() {
                 </a>
               </li>
             ))}
-            {(!links || links.length === 0) && (
-              <li className="opacity-60">Community links coming soon</li>
+            {activeLinks.length === 0 && (
+              <li className="opacity-60">No community links yet</li>
             )}
           </ul>
         </div>

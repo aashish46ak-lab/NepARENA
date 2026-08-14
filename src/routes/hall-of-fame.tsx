@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { buildSeoHead } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
+import { OrganizerSubnav } from "@/components/OrganizerSubnav";
 import { useHallOfFame } from "@/hooks/useContent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -8,30 +9,44 @@ export const Route = createFileRoute("/hall-of-fame")({
   head: () => ({
     ...buildSeoHead({
       title: "Hall of Fame",
-      description:
-        "Champions and legends from tournaments on NepARENA.",
+      description: "Champions and legends from tournaments on NepARENA.",
       path: "/hall-of-fame",
     }),
   }),
   component: () => {
     const { data: list = [], isLoading } = useHallOfFame();
     return (
-      <PageShell>
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <h1 className="text-3xl md:text-4xl font-bold">Hall of Fame</h1>
-          <p className="text-muted-foreground mt-2">Champions who wrote their name in eFootball Nepal history.</p>
-          {isLoading && <div className="mt-8 text-muted-foreground">Loading…</div>}
-          {!isLoading && list.length === 0 && <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">Champions coming soon.</div>}
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <PageShell force="organizer" hideChrome>
+        <OrganizerSubnav title="Hall of Fame" />
+        <div className="mx-auto max-w-3xl px-4 pb-24 pt-2">
+          <h1 className="text-2xl font-bold text-white">Hall of Fame</h1>
+          <p className="mt-1 text-sm text-neutral-400">Champions and legends.</p>
+          {isLoading && <div className="mt-8 text-neutral-500">Loading…</div>}
+          {!isLoading && list.length === 0 && (
+            <div className="mt-8 rounded-xl border border-white/10 p-8 text-center text-neutral-500">
+              No champions listed yet.
+            </div>
+          )}
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {list.map((h) => (
-              <div key={h.id} className="glass rounded-2xl p-6 flex flex-col items-center text-center">
-                <Avatar className="h-24 w-24 ring-2 ring-brand/40">
+              <div
+                key={h.id}
+                className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center"
+              >
+                <Avatar className="h-20 w-20 ring-2 ring-sky-500/30">
                   <AvatarImage src={h.photo_url ?? undefined} />
-                  <AvatarFallback className="bg-gradient-brand text-primary-foreground text-lg">{h.player_name.slice(0,2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="text-lg">
+                    {h.player_name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
-                <h3 className="mt-4 text-lg font-bold">{h.player_name}</h3>
-                <div className="text-sm text-brand-glow mt-1">{h.achievement}</div>
-                {h.tournament && <div className="text-xs text-muted-foreground mt-2">{h.tournament}{h.year ? ` · ${h.year}` : ""}</div>}
+                <h3 className="mt-3 text-base font-bold text-white">{h.player_name}</h3>
+                <div className="mt-1 text-sm text-sky-300">{h.achievement}</div>
+                {h.tournament && (
+                  <div className="mt-1 text-xs text-neutral-500">
+                    {h.tournament}
+                    {h.year ? ` · ${h.year}` : ""}
+                  </div>
+                )}
               </div>
             ))}
           </div>
