@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
@@ -15,12 +15,17 @@ import { AllTimeXiView, parseXi } from "@/components/AllTimeXi";
 import {
   Loader2,
   Trophy,
-  ArrowLeft,
   Award,
   Building2,
   UserPlus,
   UserMinus,
   ChevronRight,
+  Menu,
+  Settings,
+  LogOut,
+  Pencil,
+  LayoutDashboard,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildSeoHead } from "@/lib/seo";
@@ -36,6 +41,7 @@ import { toast } from "sonner";
 import { MessageProfileButton } from "@/components/MessageProfileButton";
 import { SocialFeed } from "@/components/SocialFeed";
 import { InlineStreak } from "@/components/StreakBadge";
+import { isSuperAdminEmail } from "@/lib/organizers";
 
 export const Route = createFileRoute("/members/$id")({
   head: () => ({
@@ -59,11 +65,14 @@ function statusBadgeClass(status: string) {
 
 function MemberProfilePage() {
   const { id } = Route.useParams();
-  const { user } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [followBusy, setFollowBusy] = useState(false);
   const [showXi, setShowXi] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const isOwn = !!user?.id && user.id === id;
+  const isSuperAdmin = isSuperAdminEmail(user?.email);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["member_profile", id],
@@ -210,7 +219,7 @@ function MemberProfilePage() {
 
   if (isLoading) {
     return (
-      <PageShell force="platform">
+      <PageShell force="platform" hideChrome>
         <div className="grid min-h-[40vh] place-items-center">
           <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
@@ -220,16 +229,11 @@ function MemberProfilePage() {
 
   if (error || !data?.profile) {
     return (
-      <PageShell force="platform">
+      <PageShell force="platform" hideChrome>
         <div className="mx-auto max-w-lg space-y-3 py-20 text-center">
           <p className="text-muted-foreground">
             {error instanceof Error ? error.message : "Member not found"}
           </p>
-          <Button asChild variant="outline">
-            <Link to="/users">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Users
-            </Link>
-          </Button>
         </div>
       </PageShell>
     );
@@ -268,14 +272,9 @@ function MemberProfilePage() {
     );
 
   return (
-    <PageShell force="platform">
-      <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 text-neutral-400">
-          <Link to="/users">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Users
-          </Link>
-        </Button>
-
+    <PageShell force="platform" hideChrome>
+      <div className="mx-auto max-w-3xl space-y-6 px-4 pb-28 pt-4">
+        {/* Profile card — starts immediately, no site header */}
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
           <div className="relative h-32 bg-gradient-to-br from-sky-900 via-slate-900 to-violet-950 sm:h-40">
             {profile.avatar_url ? (
@@ -286,6 +285,77 @@ function MemberProfilePage() {
               />
             ) : null}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+
+            {/* ☰ menu — top-right of profile card */}
+            {isOwn && (
+              <div className="absolute right-3 top-3 z-20">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-md transition hover:bg-black/60"
+                  aria-label="Menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                {menuOpen && (
+                  <>
+                    <button
+                      type="button"
+                      className="fixed inset-0 z-40"
+                      aria-label="Close menu"
+                      onClick={() => setMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 top-11 z-50 min-w-[200px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                      <Link
+                        to="/profile"
+                        className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <Pencil className="h-4 w-4 text-sky-400" /> Edit Profile
+                      </Link>
+                      <Link
+                        to="/settings"
+                        className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <Settings className="h-4 w-4 text-neutral-400" /> Settings
+                      </Link>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          toast.message("Switch account coming soon");
+                        }}
+                      >
+                        <Users className="h-4 w-4 text-neutral-400" /> Switch Account
+                      </button>
+                      {(isAdmin || isSuperAdmin) && (
+                        <Link
+                          to={isSuperAdmin ? "/platform" : "/dashboard"}
+                          className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          <LayoutDashboard className="h-4 w-4 text-amber-400" />
+                          {isSuperAdmin ? "Platform Dashboard" : "Organizer Dashboard"}
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-rose-400 hover:bg-white/8"
+                        onClick={async () => {
+                          setMenuOpen(false);
+                          await signOut();
+                          void navigate({ to: "/" });
+                        }}
+                      >
+                        <LogOut className="h-4 w-4" /> Logout
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <div className="relative px-4 pb-5 sm:px-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
@@ -321,6 +391,11 @@ function MemberProfilePage() {
                     )}
                   </Button>
                 </div>
+              )}
+              {isOwn && (
+                <Button asChild size="sm" variant="outline" className="border-white/15">
+                  <Link to="/profile">Edit Profile</Link>
+                </Button>
               )}
             </div>
 
