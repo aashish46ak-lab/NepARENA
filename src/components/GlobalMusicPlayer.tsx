@@ -1,6 +1,6 @@
 /**
  * NepARENA Music — official YouTube IFrame API (real songs only).
- * Player stays in-viewport (YouTube policy) so play() works.
+ * Audio-only: YouTube host is 2×2px hidden (saloon.wtf style).
  */
 import { Link } from "@tanstack/react-router";
 import {
@@ -34,7 +34,6 @@ import {
   Volume2,
   VolumeX,
   ExternalLink,
-  Maximize2,
 } from "lucide-react";
 
 const LS_KEY = "neparena_music_yt_v2";
@@ -286,8 +285,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         width: "320",
         playerVars: {
           autoplay: 0,
-          controls: 1,
-          disablekb: 0,
+          controls: 0,
+          disablekb: 1,
           fs: 0,
           modestbranding: 1,
           rel: 0,
@@ -432,7 +431,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       setActive(true);
       setTrack(t);
       setGenreId(t.genre);
-      setExpanded(true);
       setDuration(t.durationSec > 0 ? t.durationSec : 0);
       setProgress(0);
       if (!playerRef.current || !ready) {
@@ -567,26 +565,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   return (
     <MusicCtx.Provider value={api}>
+      {/* Hidden YouTube host — audio only (saloon.wtf style). Kept 2x2 in-viewport for API policy. */}
       <div
-        className={cn(
-          "fixed z-[72] overflow-hidden rounded-xl border border-white/15 bg-black shadow-2xl transition-all",
-          active
-            ? "pointer-events-auto bottom-20 right-3 h-[160px] w-[280px] opacity-100 sm:bottom-6 sm:right-6"
-            : "pointer-events-none -left-[400px] top-0 h-[180px] w-[320px] opacity-0",
-        )}
-        aria-hidden={!active}
+        className="pointer-events-none fixed bottom-0 left-0 z-[1] h-[2px] w-[2px] overflow-hidden opacity-[0.01]"
+        aria-hidden
       >
-        <div ref={hostRef} id="neparena-yt-host" className="h-full w-full" />
-        {active && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-md bg-black/60 text-white/80 hover:bg-black/80"
-            aria-label="Expand player"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </button>
-        )}
+        <div ref={hostRef} id="neparena-yt-host" className="h-[180px] w-[320px]" />
       </div>
       {children}
     </MusicCtx.Provider>
@@ -808,10 +792,6 @@ function FloatingDisc() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-
-            <p className="mt-3 text-[11px] text-neutral-500">
-              Video plays in the bottom-right YouTube window (required for sound).
-            </p>
 
             <div className="mt-3">
               <input
