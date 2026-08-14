@@ -43,50 +43,42 @@ async function organizerExtra(organizerId: string) {
   };
 }
 
-/** Exact card used on /organizers — reuse on homepage Following list */
 export function OrganizerCard({
   organizer,
-  queryKeyPrefix = "org_extra",
+  queryKeyPrefix = "org_card",
 }: {
   organizer: OrganizerCardData;
   queryKeyPrefix?: string;
 }) {
   const { data: extra } = useQuery({
     queryKey: [queryKeyPrefix, organizer.id],
-    enabled: organizer.id !== "seed-efn",
     queryFn: () => organizerExtra(organizer.id),
+    staleTime: 60_000,
   });
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-      <div className="aspect-[21/9] bg-neutral-900">
-        {organizer.banner_url ? (
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
+      <div className="relative h-28 bg-gradient-to-br from-neutral-800 to-neutral-900">
+        {organizer.banner_url && (
           <img
             src={organizer.banner_url}
             alt=""
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover opacity-80"
+            loading="lazy"
           />
-        ) : (
-          <div className="grid h-full place-items-center text-neutral-600">
-            <Shield className="h-10 w-10" />
-          </div>
         )}
       </div>
-      <div className="p-5">
-        <div className="flex gap-3">
-          {organizer.logo_url ? (
-            <img
-              src={organizer.logo_url}
-              alt=""
-              className="h-14 w-14 rounded-xl object-cover ring-1 ring-white/10"
-            />
-          ) : (
-            <div className="grid h-14 w-14 place-items-center rounded-xl bg-neutral-800">
-              <Trophy className="h-6 w-6 text-neutral-400" />
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+      <div className="relative px-4 pb-4">
+        <div className="-mt-8 flex items-end gap-3">
+          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl border-4 border-[#0a0a0a] bg-neutral-900">
+            {organizer.logo_url ? (
+              <img src={organizer.logo_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Shield className="h-7 w-7 text-neutral-500" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 pb-1">
+            <div className="flex items-center gap-1.5">
               <h2 className="truncate text-lg font-semibold">{organizer.name}</h2>
               {organizer.is_verified && (
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-400" />
@@ -102,8 +94,10 @@ export function OrganizerCard({
             <Users className="h-3.5 w-3.5" />
             {extra?.followers ?? 0} followers
           </span>
-          <span>{extra?.members ?? "—"} members</span>
-          <span>{extra?.tournaments ?? "—"} tournaments</span>
+          <span className="inline-flex items-center gap-1">
+            <Trophy className="h-3.5 w-3.5" />
+            {extra?.tournaments ?? "—"} tournaments
+          </span>
           {organizer.is_verified && (
             <Badge variant="secondary" className="text-[10px]">
               Verified
