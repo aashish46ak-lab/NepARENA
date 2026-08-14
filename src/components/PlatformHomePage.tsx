@@ -14,6 +14,7 @@ import { GamesHub } from "@/components/GamesHub";
 import { StreakAssistant } from "@/components/StreakAssistant";
 import { HomeStreakBadge } from "@/components/HomeStreakBadge";
 import { OrganizerCard } from "@/components/OrganizerCard";
+import { HomeMusicCard } from "@/components/GlobalMusicPlayer";
 import {
   Users,
   Building2,
@@ -23,9 +24,7 @@ import {
   ArrowRight,
   Calendar,
   Mail,
-  Music2,
 } from "lucide-react";
-import { openMusicPicker } from "@/components/GlobalMusicPlayer";
 
 const GoatVoteBooth = lazy(() =>
   import("@/components/GoatVoteBooth").then((m) => ({ default: m.GoatVoteBooth })),
@@ -210,20 +209,15 @@ export function PlatformHomePage() {
             </Link>
             <Link
               to="/feed"
-              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/15 px-4 py-2.5 text-sm font-medium text-sky-100 transition hover:border-sky-400/50 hover:bg-sky-500/25 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/15 px-5 py-2.5 text-sm font-semibold text-sky-100 transition hover:border-sky-400/50 hover:bg-sky-500/25 hover:text-white"
             >
               Go to Feed
               <ArrowRight className="h-4 w-4 text-sky-300" />
             </Link>
-            <button
-              type="button"
-              onClick={() => openMusicPicker()}
-              className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100 transition hover:border-violet-400/50 hover:bg-violet-500/25 hover:text-white"
-            >
-              <Music2 className="h-4 w-4" />
-              Play Music
-            </button>
           </div>
+
+          {/* Fixed Home Music Card — NOT floating */}
+          <HomeMusicCard />
         </div>
       </section>
 
