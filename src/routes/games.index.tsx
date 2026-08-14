@@ -1,119 +1,136 @@
+/**
+ * Games hub — simplified top: title + search, square game cards.
+ */
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
+import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { buildSeoHead } from "@/lib/seo";
-import { Gamepad2, Play, Shuffle, Target, TrendingUp, ArrowLeft, Brain, Building2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Gamepad2, Target, Trophy, Brain, Footprints, Shuffle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/games/")({
   head: () => ({
     ...buildSeoHead({
-      title: "Play Games — NepARENA",
-      description: "Blind Ranking, Penalty, Higher or Lower, Daily Quiz, Guess the Club on NepARENA.",
+      title: "Games — NepARENA",
+      description: "Play mini-games on NepARENA.",
       path: "/games",
     }),
   }),
-  component: GamesLobbyPage,
+  component: GamesIndexPage,
 });
 
 const GAMES = [
   {
-    id: "daily-quiz",
-    href: "/games/daily-quiz",
-    title: "Daily Football Quiz",
-    desc: "10 timed questions · shuffled daily · history to eFootball.",
-    tag: "Daily",
-    icon: Brain,
-    accent: "from-violet-950/80 to-black border-violet-500/25",
-  },
-  {
-    id: "guess-club",
-    href: "/games/guess-club",
-    title: "Guess the Club",
-    desc: "Hints only — name the club. Fresh set every run.",
-    tag: "New",
-    icon: Building2,
-    accent: "from-cyan-950/80 to-black border-cyan-500/25",
-  },
-  {
-    id: "blind-ranking",
-    href: "/games/blind-ranking",
-    title: "Blind Ranking",
-    desc: "Spin face cards, place ranks, export your vertical PNG card.",
-    tag: "Viral",
-    icon: Shuffle,
-    accent: "from-sky-950/80 to-black border-sky-500/25",
-  },
-  {
-    id: "penalty",
-    href: "/games/penalty",
+    to: "/games/penalty" as const,
     title: "Penalty Shootout",
-    desc: "Swipe to shoot & dive · 5 each · sudden death.",
-    tag: "Live",
-    icon: Target,
-    accent: "from-emerald-950/80 to-black border-emerald-500/20",
+    blurb: "Take the spot-kick challenge",
+    icon: Footprints,
+    tone: "from-emerald-600/40 to-emerald-900/20",
   },
   {
-    id: "higher-lower",
-    href: "/games/higher-lower",
+    to: "/games/higher-lower" as const,
     title: "Higher or Lower",
-    desc: "FIFA Mobile-style all-time peak OVR.",
-    tag: "Live",
-    icon: TrendingUp,
-    accent: "from-amber-950/70 to-black border-amber-500/20",
+    blurb: "Guess the next rating",
+    icon: Shuffle,
+    tone: "from-sky-600/40 to-sky-900/20",
   },
-] as const;
+  {
+    to: "/games/blind-ranking" as const,
+    title: "Blind Ranking",
+    blurb: "Rank players without names",
+    icon: Target,
+    tone: "from-violet-600/40 to-violet-900/20",
+  },
+  {
+    to: "/games/daily-quiz" as const,
+    title: "Daily Quiz",
+    blurb: "Football knowledge check",
+    icon: Brain,
+    tone: "from-amber-600/40 to-amber-900/20",
+  },
+  {
+    to: "/games/guess-club" as const,
+    title: "Guess the Club",
+    blurb: "Identify from the badge",
+    icon: Trophy,
+    tone: "from-rose-600/40 to-rose-900/20",
+  },
+  {
+    to: "/vote/goat" as const,
+    title: "GOAT Vote",
+    blurb: "Pick the greatest",
+    icon: Gamepad2,
+    tone: "from-fuchsia-600/40 to-fuchsia-900/20",
+  },
+];
 
-function GamesLobbyPage() {
+function GamesIndexPage() {
+  const [q, setQ] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const list = useMemo(() => {
+    if (!q.trim()) return GAMES;
+    const s = q.toLowerCase();
+    return GAMES.filter(
+      (g) => g.title.toLowerCase().includes(s) || g.blurb.toLowerCase().includes(s),
+    );
+  }, [q]);
+
   return (
-    <PageShell force="platform">
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-neutral-400">
-          <Link to="/">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Home
-          </Link>
-        </Button>
-
-        <div className="mb-8 flex items-center gap-4">
-          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-neutral-200 to-neutral-500 text-black shadow-lg ring-2 ring-white/10">
-            <Gamepad2 className="h-8 w-8" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-500">
-              NepARENA Arcade
-            </p>
-            <h1 className="text-2xl font-black tracking-tight text-white">Play Games</h1>
-            <p className="text-sm text-neutral-500">Pick a game · play · share</p>
-          </div>
+    <PageShell force="platform" hideChrome>
+      <PlatformTopBar showLogo={false} pageTitle="Games" />
+      <div className="mx-auto max-w-3xl px-4 pb-28 pt-4">
+        <div className="mb-4 flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-white">Games</h1>
+          <button
+            type="button"
+            onClick={() => setSearchOpen((v) => !v)}
+            className="ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-neutral-300 transition hover:bg-white/10"
+            aria-label="Search games"
+          >
+            <Search className="h-4 w-4" />
+          </button>
         </div>
 
-        <ul className="space-y-3">
-          {GAMES.map((g) => (
-            <li key={g.id}>
-              <div className={`overflow-hidden rounded-3xl border bg-gradient-to-br p-5 ${g.accent}`}>
-                <div className="flex items-start gap-3">
-                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-black/50 ring-1 ring-white/10">
-                    <g.icon className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg font-bold text-white">{g.title}</h2>
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-300">
-                        {g.tag}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-neutral-400">{g.desc}</p>
-                    <a
-                      href={g.href}
-                      className="mt-3 inline-flex h-8 items-center justify-center rounded-md bg-neutral-100 px-3 text-sm font-semibold text-black hover:bg-white"
-                    >
-                      <Play className="mr-1.5 h-3.5 w-3.5" /> Play
-                    </a>
-                  </div>
+        {searchOpen && (
+          <div className="mb-4">
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search games…"
+              className="h-11 rounded-2xl border-white/10 bg-white/[0.05]"
+              autoFocus
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {list.map((g) => {
+            const Icon = g.icon;
+            return (
+              <Link
+                key={g.to}
+                to={g.to}
+                className={cn(
+                  "group relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br p-4 text-center transition hover:border-white/25 hover:scale-[1.02] active:scale-[0.98]",
+                  g.tone,
+                )}
+              >
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-black/30 ring-1 ring-white/10">
+                  <Icon className="h-7 w-7 text-white" />
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+                <p className="text-sm font-semibold text-white">{g.title}</p>
+                <p className="text-[11px] leading-snug text-neutral-400">{g.blurb}</p>
+              </Link>
+            );
+          })}
+        </div>
+
+        {list.length === 0 && (
+          <p className="mt-8 text-center text-sm text-neutral-500">No games match your search.</p>
+        )}
       </div>
     </PageShell>
   );

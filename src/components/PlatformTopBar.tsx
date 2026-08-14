@@ -1,6 +1,11 @@
+/**
+ * Instagram-style top bar.
+ * Logo + title ONLY on Home (showLogo).
+ * Other pages: pageTitle only (Messages, Games, Organizers, …).
+ */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Megaphone, BarChart3, FileText } from "lucide-react";
+import { Plus, BarChart3, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { PLATFORM_NAME, isSuperAdminEmail } from "@/lib/organizers";
@@ -9,7 +14,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   onCreatePost?: () => void;
   className?: string;
-  /** When true (default on home), show centered logo+title. On other pages show pageTitle instead. */
+  /** When true, show centered logo+title. Default: only on home. */
   showLogo?: boolean;
   pageTitle?: string;
 };
@@ -71,7 +76,9 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
                     >
                       <BarChart3 className="h-4 w-4" />
                       Create Poll
-                      <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">Soon</span>
+                      <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">
+                        Soon
+                      </span>
                     </button>
                     {(isAdmin || isSuperAdmin) && (
                       <Link
@@ -79,8 +86,8 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
                         className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
                         onClick={() => setCreateOpen(false)}
                       >
-                        <Megaphone className="h-4 w-4 text-amber-400" />
-                        Announcement
+                        <BarChart3 className="h-4 w-4 text-amber-400" />
+                        Dashboard
                       </Link>
                     )}
                   </div>
@@ -88,45 +95,30 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
               )}
             </>
           ) : (
-            <Link
-              to="/auth"
-              className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 hover:bg-white/10"
-              aria-label="Sign in to create"
-            >
-              <Plus className="h-6 w-6" strokeWidth={1.75} />
-            </Link>
+            <span className="w-9" />
           )}
         </div>
 
-        {displayLogo ? (
-          <Link to="/" className="flex items-center gap-2" data-tour="logo">
-            <img
-              src="/neparena-logo.png"
-              alt=""
-              className="h-8 w-8 rounded-xl object-cover ring-1 ring-white/20"
-              onError={(e) => {
-                e.currentTarget.src = "/pwa-192x192.png";
-              }}
-            />
-            <span className="text-[17px] font-semibold tracking-tight text-white">{PLATFORM_NAME}</span>
-          </Link>
-        ) : (
-          <span className="text-[15px] font-semibold tracking-tight text-white">
-            {pageTitle ?? ""}
-          </span>
-        )}
-
-        <div className="flex w-12 justify-end" data-tour="notifications">
-          {user ? (
-            <NotificationsBell />
-          ) : (
-            <Link
-              to="/auth"
-              className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-semibold text-black"
-            >
-              Sign in
+        <div className="flex min-w-0 flex-1 items-center justify-center">
+          {displayLogo ? (
+            <Link to="/" className="flex items-center gap-2">
+              <img
+                src="/neparena-logo.png"
+                alt=""
+                className="h-7 w-7 rounded-lg object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = "/pwa-192x192.png";
+                }}
+              />
+              <span className="text-[15px] font-bold tracking-tight text-white">{PLATFORM_NAME}</span>
             </Link>
-          )}
+          ) : pageTitle ? (
+            <h1 className="truncate text-[15px] font-semibold text-white">{pageTitle}</h1>
+          ) : null}
+        </div>
+
+        <div className="flex w-12 justify-end">
+          {user ? <NotificationsBell /> : <span className="w-9" />}
         </div>
       </div>
     </header>
