@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Trophy, MessageCircle, Gamepad2, User } from "lucide-react";
+import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -8,10 +8,10 @@ import { supabase } from "@/lib/supabase";
 const TABS = [
   { to: "/" as const, label: "Home", icon: Home, match: (p: string) => p === "/" },
   {
-    to: "/tournaments" as const,
-    label: "Tournaments",
-    icon: Trophy,
-    match: (p: string) => p.startsWith("/tournaments") || p.startsWith("/organizers"),
+    to: "/organizers" as const,
+    label: "Organizers",
+    icon: Building2,
+    match: (p: string) => p.startsWith("/organizers") || p.startsWith("/o/"),
   },
   {
     to: "/messages" as const,
@@ -60,7 +60,7 @@ export function BottomNav() {
         );
         setMsgUnread(total);
       } catch {
-        /* table shape may vary — ignore */
+        /* ignore */
       }
     };
     void load();
@@ -74,7 +74,14 @@ export function BottomNav() {
     };
   }, [user?.id]);
 
-  if (pathname.startsWith("/auth") || pathname.startsWith("/reset-password")) return null;
+  if (
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/reset-password") ||
+    pathname === "/profile" ||
+    pathname.startsWith("/members/")
+  ) {
+    return null;
+  }
 
   return (
     <nav
@@ -111,9 +118,7 @@ export function BottomNav() {
               <span className={cn("text-[10px] font-medium", active ? "text-white" : "text-neutral-500")}>
                 {tab.label}
               </span>
-              {active && (
-                <span className="absolute -bottom-0.5 h-0.5 w-5 rounded-full bg-sky-400" />
-              )}
+              {active && <span className="absolute -bottom-0.5 h-0.5 w-5 rounded-full bg-sky-400" />}
             </Link>
           );
         })}

@@ -15,6 +15,7 @@ export function isPlatformPath(pathname: string): boolean {
     "/games",
     "/vote",
     "/feed",
+    "/become-organizer",
     "/messages",
     "/members",
     "/profile",
