@@ -68,7 +68,7 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
         else onOpenChange(true);
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/12 bg-[#121214] p-0 sm:max-w-md [&>button]:hidden">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/12 bg-[#121214] p-0 shadow-2xl sm:max-w-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 duration-200 [&>button]:hidden">
         <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
           <DialogTitle className="text-base font-semibold text-white">
             Create post
@@ -76,7 +76,7 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
           <button
             type="button"
             onClick={close}
-            className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white"
+            className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-90"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -87,7 +87,7 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="What's on your mind?"
-            className="min-h-[100px] resize-none border-white/10 bg-black/30 text-[15px]"
+            className="min-h-[100px] resize-none border-white/10 bg-black/30 text-[15px] transition focus:border-sky-500/40"
             maxLength={2000}
             autoFocus
           />
