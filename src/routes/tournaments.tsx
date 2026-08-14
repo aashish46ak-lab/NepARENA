@@ -8,6 +8,7 @@ import {
 import { buildSeoHead } from "@/lib/seo";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
+import { OrganizerSubnav } from "@/components/OrganizerSubnav";
 import { useTournaments } from "@/hooks/useContent";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase, type Tournament } from "@/lib/supabase";
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/tournaments")({
     ...buildSeoHead({
       title: "Tournaments",
       description:
-        "Browse upcoming, ongoing, and completed esports tournaments on NepARENA — Nepal's multi-organizer platform.",
+        "Browse upcoming, ongoing, and completed esports tournaments on NepARENA.",
       path: "/tournaments",
     }),
   }),
@@ -48,28 +49,29 @@ function TournamentsList() {
   const list = all.filter((t) => t.status !== "completed");
 
   return (
-    <PageShell>
-      <div className="max-w-7xl mx-auto px-4 py-12 overflow-x-hidden">
-        <h1 className="text-3xl md:text-4xl font-bold">Tournaments</h1>
-        <p className="text-muted-foreground mt-2">
-          Esports tournaments on NepARENA.
-        </p>
+    <PageShell force="organizer" hideChrome>
+      <OrganizerSubnav title="Tournaments" />
+      <div className="mx-auto max-w-3xl px-4 pb-24 pt-2">
+        <h1 className="text-2xl font-bold text-white">Tournaments</h1>
+        <p className="mt-1 text-sm text-neutral-400">Active and upcoming events.</p>
 
         {isLoading && (
-          <div className="mt-8 text-muted-foreground">Loading…</div>
+          <div className="mt-10 flex justify-center">
+            <Loader2 className="h-7 w-7 animate-spin text-neutral-500" />
+          </div>
         )}
 
         {!isLoading && list.length === 0 && (
-          <div className="mt-8 glass rounded-xl p-8 text-center text-muted-foreground">
-            No active tournaments right now — see the{" "}
-            <Link to="/history" className="text-brand-glow hover:underline">
+          <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-neutral-500">
+            No active tournaments — see{" "}
+            <Link to="/history" className="text-sky-400 hover:underline">
               tournament history
             </Link>
             .
           </div>
         )}
 
-        <div className="mt-8 grid gap-4 sm:gap-6 md:grid-cols-2">
+        <div className="mt-6 space-y-4">
           {list.map((t) => (
             <TournamentCard key={t.id} tournament={t} />
           ))}
@@ -192,13 +194,13 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
   const thumb = t.logo_url || t.banner_url || t.image_url;
 
   return (
-    <div className="glass rounded-2xl overflow-hidden min-w-0 w-full">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/25 transition hover:border-white/20">
       <Link
         to="/tournaments/$id"
         params={{ id: t.id }}
-        className="flex gap-3 p-3 sm:p-4 min-w-0 cursor-pointer"
+        className="flex min-w-0 cursor-pointer gap-3 p-3 sm:p-4"
       >
-        <div className="h-[100px] w-[100px] shrink-0 rounded-xl overflow-hidden bg-secondary ring-1 ring-border/40">
+        <div className="h-[100px] w-[100px] shrink-0 overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-white/10">
           {thumb ? (
             <img
               src={thumb}
@@ -207,15 +209,15 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
               loading="lazy"
             />
           ) : (
-            <div className="h-full w-full grid place-items-center bg-gradient-brand/20">
-              <Trophy className="h-8 w-8 text-brand" />
+            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-sky-900/40 to-violet-950/40">
+              <Trophy className="h-8 w-8 text-sky-400/70" />
             </div>
           )}
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 py-0.5">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-0.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge className="bg-brand/25 text-brand-glow capitalize text-[10px] sm:text-xs">
+            <Badge className="bg-sky-500/20 text-sky-300 capitalize text-[10px] sm:text-xs">
               {t.status.replace(/_/g, " ")}
             </Badge>
             {t.registration_open && (
@@ -225,25 +227,25 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
             )}
           </div>
 
-          <h3 className="text-base sm:text-lg font-bold leading-snug line-clamp-2 break-words">
+          <h3 className="line-clamp-2 break-words text-base font-bold leading-snug text-white sm:text-lg">
             {t.name}
           </h3>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400 sm:text-sm">
             {t.prize_pool && (
-              <span className="inline-flex items-center gap-1 min-w-0">
+              <span className="inline-flex min-w-0 items-center gap-1">
                 <Award className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate max-w-[120px] sm:max-w-none">
+                <span className="max-w-[120px] truncate sm:max-w-none">
                   {t.prize_pool}
                 </span>
               </span>
             )}
-            <span className="inline-flex items-center gap-1 shrink-0">
+            <span className="inline-flex shrink-0 items-center gap-1">
               <Users className="h-3.5 w-3.5 shrink-0" />
               {t.participants_count} players
             </span>
             {t.starts_at && (
-              <span className="inline-flex items-center gap-1 shrink-0">
+              <span className="inline-flex shrink-0 items-center gap-1">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
                 {new Date(t.starts_at).toLocaleDateString()}
               </span>
@@ -252,7 +254,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
         </div>
       </Link>
 
-      <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-0 border-t border-border/30 mt-0">
+      <div className="border-t border-white/8 px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
         <div className="pt-3">
           {joined === "approved" ? (
             <div className="inline-flex items-center gap-1.5 text-sm text-emerald-300">
@@ -263,25 +265,23 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
               <Loader2 className="h-4 w-4 shrink-0" /> Request pending
             </div>
           ) : joined === "rejected" ? (
-            <p className="text-xs text-destructive">
-              Previous request was rejected
-            </p>
+            <p className="text-xs text-rose-400">Previous request was rejected</p>
           ) : t.registration_open ? (
             <Button
               type="button"
-              className="w-full sm:w-auto bg-gradient-brand text-primary-foreground"
+              className="w-full bg-neutral-100 text-black hover:bg-white sm:w-auto"
               disabled={busy}
               onClick={requestJoin}
             >
               {busy ? (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
-                <UserPlus className="h-4 w-4 mr-1.5" />
+                <UserPlus className="mr-1.5 h-4 w-4" />
               )}
               Request to join
             </Button>
           ) : (
-            <p className="text-xs text-muted-foreground">Registration closed</p>
+            <p className="text-xs text-neutral-500">Registration closed</p>
           )}
         </div>
       </div>
