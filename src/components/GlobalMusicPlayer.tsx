@@ -1,10 +1,7 @@
 /**
- * NepARENA global music system
- * - HomeMusicCard: fixed on homepage only (below About / Feed)
- * - Genre bottom sheet
- * - Floating rotating disc ONLY after music starts (draggable, persists position)
- * - Expanded mini player
- * - Dual-audio crossfade, random track per genre, legal free streams only
+ * NepARENA global music — official YouTube embeds only.
+ * Real commercial songs via YouTube IFrame Player API.
+ * UI unchanged: HomeMusicCard, genre sheet, floating disc, mini player.
  */
 import {
   createContext,
@@ -21,6 +18,8 @@ import {
   getGenreTracks,
   genreLabel,
   pickRandomTrack,
+  youtubeThumb,
+  youtubeWatchUrl,
   type MusicGenreId,
   type Track,
 } from "@/lib/music-catalog";
@@ -34,16 +33,61 @@ import {
   Music2,
   Volume2,
   VolumeX,
+  ExternalLink,
 } from "lucide-react";
 
-const LS_KEY = "neparena_music_v2";
+const LS_KEY = "neparena_music_yt_v1";
 const POS_KEY = "neparena_music_pos_v1";
-const FADE_MS = 700;
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (
+        el: HTMLElement | string,
+        opts: {
+          height?: string | number;
+          width?: string | number;
+          videoId?: string;
+          playerVars?: Record<string, number | string>;
+          events?: {
+            onReady?: (e: { target: YTPlayer }) => void;
+            onStateChange?: (e: { data: number; target: YTPlayer }) => void;
+            onError?: (e: { data: number }) => void;
+          };
+        },
+      ) => YTPlayer;
+      PlayerState: {
+        ENDED: number;
+        PLAYING: number;
+        PAUSED: number;
+        BUFFERING: number;
+        CUED: number;
+      };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+type YTPlayer = {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  stopVideo: () => void;
+  loadVideoById: (id: string | { videoId: string; startSeconds?: number }) => void;
+  cueVideoById: (id: string) => void;
+  setVolume: (v: number) => void;
+  getVolume: () => number;
+  mute: () => void;
+  unMute: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  getPlayerState: () => number;
+  destroy: () => void;
+};
 
 type Persisted = {
   genreId: MusicGenreId;
   trackId: string;
-  playing: boolean;
   volume: number;
   active: boolean;
 };
@@ -60,6 +104,7 @@ type MusicApi = {
   duration: number;
   sheetOpen: boolean;
   expanded: boolean;
+  ready: boolean;
   openSheet: () => void;
   closeSheet: () => void;
   selectGenre: (id: MusicGenreId) => void;
@@ -144,172 +189,182 @@ function EqualizerBars({ playing }: { playing: boolean }) {
   );
 }
 
+let ytApiPromise: Promise<void> | null = null;
+
+function loadYouTubeApi(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.YT?.Player) return Promise.resolve();
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise((resolve) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve();
+    };
+    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      tag.async = true;
+      document.head.appendChild(tag);
+    }
+    const check = window.setInterval(() => {
+      if (window.YT?.Player) {
+        window.clearInterval(check);
+        resolve();
+      }
+    }, 100);
+    window.setTimeout(() => {
+      window.clearInterval(check);
+      resolve();
+    }, 8000);
+  });
+  return ytApiPromise;
+}
+
 export function MusicProvider({ children }: { children: ReactNode }) {
-  const a1 = useRef<HTMLAudioElement | null>(null);
-  const a2 = useRef<HTMLAudioElement | null>(null);
-  const activeAudio = useRef<0 | 1>(0);
-  const fading = useRef(false);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const trackRef = useRef<Track | null>(null);
+  const genreRef = useRef<MusicGenreId>("trending");
 
   const [active, setActive] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [track, setTrack] = useState<Track | null>(null);
-  const [genreId, setGenreId] = useState<MusicGenreId>("lofi");
-  const [volume, setVolumeState] = useState(0.75);
+  const [genreId, setGenreId] = useState<MusicGenreId>("trending");
+  const [volume, setVolumeState] = useState(80);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  trackRef.current = track;
+  genreRef.current = genreId;
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    a1.current = new Audio();
-    a2.current = new Audio();
-    for (const a of [a1.current, a2.current]) {
-      a.crossOrigin = "anonymous";
-      a.preload = "auto";
-      a.volume = 0.75;
-    }
-    setHydrated(true);
+    let cancelled = false;
+    void (async () => {
+      await loadYouTubeApi();
+      if (cancelled || !hostRef.current || !window.YT?.Player) return;
+      if (playerRef.current) return;
+      playerRef.current = new window.YT.Player(hostRef.current, {
+        height: "200",
+        width: "200",
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          origin: typeof window !== "undefined" ? window.location.origin : "",
+        },
+        events: {
+          onReady: (e) => {
+            e.target.setVolume(volume);
+            setReady(true);
+            const saved = loadState();
+            if (saved?.active) {
+              setGenreId(saved.genreId);
+              setVolumeState(saved.volume ?? 80);
+              const list = getGenreTracks(saved.genreId);
+              const exact =
+                list.find((x) => x.id === saved.trackId) ?? pickRandomTrack(saved.genreId);
+              if (exact) {
+                setTrack(exact);
+                setActive(true);
+                e.target.cueVideoById(exact.youtubeId);
+                e.target.setVolume(saved.volume ?? 80);
+              }
+            }
+          },
+          onStateChange: (e) => {
+            const YT = window.YT;
+            if (!YT) return;
+            if (e.data === YT.PlayerState.PLAYING) {
+              setPlaying(true);
+              setActive(true);
+            } else if (e.data === YT.PlayerState.PAUSED) {
+              setPlaying(false);
+            } else if (e.data === YT.PlayerState.ENDED) {
+              setPlaying(false);
+              const n = pickRandomTrack(genreRef.current, trackRef.current?.id);
+              if (n && playerRef.current) {
+                setTrack(n);
+                playerRef.current.loadVideoById(n.youtubeId);
+              }
+            }
+          },
+          onError: () => {
+            const n = pickRandomTrack(genreRef.current, trackRef.current?.id);
+            if (n && playerRef.current) {
+              setTrack(n);
+              playerRef.current.loadVideoById(n.youtubeId);
+            }
+          },
+        },
+      });
+    })();
     return () => {
-      a1.current?.pause();
-      a2.current?.pause();
-      a1.current = null;
-      a2.current = null;
+      cancelled = true;
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        /* ignore */
+      }
+      playerRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
-    const saved = loadState();
-    if (!saved?.active) return;
-    setGenreId(saved.genreId);
-    setVolumeState(saved.volume ?? 0.75);
-    const list = getGenreTracks(saved.genreId);
-    const exact = list.find((x) => x.id === saved.trackId) ?? pickRandomTrack(saved.genreId);
-    if (exact) {
-      setTrack(exact);
-      setActive(true);
-      setPlaying(false);
-    }
-  }, [hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
     saveState({
       genreId,
       trackId: track?.id ?? "",
-      playing,
       volume,
       active,
     });
-  }, [genreId, track, playing, volume, active, hydrated]);
+  }, [genreId, track, volume, active]);
 
   useEffect(() => {
-    if (a1.current) a1.current.volume = volume;
-    if (a2.current) a2.current.volume = volume;
-  }, [volume]);
-
-  const currentEl = useCallback(() => {
-    return activeAudio.current === 0 ? a1.current : a2.current;
-  }, []);
-
-  const otherEl = useCallback(() => {
-    return activeAudio.current === 0 ? a2.current : a1.current;
-  }, []);
+    if (playerRef.current && ready) {
+      playerRef.current.setVolume(volume);
+    }
+  }, [volume, ready]);
 
   useEffect(() => {
     if (!playing) return;
     const id = window.setInterval(() => {
-      const el = currentEl();
-      if (el) {
-        setProgress(el.currentTime || 0);
-        setDuration(el.duration || 0);
-      }
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [playing, currentEl, track]);
-
-  const fadeCross = useCallback(
-    async (nextTrack: Track) => {
-      if (fading.current) return;
-      fading.current = true;
-      const cur = currentEl();
-      const nxt = otherEl();
-      if (!cur || !nxt) {
-        fading.current = false;
-        return;
-      }
-
-      nxt.src = nextTrack.src;
-      nxt.volume = 0;
+      const p = playerRef.current;
+      if (!p) return;
       try {
-        await nxt.play();
+        setProgress(p.getCurrentTime() || 0);
+        setDuration(p.getDuration() || 0);
       } catch {
-        fading.current = false;
-        setPlaying(false);
-        return;
+        /* ignore */
       }
-
-      const steps = 14;
-      const stepMs = FADE_MS / steps;
-      const startVol = cur.volume;
-      for (let i = 1; i <= steps; i++) {
-        await new Promise((r) => setTimeout(r, stepMs));
-        const t = i / steps;
-        cur.volume = startVol * (1 - t);
-        nxt.volume = volume * t;
-      }
-      cur.pause();
-      cur.currentTime = 0;
-      cur.volume = volume;
-      nxt.volume = volume;
-      activeAudio.current = activeAudio.current === 0 ? 1 : 0;
-      setTrack(nextTrack);
-      setProgress(0);
-      setDuration(nxt.duration || 0);
-      fading.current = false;
-    },
-    [currentEl, otherEl, volume],
-  );
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [playing, track]);
 
   const playTrack = useCallback(
-    async (t: Track, crossfade: boolean) => {
+    (t: Track) => {
       setActive(true);
       setTrack(t);
-      const el = currentEl();
-      if (!el) return;
-
-      if (crossfade && playing && el.src && el.src !== t.src) {
-        await fadeCross(t);
-        setPlaying(true);
-        return;
-      }
-
-      if (el.src !== t.src) {
-        el.src = t.src;
-      }
-      el.volume = volume;
+      setGenreId(t.genre);
+      const p = playerRef.current;
+      if (!p) return;
       try {
-        await el.play();
+        p.loadVideoById(t.youtubeId);
+        p.setVolume(volume);
+        p.playVideo();
         setPlaying(true);
       } catch {
-        const alt = pickRandomTrack(t.genre, t.id);
-        if (alt && alt.id !== t.id) {
-          el.src = alt.src;
-          try {
-            await el.play();
-            setTrack(alt);
-            setPlaying(true);
-          } catch {
-            setPlaying(false);
-          }
-        } else {
-          setPlaying(false);
-        }
+        setPlaying(false);
       }
     },
-    [currentEl, fadeCross, playing, volume],
+    [volume],
   );
 
   const selectGenre = useCallback(
@@ -317,82 +372,69 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       setGenreId(id);
       setSheetOpen(false);
       const nextT = pickRandomTrack(id, track?.id);
-      if (nextT) void playTrack(nextT, true);
+      if (nextT) playTrack(nextT);
     },
     [playTrack, track?.id],
   );
 
   const next = useCallback(() => {
     const n = pickRandomTrack(genreId, track?.id);
-    if (n) void playTrack(n, true);
+    if (n) playTrack(n);
   }, [genreId, playTrack, track?.id]);
 
   const prev = useCallback(() => {
-    const el = currentEl();
-    if (el && el.currentTime > 3) {
-      el.currentTime = 0;
-      setProgress(0);
-      return;
+    const p = playerRef.current;
+    if (p) {
+      try {
+        if (p.getCurrentTime() > 3) {
+          p.seekTo(0, true);
+          setProgress(0);
+          return;
+        }
+      } catch {
+        /* fall through */
+      }
     }
     const n = pickRandomTrack(genreId, track?.id);
-    if (n) void playTrack(n, true);
-  }, [currentEl, genreId, playTrack, track?.id]);
+    if (n) playTrack(n);
+  }, [genreId, playTrack, track?.id]);
 
   const togglePlay = useCallback(() => {
-    const el = currentEl();
-    if (!el || !track) return;
-    if (playing) {
-      el.pause();
+    const p = playerRef.current;
+    if (!p || !track) return;
+    try {
+      if (playing) {
+        p.pauseVideo();
+        setPlaying(false);
+      } else {
+        p.playVideo();
+        setPlaying(true);
+      }
+    } catch {
       setPlaying(false);
-    } else {
-      void el
-        .play()
-        .then(() => setPlaying(true))
-        .catch(() => setPlaying(false));
     }
-  }, [currentEl, playing, track]);
+  }, [playing, track]);
 
   const closePlayer = useCallback(() => {
-    a1.current?.pause();
-    a2.current?.pause();
+    try {
+      playerRef.current?.stopVideo();
+    } catch {
+      /* ignore */
+    }
     setPlaying(false);
     setActive(false);
     setExpanded(false);
     setSheetOpen(false);
   }, []);
 
-  const seek = useCallback(
-    (t: number) => {
-      const el = currentEl();
-      if (el && Number.isFinite(t)) {
-        el.currentTime = t;
-        setProgress(t);
-      }
-    },
-    [currentEl],
-  );
-
-  useEffect(() => {
-    const onEnded = () => next();
-    const el1 = a1.current;
-    const el2 = a2.current;
-    el1?.addEventListener("ended", onEnded);
-    el2?.addEventListener("ended", onEnded);
-    return () => {
-      el1?.removeEventListener("ended", onEnded);
-      el2?.removeEventListener("ended", onEnded);
-    };
-  }, [next, hydrated]);
-
-  useEffect(() => {
-    const onErr = () => next();
-    a1.current?.addEventListener("error", onErr);
-    a2.current?.addEventListener("error", onErr);
-    return () => {
-      a1.current?.removeEventListener("error", onErr);
-      a2.current?.removeEventListener("error", onErr);
-    };
-  }, [next, hydrated]);
+  const seek = useCallback((t: number) => {
+    try {
+      playerRef.current?.seekTo(t, true);
+      setProgress(t);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     const h = () => setSheetOpen(true);
@@ -411,6 +453,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       duration,
       sheetOpen,
       expanded,
+      ready,
       openSheet: () => setSheetOpen(true),
       closeSheet: () => setSheetOpen(false),
       selectGenre,
@@ -432,6 +475,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       duration,
       sheetOpen,
       expanded,
+      ready,
       selectGenre,
       togglePlay,
       next,
@@ -441,7 +485,17 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <MusicCtx.Provider value={api}>{children}</MusicCtx.Provider>;
+  return (
+    <MusicCtx.Provider value={api}>
+      <div
+        className="pointer-events-none fixed -left-[240px] -top-[240px] h-[200px] w-[200px] opacity-0"
+        aria-hidden
+      >
+        <div ref={hostRef} id="neparena-yt-host" />
+      </div>
+      {children}
+    </MusicCtx.Provider>
+  );
 }
 
 export function useMusic() {
@@ -454,7 +508,6 @@ export function useMusicOptional() {
   return useContext(MusicCtx);
 }
 
-/** Home page fixed card (NOT floating) */
 export function HomeMusicCard() {
   const music = useMusicOptional();
   if (!music) return null;
@@ -472,7 +525,7 @@ export function HomeMusicCard() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold tracking-tight text-white">NepARENA Music</p>
-          <p className="text-xs text-neutral-400">Choose a vibe while you browse.</p>
+          <p className="text-xs text-neutral-400">Real songs · official YouTube</p>
         </div>
         <EqualizerBars playing={music.playing && music.active} />
       </div>
@@ -502,7 +555,7 @@ function GenreSheet() {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">Pick a vibe</h2>
-            <p className="text-xs text-neutral-500">Instant random track · legal free streams</p>
+            <p className="text-xs text-neutral-500">Official songs via YouTube</p>
           </div>
           <button
             type="button"
@@ -550,6 +603,8 @@ function FloatingDisc() {
   }, [pos.y]);
 
   if (!music.active || !music.track) return null;
+
+  const thumb = youtubeThumb(music.track.youtubeId);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (music.expanded) return;
@@ -608,7 +663,7 @@ function FloatingDisc() {
               style={{ animationDuration: "4s" }}
             />
             <img
-              src={music.track.cover || "/neparena-logo.png"}
+              src={thumb}
               alt=""
               className={cn("h-9 w-9 rounded-full object-cover", music.playing && "animate-spin")}
               style={{ animationDuration: "8s" }}
@@ -631,7 +686,7 @@ function FloatingDisc() {
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
             <div className="flex items-start gap-4">
               <img
-                src={music.track.cover || "/neparena-logo.png"}
+                src={thumb}
                 alt=""
                 className={cn(
                   "h-20 w-20 shrink-0 rounded-2xl object-cover ring-1 ring-white/15",
@@ -700,7 +755,7 @@ function FloatingDisc() {
             <div className="mt-4 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => music.setVolume(music.volume > 0 ? 0 : 0.75)}
+                onClick={() => music.setVolume(music.volume > 0 ? 0 : 80)}
                 className="text-neutral-400 hover:text-white"
               >
                 {music.volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -708,24 +763,38 @@ function FloatingDisc() {
               <input
                 type="range"
                 min={0}
-                max={1}
-                step={0.02}
+                max={100}
+                step={1}
                 value={music.volume}
                 onChange={(e) => music.setVolume(Number(e.target.value))}
                 className="h-1 w-full accent-sky-400"
               />
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                music.setExpanded(false);
-                music.openSheet();
-              }}
-              className="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm font-medium text-neutral-200 hover:bg-white/[0.08]"
-            >
-              Change genre
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  music.setExpanded(false);
+                  music.openSheet();
+                }}
+                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-sm font-medium text-neutral-200 hover:bg-white/[0.08]"
+              >
+                Change genre
+              </button>
+              <a
+                href={youtubeWatchUrl(music.track.youtubeId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm font-medium text-neutral-200 hover:bg-white/[0.08]"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                YouTube
+              </a>
+            </div>
+            <p className="mt-2 text-center text-[10px] text-neutral-600">
+              Powered by official YouTube embed · rights belong to artists & labels
+            </p>
           </div>
         </div>
       )}
@@ -733,7 +802,6 @@ function FloatingDisc() {
   );
 }
 
-/** Mount once in root — sheet + floating disc */
 export function GlobalMusicPlayer() {
   const music = useMusicOptional();
   if (!music) return null;
