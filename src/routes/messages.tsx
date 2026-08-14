@@ -1,38 +1,64 @@
-/**
- * Messages — Instagram-style horizontal chat heads + notes (24h), inbox/requests, in-chat search.
- */
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PageShell } from "@/components/PageShell";
+import { useAuth } from "@/hooks/useAuth";
+import { buildSeoHead } from "@/lib/seo";
 import {
+  acceptDmRequest,
+  declineDmRequest,
   deleteMyNote,
-  getFriendNotes,
+  formatMsgTime,
   getMyNote,
-  listThreads,
+  listDmMessages,
+  listDmThreads,
+  listFriendNotes,
+  markDmRead,
+  reactToDm,
+  sendDmMessage,
   setMyNote,
+  type DmMessage,
   type DmThread,
   type UserNote,
 } from "@/lib/dm";
-import { PageShell } from "@/components/PageShell";
+import { parseSharedPost } from "@/lib/shared-post";
+import { followUser, isFollowingUser } from "@/lib/user-follows";
+import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
-import { PLATFORM_NAME } from "@/lib/organizers";
 import { cn } from "@/lib/utils";
-import { Plus, Search, X } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Search, Send, Smile, X } from "lucide-react";
 import { toast } from "sonner";
-import { DmThreadView } from "@/components/DmThreadView";
-import { supabase } from "@/lib/supabase";
+import { PLATFORM_NAME } from "@/lib/organizers";
+import { InlineStreak } from "@/components/StreakBadge";
 
 export const Route = createFileRoute("/messages")({
+  validateSearch: (s: Record<string, unknown>): { with?: string; c?: string } => ({
+    with: typeof s.with === "string" ? s.with : undefined,
+    c: typeof s.c === "string" ? s.c : undefined,
+  }),
+  head: () => ({
+    ...buildSeoHead({
+      title: "Messages — NepARENA",
+      description: "Direct messages on NepARENA",
+      path: "/messages",
+    }),
+  }),
   component: MessagesPage,
 });
 
+const REACTIONS = ["❤️", "👍", "😂", "😮", "🔥", "⚽"];
+
 function MessagesPage() {
   const { user, profile } = useAuth();
-  const qc = useQueryClient();
+  const navigate = useNavigate({ from: "/messages" });
+  const search = Route.useSearch();
+  const [threads, setThreads] = useState<DmThread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<DmMessage[]>([]);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [mobileChat, setMobileChat] = useState(false);
   const [tab, setTab] = useState<"inbox" | "requests">("inbox");
   const [query, setQuery] = useState("");
@@ -41,17 +67,11 @@ function MessagesPage() {
   const [friendNotes, setFriendNotes] = useState<UserNote[]>([]);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
-
-  const { data: threads = [], isLoading } = useQuery({
-    queryKey: ["dm_threads", user?.id],
-    enabled: !!user?.id,
-    queryFn: () => listThreads(user!.id),
-    refetchInterval: 30_000,
-  });
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const inbox = useMemo(() => threads.filter((t) => t.status === "active"), [threads]);
   const requests = useMemo(() => threads.filter((t) => t.status === "request"), [threads]);
-  const chatHeads = useMemo(() => inbox.filter((t) => t.status === "active").slice(0, 16), [inbox]);
+  const chatHeads = useMemo(() => inbox.slice(0, 16), [inbox]);
 
   const filteredList = useMemo(() => {
     const base = tab === "requests" ? requests : inbox;
@@ -65,36 +85,85 @@ function MessagesPage() {
     [threads, activeId],
   );
 
-  const openThread = useCallback((id: string) => {
-    setActiveId(id);
-    setMobileChat(true);
-  }, []);
+  const reloadThreads = async () => {
+    if (!user) return;
+    const listAll = await listDmThreads(user.id);
+    setThreads(listAll);
+  };
 
   useEffect(() => {
     if (!user) return;
     void (async () => {
+      setLoading(true);
+      await reloadThreads();
       setMyNoteState(await getMyNote(user.id));
-      const peers = threads.map((t) => t.peer_id).filter(Boolean);
-      if (peers.length) setFriendNotes(await getFriendNotes(peers));
+      setLoading(false);
     })();
-  }, [user, threads]);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || threads.length === 0) return;
+    void (async () => {
+      const peers = threads.map((t) => t.peer_id).filter(Boolean);
+      if (peers.length) setFriendNotes(await listFriendNotes(peers));
+    })();
+  }, [user?.id, threads]);
+
+  useEffect(() => {
+    if (search.c) {
+      setActiveId(search.c);
+      setMobileChat(true);
+    }
+  }, [search.c]);
+
+  useEffect(() => {
+    if (!user || !activeId) return;
+    void (async () => {
+      const msgs = await listDmMessages(activeId);
+      setMessages(msgs);
+      await markDmRead(activeId, user.id);
+      await reloadThreads();
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    })();
+  }, [user?.id, activeId]);
 
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("dm-inbox")
+      .channel("dm-messages-live")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "dm_messages" },
-        () => {
-          void qc.invalidateQueries({ queryKey: ["dm_threads", user.id] });
+        { event: "INSERT", schema: "public", table: "dm_messages" },
+        (payload) => {
+          const row = payload.new as DmMessage;
+          if (row.conversation_id === activeId) {
+            setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
+            setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
+          }
+          void reloadThreads();
         },
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [user, qc]);
+  }, [user?.id, activeId]);
+
+  const openThread = (id: string) => {
+    setActiveId(id);
+    setMobileChat(true);
+    void navigate({ search: { c: id } });
+  };
+
+  const send = async () => {
+    if (!user || !activeId || !text.trim() || busy) return;
+    setBusy(true);
+    const body = text.trim();
+    setText("");
+    const res = await sendDmMessage(activeId, user.id, body);
+    setBusy(false);
+    if (res.error) toast.error(res.error);
+  };
 
   const saveNote = async () => {
     if (!user || !noteDraft.trim()) return;
@@ -291,8 +360,8 @@ function MessagesPage() {
           <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
             <aside className={cn("w-full border-r border-white/10 md:w-[320px] md:shrink-0", mobileChat && "hidden md:block")}>
               <div className="h-full overflow-y-auto">
-                {isLoading && <p className="p-6 text-center text-sm text-neutral-500">Loading…</p>}
-                {!isLoading && filteredList.length === 0 && (
+                {loading && <p className="p-6 text-center text-sm text-neutral-500">Loading…</p>}
+                {!loading && filteredList.length === 0 && (
                   <p className="p-6 text-center text-sm text-neutral-500">{query ? "No chats match your search." : tab === "requests" ? "No message requests." : "No conversations yet. Open a profile and tap Message."}</p>
                 )}
                 {filteredList.map((t) => (
@@ -310,31 +379,83 @@ function MessagesPage() {
                         <p className="truncate text-xs text-neutral-500">{t.last_message || "Start chatting"}</p>
                       </div>
                     </button>
+                    {tab === "requests" && t.status === "request" && (
+                      <div className="mt-2 flex gap-2 pl-14">
+                        <Button size="sm" className="h-7 bg-sky-500 text-xs text-white" onClick={() => void acceptDmRequest(t.conversation_id).then(() => reloadThreads())}>Accept</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-rose-300" onClick={() => void declineDmRequest(t.conversation_id).then(() => reloadThreads())}>Decline</Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </aside>
 
-            <main className={cn("flex min-h-0 flex-1 flex-col", !mobileChat && "hidden md:flex")}>
-              {activeThread ? (
-                <>
-                  <div className="flex items-center gap-3 border-b border-white/10 px-3 py-2">
-                    <button type="button" className="md:hidden text-neutral-400" onClick={() => setMobileChat(false)}>←</button>
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={activeThread.peer_avatar ?? undefined} />
-                      <AvatarFallback>{activeThread.peer_name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-neutral-100">{activeThread.peer_name}</p>
-                      <p className="text-[10px] text-neutral-500">{activeThread.status === "request" ? "Message request" : "NepARENA chat"}</p>
-                    </div>
-                  </div>
-                  <DmThreadView conversationId={activeThread.conversation_id} peerId={activeThread.peer_id} peerName={activeThread.peer_name} status={activeThread.status} onBack={() => setMobileChat(false)} />
-                </>
-              ) : (
+            <section className={cn("flex min-h-0 flex-1 flex-col", !mobileChat && "hidden md:flex")}>
+              {!activeThread ? (
                 <div className="grid flex-1 place-items-center text-sm text-neutral-500">Select a conversation</div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+                    <Button type="button" size="icon" variant="ghost" className="md:hidden" onClick={() => { setMobileChat(false); void navigate({ search: {} }); }}>
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <Link to="/members/$id" params={{ id: activeThread.peer_id }} className="flex min-w-0 items-center gap-2">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={activeThread.peer_avatar ?? undefined} />
+                        <AvatarFallback>{activeThread.peer_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-neutral-100">{activeThread.peer_name}</p>
+                        <p className="text-[10px] text-neutral-500">{activeThread.status === "request" ? "Message request" : "NepARENA chat"}</p>
+                      </div>
+                    </Link>
+                    <InlineStreak userId={activeThread.peer_id} className="ml-auto" />
+                  </div>
+                  <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
+                    {messages.map((m) => {
+                      const mine = m.sender_id === user.id;
+                      const shared = m.body ? parseSharedPost(m.body) : null;
+                      return (
+                        <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+                          <div className={cn("max-w-[75%] rounded-2xl px-3 py-2 text-sm", mine ? "bg-sky-500 text-white" : "bg-white/10 text-neutral-100")}>
+                            {shared ? (
+                              <a href={shared.url} className="block">
+                                <div className="rounded-xl bg-black/20 p-2">
+                                  <p className="text-xs font-semibold">{shared.authorName}</p>
+                                  {shared.text && <p className="mt-0.5 line-clamp-3 text-xs opacity-90">{shared.text}</p>}
+                                </div>
+                              </a>
+                            ) : (
+                              <>
+                                {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                                {m.image_url && <img src={m.image_url} alt="" className="mt-1 max-h-48 rounded-lg object-cover" />}
+                              </>
+                            )}
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                              <span className="text-[10px] opacity-70">{formatMsgTime(m.created_at)}</span>
+                              <div className="flex gap-0.5">
+                                {REACTIONS.map((r) => (
+                                  <button key={r} type="button" className="text-[11px] opacity-60 hover:opacity-100" onClick={() => void reactToDm(m.id, m.reaction === r ? null : r)}>{r}</button>
+                                ))}
+                              </div>
+                            </div>
+                            {m.reaction && <span className="mt-0.5 inline-block rounded-full bg-black/30 px-1.5 text-xs">{m.reaction}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={bottomRef} />
+                  </div>
+                  <div className="flex items-center gap-2 border-t border-white/10 p-2">
+                    <Button type="button" size="icon" variant="ghost" className="shrink-0"><Smile className="h-4 w-4 text-neutral-400" /></Button>
+                    <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message…" className="border-white/10 bg-white/5" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} />
+                    <Button type="button" size="icon" disabled={busy || !text.trim()} onClick={() => void send()} className="shrink-0 bg-sky-500 text-white hover:bg-sky-400">
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </>
               )}
-            </main>
+            </section>
           </div>
         </div>
       </div>
