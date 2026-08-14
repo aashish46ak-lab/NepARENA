@@ -1,5 +1,5 @@
 /**
- * NepARENA Super Admin — hideChrome, analytics below tabs, no double site nav.
+ * Super Admin — clean shell, tabs (Analytics under options), 3-dot menu.
  */
 import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Building2, Loader2, Shield, Trophy, Users, UserPlus, Ban, CheckCircle,
   LayoutDashboard, Activity, MessageSquare, RefreshCw, Search, ExternalLink,
-  Copy, BadgeCheck, Clock, Settings2, BadgePercent, X, Gamepad2, TrendingUp,
+  Copy, BadgeCheck, Clock, MoreVertical, User, Home, TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MessagesInbox } from "@/components/MessagesInbox";
@@ -31,7 +31,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from "recharts";
 
-type Tab = "overview" | "analytics" | "organizers" | "requests" | "invites" | "users" | "messages";
+type Tab = "overview" | "messages" | "analytics" | "requests" | "organizers" | "invites" | "users";
 const PIE_COLORS = ["#38bdf8", "#a78bfa", "#f472b6", "#34d399", "#fbbf24"];
 
 export function SuperAdminPanelImpl() {
@@ -46,6 +46,7 @@ export function SuperAdminPanelImpl() {
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [unreadOverride, setUnreadOverride] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const allowed = isSuperAdminEmail(user?.email);
 
@@ -107,17 +108,13 @@ export function SuperAdminPanelImpl() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      days[key] = 0;
+      days[d.toISOString().slice(0, 10)] = 0;
     }
     for (const u of users) {
       const key = (u.created_at || "").slice(0, 10);
       if (key in days) days[key] += 1;
     }
-    return Object.entries(days).map(([date, count]) => ({
-      date: date.slice(5),
-      signups: count,
-    }));
+    return Object.entries(days).map(([date, count]) => ({ date: date.slice(5), signups: count }));
   }, [stats]);
 
   if (loading || !user) {
@@ -142,11 +139,12 @@ export function SuperAdminPanelImpl() {
     );
   }
 
+  // Order: Overview → Messages → Analytics (GA) → rest
   const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "messages", label: "Messages", icon: MessageSquare },
     { id: "analytics", label: "Analytics", icon: TrendingUp },
     { id: "requests", label: "Org requests", icon: UserPlus },
-    { id: "messages", label: "Messages", icon: MessageSquare },
     { id: "organizers", label: "Organizers", icon: Building2 },
     { id: "invites", label: "Invites", icon: UserPlus },
     { id: "users", label: "Users", icon: Users },
@@ -155,7 +153,7 @@ export function SuperAdminPanelImpl() {
   return (
     <PageShell force="platform" hideChrome>
       <div className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img src="/neparena-logo.png" alt="" className="h-11 w-11 rounded-xl object-contain bg-black ring-1 ring-white/15" />
             <div>
@@ -163,20 +161,39 @@ export function SuperAdminPanelImpl() {
               <p className="text-xs text-neutral-400">{PLATFORM_NAME} control plane</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" className="border-white/15" disabled={refreshing} onClick={() => void reload()}>
-              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
-            <Button asChild size="sm" variant="outline" className="border-white/15">
-              <Link to="/dashboard"><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Organizer dash</Link>
-            </Button>
-            <Button asChild size="sm" className="bg-neutral-100 text-black hover:bg-white">
-              <Link to="/">Public site</Link>
-            </Button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-white/[0.04] text-neutral-200 hover:bg-white/10"
+                aria-label="Menu"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </button>
+              {menuOpen && (
+                <>
+                  <button type="button" className="fixed inset-0 z-40" aria-label="Close" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-11 z-50 min-w-[210px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl">
+                    <Link to="/" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                      <Home className="h-4 w-4 text-neutral-400" /> Go to Home
+                    </Link>
+                    <Link to="/members/$id" params={{ id: user.id }} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                      <User className="h-4 w-4 text-sky-400" /> Personal profile
+                    </Link>
+                    <Link to="/dashboard" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                      <LayoutDashboard className="h-4 w-4 text-emerald-400" /> Organizer dashboard
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Tab options — analytics sits with Messages etc */}
         <div className="mb-6 flex flex-wrap gap-2 border-b border-white/8 pb-3">
           {tabs.map((t) => (
             <button
@@ -200,19 +217,16 @@ export function SuperAdminPanelImpl() {
 
         {tab === "overview" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-              <MetricCard icon={Users} label="Registered users" value={stats?.players ?? "—"} />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <MetricCard icon={Users} label="Users" value={stats?.players ?? "—"} />
               <MetricCard icon={Building2} label="Organizers" value={stats?.organizers ?? "—"} />
               <MetricCard icon={Trophy} label="Tournaments" value={stats?.tournaments ?? "—"} />
-              <MetricCard icon={Activity} label="Live now" value={stats?.liveTournaments ?? "—"} />
-              <MetricCard icon={MessageSquare} label="Unread msgs" value={unread} />
+              <MetricCard icon={Activity} label="Live" value={stats?.liveTournaments ?? "—"} />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-5">
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 lg:col-span-3">
-                <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-100">
-                  <TrendingUp className="h-4 w-4 text-sky-400" /> Platform volume
-                </h3>
+                <h3 className="mb-4 text-sm font-semibold text-neutral-100">Platform volume</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={barData}>
@@ -244,8 +258,8 @@ export function SuperAdminPanelImpl() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-              <h3 className="mb-4 text-sm font-semibold text-neutral-100">Recent signups (7d)</h3>
-              <div className="h-52">
+              <h3 className="mb-4 text-sm font-semibold text-neutral-100">Signups (7d)</h3>
+              <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={registrationTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -260,15 +274,11 @@ export function SuperAdminPanelImpl() {
           </div>
         )}
 
-        {tab === "analytics" && (
-          <div className="mt-2">
-            <GaAnalyticsDashboard />
-          </div>
-        )}
-
         {tab === "messages" && (
           <MessagesInbox mode="platform" onUnreadChange={(n) => { setUnreadOverride(n); if (n === 0) void reload(); }} />
         )}
+
+        {tab === "analytics" && <GaAnalyticsDashboard />}
 
         {tab === "requests" && <OrganizerRequestsPanel />}
 
@@ -326,8 +336,7 @@ export function SuperAdminPanelImpl() {
                   const res = await inviteOrganizer({ email, name, invitedBy: user.id });
                   setBusy(false);
                   if (!res.ok) { toast.error(res.error); return; }
-                  const link = `${window.location.origin}/invite/${res.token}`;
-                  setLastInviteLink(link);
+                  setLastInviteLink(`${window.location.origin}/invite/${res.token}`);
                   toast.success("Invite created");
                   void reload();
                 }}>
