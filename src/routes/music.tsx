@@ -20,7 +20,7 @@ export const Route = createFileRoute("/music")({
   head: () => ({
     ...buildSeoHead({
       title: "NepARENA Music",
-      description: "Listen to real songs on NepARENA — official YouTube playback",
+      description: "Listen to real songs on NepARENA — official YouTube audio",
       path: "/music",
     }),
   }),
@@ -55,8 +55,15 @@ function MusicPage() {
 
   return (
     <PageShell force="platform" hideChrome>
-      <div className="min-h-screen bg-[#0a0a0a]">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-xl">
+      <div className="relative min-h-screen overflow-hidden bg-[#07060f]">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-24 top-0 h-80 w-80 rounded-full bg-fuchsia-600/25 blur-[100px]" />
+          <div className="absolute -right-20 top-32 h-72 w-72 rounded-full bg-sky-500/20 blur-[90px]" />
+          <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-violet-600/20 blur-[80px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(56,189,248,0.08),transparent_55%)]" />
+        </div>
+
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07060f]/80 backdrop-blur-xl">
           <div className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
             <Link
               to="/"
@@ -67,26 +74,26 @@ function MusicPage() {
             </Link>
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-base font-semibold text-white">NepARENA Music</h1>
-              <p className="text-[11px] text-neutral-500">Official YouTube · real songs</p>
+              <p className="text-[11px] text-neutral-500">Audio only · official tracks</p>
             </div>
-            <Music2 className="h-5 w-5 text-sky-400" />
+            <Music2 className="h-5 w-5 text-fuchsia-400" />
           </div>
         </header>
 
-        <div className="mx-auto max-w-3xl px-4 pb-28 pt-5">
+        <div className="relative mx-auto max-w-3xl px-4 pb-28 pt-5">
           <div className="relative mb-5">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search songs or artists…"
-              className="h-11 rounded-2xl border-white/10 bg-white/[0.05] pl-10 text-sm"
+              className="h-11 rounded-2xl border-white/10 bg-white/[0.06] pl-10 text-sm placeholder:text-neutral-500 focus-visible:ring-fuchsia-500/40"
             />
           </div>
 
           {!activeGenre ? (
             <>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                 Browse genres
               </p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -100,16 +107,18 @@ function MusicPage() {
                       type="button"
                       onClick={() => setActiveGenre(g.id)}
                       className={cn(
-                        "group relative overflow-hidden rounded-2xl border border-white/10 p-3 text-left transition hover:border-white/25",
+                        "group relative overflow-hidden rounded-2xl border border-white/15 p-3.5 text-left shadow-lg transition hover:scale-[1.02] hover:border-white/30 hover:shadow-xl",
                         `bg-gradient-to-br ${g.color}`,
                       )}
                     >
-                      <div className="absolute -right-2 -top-2 h-16 w-16 overflow-hidden rounded-full opacity-40">
+                      <div className="absolute -right-2 -top-2 h-20 w-20 overflow-hidden rounded-full opacity-50 ring-1 ring-white/10">
                         <img src={cover} alt="" className="h-full w-full object-cover" />
                       </div>
-                      <span className="relative text-2xl">{g.emoji}</span>
-                      <p className="relative mt-2 text-sm font-semibold text-white">{g.label}</p>
-                      <p className="relative mt-0.5 text-[11px] text-neutral-400">
+                      <span className="relative text-2xl drop-shadow">{g.emoji}</span>
+                      <p className="relative mt-2 text-sm font-semibold text-white drop-shadow">
+                        {g.label}
+                      </p>
+                      <p className="relative mt-0.5 text-[11px] text-white/70">
                         {st.count} songs · {formatDuration(st.totalSec)}
                       </p>
                     </button>
@@ -122,7 +131,7 @@ function MusicPage() {
               <button
                 type="button"
                 onClick={() => setActiveGenre(null)}
-                className="mb-3 text-sm text-sky-400 hover:text-sky-300"
+                className="mb-3 text-sm font-medium text-fuchsia-300 hover:text-fuchsia-200"
               >
                 ← All genres
               </button>
@@ -130,8 +139,8 @@ function MusicPage() {
                 {GENRES.find((g) => g.id === activeGenre)?.emoji}{" "}
                 {GENRES.find((g) => g.id === activeGenre)?.label}
               </h2>
-              <p className="mb-4 text-xs text-neutral-500">
-                {tracks.length} tracks · tap to play
+              <p className="mb-4 text-xs text-neutral-400">
+                {tracks.length} tracks · tap to play (audio only)
               </p>
               <div className="space-y-1">
                 {tracks.map((t, i) => {
@@ -143,8 +152,8 @@ function MusicPage() {
                       type="button"
                       onClick={() => playTrack(t)}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition hover:bg-white/[0.06]",
-                        isCurrent && "bg-sky-500/10",
+                        "flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition hover:bg-white/[0.07]",
+                        isCurrent && "bg-fuchsia-500/15 ring-1 ring-fuchsia-400/30",
                       )}
                     >
                       <span className="w-5 text-center text-xs tabular-nums text-neutral-600">
@@ -159,7 +168,7 @@ function MusicPage() {
                         <p
                           className={cn(
                             "truncate text-sm font-medium",
-                            isCurrent ? "text-sky-300" : "text-neutral-100",
+                            isCurrent ? "text-fuchsia-200" : "text-neutral-100",
                           )}
                         >
                           {t.title}
@@ -169,7 +178,14 @@ function MusicPage() {
                       <span className="shrink-0 text-[11px] tabular-nums text-neutral-500">
                         {formatDuration(t.durationSec)}
                       </span>
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/5 text-neutral-300">
+                      <span
+                        className={cn(
+                          "grid h-8 w-8 shrink-0 place-items-center rounded-full",
+                          isPlaying
+                            ? "bg-fuchsia-500/30 text-fuchsia-200"
+                            : "bg-white/5 text-neutral-300",
+                        )}
+                      >
                         {isPlaying ? (
                           <Pause className="h-3.5 w-3.5" />
                         ) : (
