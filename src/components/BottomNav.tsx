@@ -1,7 +1,6 @@
 /**
- * Compact floating glass bottom nav.
- * Dynamic Island on other-user / organizer / tournament deep pages.
- * Full bar on main tabs including own Profile — compressed size.
+ * Compact floating glass bottom nav — lifted ~0.5in from bottom.
+ * Hidden on organizer public, game detail, dashboard, platform, auth.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -17,7 +16,7 @@ const TABS = [
     label: "Organizers",
     icon: Building2,
     match: (p: string) =>
-      p.startsWith("/organizers") || p.startsWith("/o/") || p.startsWith("/become-organizer"),
+      p.startsWith("/organizers") || p.startsWith("/become-organizer"),
   },
   {
     to: "/messages" as const,
@@ -30,17 +29,13 @@ const TABS = [
     to: "/games" as const,
     label: "Games",
     icon: Gamepad2,
-    match: (p: string) => p.startsWith("/games") || p.startsWith("/vote"),
+    match: (p: string) => p === "/games" || p === "/games/",
   },
   {
     to: "/profile" as const,
     label: "Profile",
     icon: User,
-    match: (p: string) =>
-      p === "/profile" ||
-      p.startsWith("/members/") ||
-      p.startsWith("/dashboard") ||
-      p.startsWith("/platform"),
+    match: (p: string) => p === "/profile" || p.startsWith("/members/"),
   },
 ] as const;
 
@@ -88,19 +83,25 @@ export function BottomNav() {
     setIslandOpen(false);
   }, [pathname]);
 
+  // Fully hide bottom nav on deep / admin / organizer public / game detail
   if (pathname.startsWith("/auth") || pathname.startsWith("/reset-password")) return null;
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/platform")) return null;
+  if (pathname.startsWith("/o/")) return null;
+  if (pathname.startsWith("/games/") && pathname !== "/games/" && pathname !== "/games") return null;
+  if (pathname.startsWith("/vote/")) return null;
+  if (pathname.startsWith("/admin/tournaments")) return null;
 
   const isOwnProfile = !!user?.id && pathname === `/members/${user.id}`;
   const useIsland =
     !isOwnProfile &&
     (pathname.startsWith("/members/") ||
-      pathname.startsWith("/o/") ||
       (pathname.startsWith("/tournaments/") && pathname !== "/tournaments") ||
-      pathname.startsWith("/admin/tournaments/") ||
       pathname.startsWith("/hall-of-fame") ||
       pathname.startsWith("/history") ||
       pathname.startsWith("/gallery"));
+
+  // ~0.5 inch lift from bottom edge
+  const bottomPad = "pb-[calc(0.75rem+12px+env(safe-area-inset-bottom,0px))]";
 
   const navInner = (
     <>
@@ -143,7 +144,7 @@ export function BottomNav() {
 
   if (useIsland) {
     return (
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className={cn("pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3", bottomPad)}>
         {islandOpen && (
           <button
             type="button"
@@ -178,7 +179,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className={cn("pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3", bottomPad)}
       aria-label="Main"
     >
       <div className="pointer-events-auto flex w-full max-w-[20rem] items-stretch gap-0.5 rounded-[1.35rem] border border-white/12 bg-[#121214]/85 px-1 py-1 shadow-[0_8px_36px_rgba(0,0,0,0.55)] backdrop-blur-2xl">

@@ -1,6 +1,4 @@
-/**
- * Dedicated Feed page — title only (no logo).
- */
+/** Dedicated Feed — no create post (home only). */
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
@@ -22,15 +20,10 @@ export const Route = createFileRoute("/feed")({
 
 function FeedPage() {
   const [tab, setTab] = useState<"for_you" | "following">("for_you");
-  const [composerOpen, setComposerOpen] = useState(false);
 
   return (
     <PageShell force="platform" hideChrome>
-      <PlatformTopBar
-        showLogo={false}
-        pageTitle="Feed"
-        onCreatePost={() => setComposerOpen(true)}
-      />
+      <PlatformTopBar showLogo={false} pageTitle="Feed" />
       <div className="mx-auto max-w-md px-3 pb-28 pt-3">
         <div className="mb-4 flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
           {(
@@ -54,12 +47,7 @@ function FeedPage() {
             </button>
           ))}
         </div>
-        <SocialFeed
-          mode={tab}
-          forceComposer={composerOpen}
-          onComposerClose={() => setComposerOpen(false)}
-          onPosted={() => setComposerOpen(false)}
-        />
+        <SocialFeed mode={tab} hideComposer />
       </div>
     </PageShell>
   );
