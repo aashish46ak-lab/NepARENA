@@ -23,7 +23,9 @@ import {
   ArrowRight,
   Calendar,
   Mail,
+  Music2,
 } from "lucide-react";
+import { openMusicPicker } from "@/components/GlobalMusicPlayer";
 
 const GoatVoteBooth = lazy(() =>
   import("@/components/GoatVoteBooth").then((m) => ({ default: m.GoatVoteBooth })),
@@ -56,7 +58,6 @@ function SectionFallback() {
 }
 
 export function PlatformHomePage() {
-
   const { user } = useAuth();
   const { data: stats } = useQuery({
     queryKey: ["platform_home_stats"],
@@ -73,9 +74,7 @@ export function PlatformHomePage() {
         .from("organizer_followers")
         .select("organizer_id")
         .eq("user_id", user!.id);
-      const ids = (follows ?? []).map(
-        (f: { organizer_id: string }) => f.organizer_id,
-      );
+      const ids = (follows ?? []).map((f: { organizer_id: string }) => f.organizer_id);
       if (ids.length === 0) return [];
       const { data: orgs } = await supabase
         .from("organizers")
@@ -88,8 +87,7 @@ export function PlatformHomePage() {
         .limit(1)
         .maybeSingle();
       const brandLogo = (site as { logo_url?: string | null } | null)?.logo_url ?? null;
-      const brandBanner =
-        (site as { hero_image_url?: string | null } | null)?.hero_image_url ?? null;
+      const brandBanner = (site as { hero_image_url?: string | null } | null)?.hero_image_url ?? null;
       const brandTag = (site as { tagline?: string | null } | null)?.tagline ?? null;
       return ((orgs ?? []) as {
         id: string;
@@ -118,11 +116,7 @@ export function PlatformHomePage() {
         .select("tournament_id, status")
         .eq("user_id", user!.id)
         .in("status", ["approved", "registered", "pending"]);
-      const ids = [
-        ...new Set(
-          (parts ?? []).map((p: { tournament_id: string }) => p.tournament_id),
-        ),
-      ];
+      const ids = [...new Set((parts ?? []).map((p: { tournament_id: string }) => p.tournament_id))];
       if (ids.length === 0) return [];
       const { data: tours } = await supabase
         .from("tournaments")
@@ -221,6 +215,14 @@ export function PlatformHomePage() {
               Go to Feed
               <ArrowRight className="h-4 w-4 text-sky-300" />
             </Link>
+            <button
+              type="button"
+              onClick={() => openMusicPicker()}
+              className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/15 px-4 py-2.5 text-sm font-medium text-violet-100 transition hover:border-violet-400/50 hover:bg-violet-500/25 hover:text-white"
+            >
+              <Music2 className="h-4 w-4" />
+              Play Music
+            </button>
           </div>
         </div>
       </section>
