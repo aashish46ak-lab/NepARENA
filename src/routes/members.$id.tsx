@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Loader2, Trophy, UserPlus, UserMinus, ChevronRight,
-  Menu, Settings, LogOut, Pencil, LayoutDashboard, Plus, MoreVertical, MapPin, Palette, HelpCircle, BadgeCheck,
+  Menu, Settings, LogOut, Pencil, LayoutDashboard, Plus, MoreVertical, MapPin, HelpCircle, BadgeCheck,
+  RefreshCw, Shield,
 } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
 import { useAuth } from "@/hooks/useAuth";
@@ -225,34 +226,35 @@ function MemberProfilePage() {
                 {menuOpen && (
                   <>
                     <button type="button" className="fixed inset-0 z-40" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-11 z-50 w-max max-w-[min(280px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute right-0 top-11 z-50 w-max min-w-[220px] max-w-[min(280px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/80 py-1.5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
                       {isOwn ? (
                         <>
-                          <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => { setMenuOpen(false); setEditOpen(true); }}>
-                            <Pencil className="h-4 w-4 text-neutral-300" /> Edit Profile
+                          <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => { setMenuOpen(false); void navigate({ to: "/auth" }); }}>
+                            <RefreshCw className="h-4 w-4 text-neutral-300" /> Switch Account
                           </button>
-                          <Link to="/settings" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
-                            <Settings className="h-4 w-4 text-neutral-400" /> Settings
-                          </Link>
-                          <Link to="/settings" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
-                            <Palette className="h-4 w-4 text-neutral-400" /> Appearance
-                          </Link>
                           {ownedOrgs.map((o) => (
                             <Link key={o.id} to="/dashboard" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
                               <LayoutDashboard className="h-4 w-4 text-emerald-400" />
-                              <span className="truncate">{o.name} dashboard</span>
+                              <span className="truncate">{o.name} Dashboard</span>
                             </Link>
                           ))}
                           {(isAdmin || isSuperAdmin) && (
                             <Link to="/platform" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
-                              <LayoutDashboard className="h-4 w-4 text-neutral-400" /> Platform Dashboard
+                              <LayoutDashboard className="h-4 w-4 text-sky-400" /> Platform Dashboard
                             </Link>
                           )}
+                          <Link to="/settings" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                            <Settings className="h-4 w-4 text-neutral-400" /> Settings
+                          </Link>
+                          <Link to="/settings" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
+                            <Shield className="h-4 w-4 text-neutral-400" /> Privacy
+                          </Link>
                           <a href="mailto:support@neparena.xyz" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => setMenuOpen(false)}>
                             <HelpCircle className="h-4 w-4 text-neutral-400" /> Help
                           </a>
-                          <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-rose-300 hover:bg-white/8" onClick={async () => { setMenuOpen(false); await signOut(); void navigate({ to: "/" }); }}>
-                            <LogOut className="h-4 w-4" /> Sign Out
+                          <div className="my-1 border-t border-white/10" />
+                          <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm font-medium text-rose-400 hover:bg-rose-500/10" onClick={async () => { setMenuOpen(false); await signOut(); void navigate({ to: "/" }); }}>
+                            <LogOut className="h-4 w-4" /> Logout
                           </button>
                         </>
                       ) : (
