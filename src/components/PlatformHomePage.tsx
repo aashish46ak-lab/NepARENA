@@ -1,19 +1,15 @@
 /**
  * NepARENA platform homepage — FEED FIRST.
- * No old platform info hero. About Us / Members half-width pills (scroll-hide).
+ * Compact About/Members pills with icons. No GOAT section.
  */
 import { Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { SocialFeed } from "@/components/SocialFeed";
 import { StreakAssistant } from "@/components/StreakAssistant";
-import { Newspaper } from "lucide-react";
+import { Newspaper, Info, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const GoatVoteBooth = lazy(() =>
-  import("@/components/GoatVoteBooth").then((m) => ({ default: m.GoatVoteBooth })),
-);
 
 export function PlatformHomePage() {
   const [pillsVisible, setPillsVisible] = useState(true);
@@ -37,7 +33,7 @@ export function PlatformHomePage() {
       <PlatformTopBar showLogo onCreatePost={() => setComposerOpen(true)} />
       <StreakAssistant />
 
-      {/* About Us | Members — each ~50% width */}
+      {/* About Us | Members — half width each, compact height + icons */}
       <div
         className={cn(
           "sticky top-12 z-30 border-b border-white/5 bg-[#0a0a0a]/85 backdrop-blur-md transition-all duration-300",
@@ -45,23 +41,25 @@ export function PlatformHomePage() {
         )}
         data-tour="about-members"
       >
-        <div className="mx-auto flex max-w-3xl gap-2.5 px-4 py-2.5">
+        <div className="mx-auto flex max-w-3xl gap-2 px-4 py-2">
           <Link
             to="/about"
-            className="flex min-w-0 flex-1 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] px-3 py-3 text-sm font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
+            className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
           >
+            <Info className="h-3.5 w-3.5 shrink-0 text-sky-400" />
             About Us
           </Link>
           <Link
             to="/members"
-            className="flex min-w-0 flex-1 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] px-3 py-3 text-sm font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
+            className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
           >
+            <Users className="h-3.5 w-3.5 shrink-0 text-sky-400" />
             Members
           </Link>
         </div>
       </div>
 
-      {/* FEED FIRST — platform announcements + user posts */}
+      {/* FEED FIRST */}
       <section className="border-b border-white/5">
         <div className="mx-auto max-w-md px-3 pb-8 pt-4">
           <div className="mb-3 flex items-center gap-2">
@@ -79,13 +77,6 @@ export function PlatformHomePage() {
             onPosted={() => setComposerOpen(false)}
           />
         </div>
-      </section>
-
-      {/* Optional light secondary content below fold */}
-      <section className="mx-auto max-w-md px-3 py-8">
-        <Suspense fallback={null}>
-          <GoatVoteBooth />
-        </Suspense>
       </section>
     </PageShell>
   );
