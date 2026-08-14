@@ -1,5 +1,5 @@
 /**
- * Games hub — simplified top: title + search, square game cards.
+ * Games hub — premium square cards, title + search.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -25,44 +25,44 @@ const GAMES = [
   {
     to: "/games/penalty" as const,
     title: "Penalty Shootout",
-    blurb: "Take the spot-kick challenge",
+    blurb: "Spot-kick challenge",
     icon: Footprints,
-    tone: "from-emerald-600/40 to-emerald-900/20",
+    tone: "from-emerald-500/35 via-emerald-800/25 to-[#0a0a0a]",
   },
   {
     to: "/games/higher-lower" as const,
     title: "Higher or Lower",
-    blurb: "Guess the next rating",
+    blurb: "Guess the rating",
     icon: Shuffle,
-    tone: "from-sky-600/40 to-sky-900/20",
+    tone: "from-sky-500/35 via-sky-800/25 to-[#0a0a0a]",
   },
   {
     to: "/games/blind-ranking" as const,
     title: "Blind Ranking",
-    blurb: "Rank players without names",
+    blurb: "Rank without names",
     icon: Target,
-    tone: "from-violet-600/40 to-violet-900/20",
+    tone: "from-violet-500/35 via-violet-800/25 to-[#0a0a0a]",
   },
   {
     to: "/games/daily-quiz" as const,
     title: "Daily Quiz",
-    blurb: "Football knowledge check",
+    blurb: "Football knowledge",
     icon: Brain,
-    tone: "from-amber-600/40 to-amber-900/20",
+    tone: "from-amber-500/35 via-amber-800/25 to-[#0a0a0a]",
   },
   {
     to: "/games/guess-club" as const,
     title: "Guess the Club",
-    blurb: "Identify from the badge",
+    blurb: "Badge challenge",
     icon: Trophy,
-    tone: "from-rose-600/40 to-rose-900/20",
+    tone: "from-rose-500/35 via-rose-800/25 to-[#0a0a0a]",
   },
   {
     to: "/vote/goat" as const,
     title: "GOAT Vote",
     blurb: "Pick the greatest",
     icon: Gamepad2,
-    tone: "from-fuchsia-600/40 to-fuchsia-900/20",
+    tone: "from-fuchsia-500/35 via-fuchsia-800/25 to-[#0a0a0a]",
   },
 ];
 
@@ -82,12 +82,12 @@ function GamesIndexPage() {
     <PageShell force="platform" hideChrome>
       <PlatformTopBar showLogo={false} pageTitle="Games" />
       <div className="mx-auto max-w-3xl px-4 pb-28 pt-4">
-        <div className="mb-4 flex items-center gap-2">
-          <h1 className="text-lg font-semibold text-white">Games</h1>
+        <div className="mb-5 flex items-center gap-2">
+          <h1 className="text-lg font-semibold tracking-tight text-white">Games</h1>
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
-            className="ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-neutral-300 transition hover:bg-white/10"
+            className="ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-neutral-300 transition hover:bg-white/10 active:scale-95"
             aria-label="Search games"
           >
             <Search className="h-4 w-4" />
@@ -95,7 +95,7 @@ function GamesIndexPage() {
         </div>
 
         {searchOpen && (
-          <div className="mb-4">
+          <div className="mb-5 animate-in fade-in slide-in-from-top-1 duration-200">
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -106,7 +106,7 @@ function GamesIndexPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
           {list.map((g) => {
             const Icon = g.icon;
             return (
@@ -114,15 +114,17 @@ function GamesIndexPage() {
                 key={g.to}
                 to={g.to}
                 className={cn(
-                  "group relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br p-4 text-center transition hover:border-white/25 hover:scale-[1.02] active:scale-[0.98]",
+                  "group relative flex aspect-square flex-col items-center justify-center gap-2.5 overflow-hidden rounded-[1.35rem] border border-white/10 bg-gradient-to-br p-4 text-center shadow-[0_8px_32px_rgba(0,0,0,0.35)] transition duration-200 hover:-translate-y-0.5 hover:border-white/25 hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)] active:scale-[0.98]",
                   g.tone,
                 )}
               >
-                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-black/30 ring-1 ring-white/10">
-                  <Icon className="h-7 w-7 text-white" />
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-black/40 shadow-inner ring-1 ring-white/15 transition group-hover:scale-105 group-hover:ring-white/25">
+                  <Icon className="h-7 w-7 text-white drop-shadow" />
                 </div>
-                <p className="text-sm font-semibold text-white">{g.title}</p>
-                <p className="text-[11px] leading-snug text-neutral-400">{g.blurb}</p>
+                <div>
+                  <p className="text-sm font-semibold text-white">{g.title}</p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-neutral-400">{g.blurb}</p>
+                </div>
               </Link>
             );
           })}
