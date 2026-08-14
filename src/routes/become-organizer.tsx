@@ -1,5 +1,5 @@
 /**
- * Become an Organizer — dedicated onboarding + application form.
+ * Become an Organizer — reduced fields: Facebook optional; no insta/discord/website/city.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -81,11 +81,7 @@ function BecomeOrganizerPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [facebook, setFacebook] = useState("");
-  const [instagram, setInstagram] = useState("");
-  const [discord, setDiscord] = useState("");
-  const [website, setWebsite] = useState("");
   const [country, setCountry] = useState("Nepal");
-  const [city, setCity] = useState("");
   const [game, setGame] = useState("efootball");
 
   useEffect(() => {
@@ -117,11 +113,7 @@ function BecomeOrganizerPage() {
         logo_url: logoUrl,
         banner_url: bannerUrl,
         facebook: facebook.trim() || null,
-        instagram: instagram.trim() || null,
-        discord: discord.trim() || null,
-        website: website.trim() || null,
         country: country.trim() || null,
-        city: city.trim() || null,
         game,
         status: "pending",
       };
@@ -284,28 +276,12 @@ function BecomeOrganizerPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <Label className="text-neutral-400">Facebook</Label>
-                <Input value={facebook} onChange={(e) => setFacebook(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
-              </div>
-              <div>
-                <Label className="text-neutral-400">Instagram</Label>
-                <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
-              </div>
-              <div>
-                <Label className="text-neutral-400">Discord</Label>
-                <Input value={discord} onChange={(e) => setDiscord(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
-              </div>
-              <div>
-                <Label className="text-neutral-400">Website</Label>
-                <Input value={website} onChange={(e) => setWebsite(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
+                <Label className="text-neutral-400">Facebook <span className="text-neutral-600">(optional)</span></Label>
+                <Input value={facebook} onChange={(e) => setFacebook(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" placeholder="Page or profile URL" />
               </div>
               <div>
                 <Label className="text-neutral-400">Country</Label>
                 <Input value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
-              </div>
-              <div>
-                <Label className="text-neutral-400">City</Label>
-                <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
               </div>
             </div>
             <Button className="w-full bg-amber-500 text-black hover:bg-amber-400" disabled={busy} onClick={() => void submit()}>
