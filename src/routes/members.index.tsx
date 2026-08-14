@@ -1,6 +1,6 @@
 /**
  * Members directory — separate page with search.
- * Clicking a user opens their profile (/members/$id).
+ * Uses real profiles columns: full_name, login_streak.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -11,8 +11,9 @@ import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { buildSeoHead } from "@/lib/seo";
-import { Search, Users, Loader2 } from "lucide-react";
+import { Search, Users, Loader2, BadgeCheck } from "lucide-react";
 import { InlineStreak } from "@/components/StreakBadge";
+import { isSuperAdminEmail } from "@/lib/organizers";
 
 export const Route = createFileRoute("/members/")({
   head: () => ({
@@ -27,11 +28,14 @@ export const Route = createFileRoute("/members/")({
 
 type MemberRow = {
   id: string;
-  display_name: string | null;
+  full_name: string | null;
   username: string | null;
   avatar_url: string | null;
   favourite_club: string | null;
+  login_streak?: number | null;
   current_streak?: number | null;
+  is_verified?: boolean | null;
+  email?: string | null;
 };
 
 function MembersIndexPage() {
@@ -40,16 +44,28 @@ function MembersIndexPage() {
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["members_directory"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, display_name, username, avatar_url, favourite_club, current_streak")
-        .order("display_name", { ascending: true })
-        .limit(200);
-      if (error) {
-        console.warn("members list", error.message);
-        return [] as MemberRow[];
+      const trySelect = async (table: string) => {
+        const { data, error } = await supabase
+          .from(table)
+          .select("id, full_name, username, avatar_url, favourite_club, login_streak")
+          .order("created_at", { ascending: false })
+          .limit(300);
+        if (error) {
+          console.warn(table, error.message);
+          return null;
+        }
+        return (data ?? []) as MemberRow[];
+      };
+
+      let rows = await trySelect("profiles");
+      if (!rows || rows.length === 0) {
+        rows = (await trySelect("public_members")) ?? [];
       }
-      return (data ?? []) as MemberRow[];
+      return rows.sort((a, b) => {
+        const an = (a.full_name || a.username || "").toLowerCase();
+        const bn = (b.full_name || b.username || "").toLowerCase();
+        return an.localeCompare(bn);
+      });
     },
     staleTime: 30_000,
   });
@@ -59,7 +75,7 @@ function MembersIndexPage() {
     const s = q.toLowerCase();
     return members.filter(
       (m) =>
-        (m.display_name ?? "").toLowerCase().includes(s) ||
+        (m.full_name ?? "").toLowerCase().includes(s) ||
         (m.username ?? "").toLowerCase().includes(s) ||
         (m.favourite_club ?? "").toLowerCase().includes(s),
     );
@@ -98,13 +114,15 @@ function MembersIndexPage() {
 
         {!isLoading && filtered.length === 0 && (
           <p className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-neutral-500">
-            No members match your search.
+            {q.trim() ? "No members match your search." : "No registered users yet."}
           </p>
         )}
 
         <ul className="mt-4 space-y-1">
           {filtered.map((m) => {
-            const name = m.display_name || m.username || "Player";
+            const name = m.full_name || m.username || "Player";
+            const streak = Number(m.login_streak ?? m.current_streak ?? 0);
+            const verified = !!m.is_verified || isSuperAdminEmail(m.email);
             return (
               <li key={m.id}>
                 <Link
@@ -119,11 +137,10 @@ function MembersIndexPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <p className="truncate text-sm font-semibold text-white">{name}</p>
-                      {m.current_streak != null && m.current_streak > 0 && (
-                        <InlineStreak streak={m.current_streak} className="text-xs" />
-                      )}
+                      {verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-400" />}
+                      {streak > 0 && <InlineStreak streak={streak} />}
                     </div>
                     <p className="truncate text-xs text-neutral-500">
                       {m.username ? `@${m.username}` : ""}
