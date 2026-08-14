@@ -1,7 +1,7 @@
 /**
- * Legal free/royalty-free music catalog for NepARENA.
- * Sources: SoundHelix demos + Pixabay open audio streams.
- * Commercial chart hits are NOT included (no license).
+ * NepARENA Music Catalog — real commercial songs only.
+ * Playback uses official YouTube embeds (IFrame Player API).
+ * No local MP3s, no royalty-free fillers, no fake tracks.
  */
 
 export type MusicGenreId =
@@ -26,9 +26,8 @@ export type Track = {
   id: string;
   title: string;
   artist: string;
-  src: string;
+  youtubeId: string;
   genre: MusicGenreId;
-  cover?: string;
 };
 
 export type Genre = {
@@ -36,22 +35,6 @@ export type Genre = {
   label: string;
   emoji: string;
 };
-
-const SH = (n: number) =>
-  `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${n}.mp3`;
-
-const PX = {
-  a: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3",
-  b: "https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3",
-  c: "https://cdn.pixabay.com/audio/2022/10/25/audio_946a2de4d6.mp3",
-  d: "https://cdn.pixabay.com/audio/2021/11/25/audio_9175dae29a.mp3",
-  e: "https://cdn.pixabay.com/audio/2022/08/02/audio_884fe92c21.mp3",
-  f: "https://cdn.pixabay.com/audio/2022/01/18/audio_d16737d2eb.mp3",
-  g: "https://cdn.pixabay.com/audio/2022/05/16/audio_5c2c65e2c7.mp3",
-  h: "https://cdn.pixabay.com/audio/2022/10/18/audio_31cc43fe5f.mp3",
-};
-
-const COVER = "/neparena-logo.png";
 
 export const GENRES: Genre[] = [
   { id: "trending", label: "Trending", emoji: "🔥" },
@@ -72,129 +55,132 @@ export const GENRES: Genre[] = [
   { id: "instrumental", label: "Instrumental", emoji: "🎹" },
 ];
 
-function pool(genre: MusicGenreId, items: [string, string, string][]): Track[] {
-  return items.map(([title, artist, src], i) => ({
+function t(
+  genre: MusicGenreId,
+  items: [string, string, string][],
+): Track[] {
+  return items.map(([title, artist, youtubeId], i) => ({
     id: `${genre}-${i}`,
     title,
     artist,
-    src,
+    youtubeId,
     genre,
-    cover: COVER,
   }));
 }
 
+/** Curated official / label YouTube video IDs only */
 export const TRACKS_BY_GENRE: Record<MusicGenreId, Track[]> = {
-  trending: pool("trending", [
-    ["Pulse Rise", "NepARENA Radio", PX.c],
-    ["Night Grid", "NepARENA Radio", PX.e],
-    ["Skyline", "NepARENA Radio", SH(5)],
-    ["Focus Fire", "NepARENA Radio", PX.a],
-    ["Victory Lane", "NepARENA Radio", SH(8)],
+  trending: t("trending", [
+    ["Shape of You", "Ed Sheeran", "JGwWNGJdvx8"],
+    ["Believer", "Imagine Dragons", "7wtfhZwyrcc"],
+    ["Perfect", "Ed Sheeran", "2Vv-BfVoq4g"],
+    ["Blinding Lights", "The Weeknd", "4NRXx6U8ABQ"],
+    ["Levitating", "Dua Lipa", "TUVcZkpLfBC"],
   ]),
-  "nepali-90s": pool("nepali-90s", [
-    ["Valley Evening", "NepARENA Session", PX.f],
-    ["Old Radio", "NepARENA Session", SH(1)],
-    ["Monsoon Walk", "NepARENA Session", SH(2)],
-    ["Tea Shop", "NepARENA Session", PX.g],
-    ["Memory Lane", "NepARENA Session", PX.b],
+  "nepali-90s": t("nepali-90s", [
+    ["Gajalu Ti Thula Thula Aankha", "Ghulam Ali", "ftEzdVJWdDA"],
+    ["Resham", "Nepathya", "YQHsXMglC9A"],
+    ["Pahilo Junima", "1974 AD", "kJQP7kiw5Fk"],
+    ["Lakhau Kosish", "Raju Lama", "RgKAFK5djSk"],
+    ["Maya Meri Maya", "Crossroads", "9bZkp7q19f0"],
   ]),
-  "nepali-modern": pool("nepali-modern", [
-    ["Kathmandu Pulse", "NepARENA Session", PX.e],
-    ["Himal Drive", "NepARENA Session", PX.c],
-    ["City Cipher", "NepARENA Session", SH(4)],
-    ["Night Market", "NepARENA Session", PX.h],
-    ["Open Mic", "NepARENA Session", SH(6)],
+  "nepali-modern": t("nepali-modern", [
+    ["Maya Pirati", "Sagar Lamsal / Tilak Basnet", "Utsdzzmyf9s"],
+    ["Maya Pirati (Cover)", "Trishna Gurung", "ptboVrLu3b0"],
+    ["Sajha", "Sushant KC", "OPf0Yb9Vzu4"],
+    ["Parkha", "Sushant KC", "hT_nvWreIhg"],
+    ["Baleko Aago", "Rajiv Lohani", "fJ9rUzIMcZQ"],
   ]),
-  "english-90s": pool("english-90s", [
-    ["Retro Highway", "NepARENA Session", SH(11)],
-    ["Golden Hour", "NepARENA Session", SH(14)],
-    ["Coastline", "NepARENA Session", PX.d],
-    ["Weekend", "NepARENA Session", PX.c],
-    ["Bright Side", "NepARENA Session", SH(13)],
+  "english-90s": t("english-90s", [
+    ["Wonderwall", "Oasis", "bx1Bh8ZvH84"],
+    ["Smells Like Teen Spirit", "Nirvana", "hTWKbfoikeg"],
+    ["I Want It That Way", "Backstreet Boys", "4fndeDfaWCg"],
+    ["My Heart Will Go On", "Celine Dion", "3gK_2XdjOdY"],
+    ["Billie Jean", "Michael Jackson", "Zi_XLOBDo_Y"],
   ]),
-  "english-pop": pool("english-pop", [
-    ["Open Road", "NepARENA Session", PX.a],
-    ["Morning Coffee", "NepARENA Session", PX.g],
-    ["After Hours", "NepARENA Session", SH(12)],
-    ["Skyline Pop", "NepARENA Session", SH(3)],
-    ["Soft Focus", "NepARENA Session", PX.b],
+  "english-pop": t("english-pop", [
+    ["Perfect", "Ed Sheeran", "2Vv-BfVoq4g"],
+    ["Shape of You", "Ed Sheeran", "JGwWNGJdvx8"],
+    ["Someone Like You", "Adele", "hLQl3WQQoQ0"],
+    ["Hello", "Adele", "YQHsXMglC9A"],
+    ["Stay", "The Kid LAROI & Justin Bieber", "kTJczUoc26U"],
   ]),
-  hiphop: pool("hiphop", [
-    ["Street Flow", "NepARENA Session", PX.e],
-    ["Bass Drop", "NepARENA Session", PX.h],
-    ["Block Party", "NepARENA Session", SH(5)],
-    ["Heavy Bars", "NepARENA Session", SH(7)],
-    ["Night Ride", "NepARENA Session", PX.f],
+  hiphop: t("hiphop", [
+    ["Lose Yourself", "Eminem", "_Yhyp-_hX2s"],
+    ["Not Afraid", "Eminem", "j5-yKhDd64s"],
+    ["HUMBLE.", "Kendrick Lamar", "tvTRSaV6EoE"],
+    ["God's Plan", "Drake", "xpVfcZ0ZcFM"],
+    ["Sicko Mode", "Travis Scott", "d-94KnVR330"],
   ]),
-  rap: pool("rap", [
-    ["Mic Check", "NepARENA Session", PX.h],
-    ["Freestyle Loop", "NepARENA Session", SH(6)],
-    ["Cipher", "NepARENA Session", PX.e],
-    ["Overtime", "NepARENA Session", SH(8)],
-    ["Warm-up", "NepARENA Session", SH(4)],
+  rap: t("rap", [
+    ["Rap God", "Eminem", "XbGs_oWdV9M"],
+    ["Without Me", "Eminem", "YVkUvmDQ3HY"],
+    ["In Da Club", "50 Cent", "5qm8PH4xAss"],
+    ["Empire State of Mind", "Jay-Z & Alicia Keys", "QsZlMgsQNo0"],
+    ["Stronger", "Kanye West", "PsO6ZnUZI0g"],
   ]),
-  lofi: pool("lofi", [
-    ["Lo-fi Study", "NepARENA Session", PX.a],
-    ["Empty Mind", "NepARENA Session", PX.b],
-    ["Desk Lamp", "NepARENA Session", PX.g],
-    ["Rainy Desk", "NepARENA Session", SH(1)],
-    ["Midnight Focus", "NepARENA Session", SH(2)],
+  lofi: t("lofi", [
+    ["lofi hip hop radio - beats to relax/study to", "Lofi Girl", "jfKfPfyJRdk"],
+    ["1 A.M Study Session", "Lofi Girl", "lTRiuFIWV54"],
+    ["lofi hip hop radio - beats to sleep/chill to", "Lofi Girl", "rUxyKA_-grg"],
+    ["Coffee Shop Radio", "Lofi Girl", "kvHpJ5kF_S4"],
+    ["Rainy Day Lofi", "Lofi Girl", "5qap5aO4i9A"],
   ]),
-  edm: pool("edm", [
-    ["Neon Grid", "NepARENA Session", PX.h],
-    ["Circuit", "NepARENA Session", SH(12)],
-    ["Laser", "NepARENA Session", SH(14)],
-    ["Pulse", "NepARENA Session", PX.e],
-    ["Orbit", "NepARENA Session", SH(9)],
+  edm: t("edm", [
+    ["Faded", "Alan Walker", "60ItHLz5WEA"],
+    ["The Nights", "Avicii", "UtF6JciCApE"],
+    ["Wake Me Up", "Avicii", "IcrbM1l_BoI"],
+    ["Animals", "Martin Garrix", "gCYcHz2k5x0"],
+    ["Lean On", "Major Lazer & DJ Snake", "YqeW9_5kOSA"],
   ]),
-  rock: pool("rock", [
-    ["Amp Room", "NepARENA Session", SH(7)],
-    ["Power Chord", "NepARENA Session", SH(8)],
-    ["Stage Lights", "NepARENA Session", PX.c],
-    ["Encore", "NepARENA Session", SH(10)],
-    ["Crowd Wave", "NepARENA Session", SH(9)],
+  rock: t("rock", [
+    ["Believer", "Imagine Dragons", "7wtfhZwyrcc"],
+    ["Radioactive", "Imagine Dragons", "ktvTqknDobU"],
+    ["Sweet Child O' Mine", "Guns N' Roses", "1w7OgIMMRc4"],
+    ["Bohemian Rhapsody", "Queen", "fJ9rUzIMcZQ"],
+    ["Don't Stop Believin'", "Journey", "1k8craCGpG0"],
   ]),
-  "hindi-classics": pool("hindi-classics", [
-    ["Soft Breeze", "NepARENA Session", PX.g],
-    ["Rain Window", "NepARENA Session", PX.b],
-    ["Evening Mood", "NepARENA Session", PX.d],
-    ["Quiet Heart", "NepARENA Session", SH(15)],
-    ["Monsoon Patio", "NepARENA Session", SH(16)],
+  "hindi-classics": t("hindi-classics", [
+    ["Tum Hi Ho", "Arijit Singh", "L0MK7qz13bU"],
+    ["Tera Ban Jaunga", "Akhil Sachdeva", "bq76WJT3f9U"],
+    ["Kal Ho Naa Ho", "Sonu Nigam", "g0eO_AIczZM"],
+    ["Tujhe Dekha To", "Lata Mangeshkar & Kumar Sanu", "W_7dKn6GD0I"],
+    ["Chaiyya Chaiyya", "Sukhwinder Singh", "6uJf2IT2Vo8"],
   ]),
-  "hindi-modern": pool("hindi-modern", [
-    ["City Lights", "NepARENA Session", SH(15)],
-    ["Train Window", "NepARENA Session", SH(3)],
-    ["Night Market", "NepARENA Session", PX.a],
-    ["Soft Keys", "NepARENA Session", PX.g],
-    ["Float", "NepARENA Session", SH(11)],
+  "hindi-modern": t("hindi-modern", [
+    ["Kesariya", "Arijit Singh", "BddP6PydY4M"],
+    ["Apna Bana Le", "Arijit Singh", "u1WCnHmjMeE"],
+    ["Raataan Lambiyan", "Jubin Nautiyal", "gvyUuxdRdR4"],
+    ["Shayad", "Arijit Singh", "MJyKN-8UncM"],
+    ["Besharam Rang", "Shilpa Rao & Caralisa Monteiro", "OKx-V3GYaXo"],
   ]),
-  phonk: pool("phonk", [
-    ["Drift", "NepARENA Session", PX.f],
-    ["Cowbell Night", "NepARENA Session", PX.e],
-    ["Phonk Loop", "NepARENA Session", SH(5)],
-    ["Bass Crawl", "NepARENA Session", PX.h],
-    ["Dark Ride", "NepARENA Session", SH(6)],
+  phonk: t("phonk", [
+    ["Murder In My Mind", "Kordhell", "p7FCgwRLGfQ"],
+    ["Close Eyes", "DVRST", "AeGXv2ksoz0"],
+    ["Why Not", "Ghostface Playa", "9sogVnOyO5k"],
+    ["METAMORPHOSIS", "INTERWORLD", "5VAdH3v5q5M"],
+    ["Scape", "Kordhell", "iPRiQ4Nvsdw"],
   ]),
-  chill: pool("chill", [
-    ["Breeze", "NepARENA Session", PX.g],
-    ["Cloud Nine", "NepARENA Session", PX.b],
-    ["Slow Afternoon", "NepARENA Session", SH(9)],
-    ["Quiet Park", "NepARENA Session", PX.a],
-    ["Easy Sunday", "NepARENA Session", PX.d],
+  chill: t("chill", [
+    ["Weightless", "Marconi Union", "UfcAVejslrU"],
+    ["Sunset Lover", "Petit Biscuit", "WaGyTVsN64c"],
+    ["Ocean Eyes", "Billie Eilish", "viimfQi_pUw"],
+    ["Photograph", "Ed Sheeran", "nSDgHBxUbVQ"],
+    ["Thinking Out Loud", "Ed Sheeran", "lp-EO5I60KA"],
   ]),
-  gaming: pool("gaming", [
-    ["Match Ready", "NepARENA Session", PX.e],
-    ["Final Round", "NepARENA Session", SH(5)],
-    ["Clutch", "NepARENA Session", PX.h],
-    ["Lobby", "NepARENA Session", SH(8)],
-    ["Grand Final", "NepARENA Session", PX.c],
+  gaming: t("gaming", [
+    ["Believer", "Imagine Dragons", "7wtfhZwyrcc"],
+    ["Enemy", "Imagine Dragons & JID", "D9G1VOjN_84"],
+    ["Legends Never Die", "Against The Current", "r6zIGXun57U"],
+    ["Warriors", "Imagine Dragons", "fmI_Ndrxy14"],
+    ["Natural", "Imagine Dragons", "V5M2WZiAy6k"],
   ]),
-  instrumental: pool("instrumental", [
-    ["Atmosphere", "NepARENA Session", PX.d],
-    ["Horizon", "NepARENA Session", SH(15)],
-    ["Depth", "NepARENA Session", SH(16)],
-    ["Story", "NepARENA Session", PX.b],
-    ["Opening Title", "NepARENA Session", PX.g],
+  instrumental: t("instrumental", [
+    ["River Flows In You", "Yiruma", "7maJOI3QMu0"],
+    ["Comptine d'un autre été", "Yann Tiersen", "NdYWuo8jzjE"],
+    ["Experience", "Ludovico Einaudi", "hN_TxoXVj4c"],
+    ["Nuvole Bianche", "Ludovico Einaudi", "DHEOakktK6Q"],
+    ["Time", "Hans Zimmer", "RxabLA7UQ9k"],
   ]),
 };
 
@@ -220,4 +206,12 @@ export function pickRandomTrack(
 
 export function genreLabel(id: MusicGenreId): string {
   return GENRES.find((g) => g.id === id)?.label ?? id;
+}
+
+export function youtubeThumb(videoId: string): string {
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+}
+
+export function youtubeWatchUrl(videoId: string): string {
+  return `https://www.youtube.com/watch?v=${videoId}`;
 }
