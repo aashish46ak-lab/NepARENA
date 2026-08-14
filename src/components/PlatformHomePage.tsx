@@ -1,6 +1,7 @@
 /**
  * NepARENA platform homepage — FEED FIRST.
  * Compact About/Members pills with icons. No GOAT section.
+ * + opens centered CreatePostModal overlay.
  */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -8,12 +9,14 @@ import { PageShell } from "@/components/PageShell";
 import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { SocialFeed } from "@/components/SocialFeed";
 import { StreakAssistant } from "@/components/StreakAssistant";
+import { CreatePostModal } from "@/components/CreatePostModal";
 import { Newspaper, Info, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PlatformHomePage() {
   const [pillsVisible, setPillsVisible] = useState(true);
-  const [composerOpen, setComposerOpen] = useState(false);
+  const [postOpen, setPostOpen] = useState(false);
+  const [feedKey, setFeedKey] = useState(0);
   const lastY = useRef(0);
 
   useEffect(() => {
@@ -30,10 +33,9 @@ export function PlatformHomePage() {
 
   return (
     <PageShell force="platform" hideChrome>
-      <PlatformTopBar showLogo onCreatePost={() => setComposerOpen(true)} />
+      <PlatformTopBar showLogo onCreatePost={() => setPostOpen(true)} />
       <StreakAssistant />
 
-      {/* About Us | Members — half width each, compact height + icons */}
       <div
         className={cn(
           "sticky top-12 z-30 border-b border-white/5 bg-[#0a0a0a]/85 backdrop-blur-md transition-all duration-300",
@@ -59,7 +61,6 @@ export function PlatformHomePage() {
         </div>
       </div>
 
-      {/* FEED FIRST */}
       <section className="border-b border-white/5">
         <div className="mx-auto max-w-md px-3 pb-8 pt-4">
           <div className="mb-3 flex items-center gap-2">
@@ -69,15 +70,18 @@ export function PlatformHomePage() {
               Open full feed
             </Link>
           </div>
-          <SocialFeed
-            mode="for_you"
-            hideComposer
-            forceComposer={composerOpen}
-            onComposerClose={() => setComposerOpen(false)}
-            onPosted={() => setComposerOpen(false)}
-          />
+          <SocialFeed key={feedKey} mode="for_you" hideComposer />
         </div>
       </section>
+
+      <CreatePostModal
+        open={postOpen}
+        onOpenChange={setPostOpen}
+        onPosted={() => {
+          setPostOpen(false);
+          setFeedKey((k) => k + 1);
+        }}
+      />
     </PageShell>
   );
 }
