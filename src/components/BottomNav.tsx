@@ -1,7 +1,7 @@
 /**
- * Floating glass bottom nav.
+ * Compact floating glass bottom nav.
  * Dynamic Island on other-user / organizer / tournament deep pages.
- * Full bar on main tabs including own Profile.
+ * Full bar on main tabs including own Profile — compressed size.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -89,15 +89,18 @@ export function BottomNav() {
   }, [pathname]);
 
   if (pathname.startsWith("/auth") || pathname.startsWith("/reset-password")) return null;
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/platform")) return null;
 
-  // Island only on OTHER users' profiles, organizer sites, tournament detail
   const isOwnProfile = !!user?.id && pathname === `/members/${user.id}`;
   const useIsland =
     !isOwnProfile &&
     (pathname.startsWith("/members/") ||
-      (pathname.startsWith("/o/") && pathname !== "/organizers") ||
+      pathname.startsWith("/o/") ||
       (pathname.startsWith("/tournaments/") && pathname !== "/tournaments") ||
-      pathname.startsWith("/admin/tournaments/"));
+      pathname.startsWith("/admin/tournaments/") ||
+      pathname.startsWith("/hall-of-fame") ||
+      pathname.startsWith("/history") ||
+      pathname.startsWith("/gallery"));
 
   const navInner = (
     <>
@@ -114,24 +117,24 @@ export function BottomNav() {
             {...(href as { to: string; params?: { id: string } })}
             onClick={() => setIslandOpen(false)}
             className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl py-2 transition-all duration-200",
+              "relative flex flex-1 flex-col items-center justify-center gap-0 rounded-xl py-1.5 transition-all duration-200",
               active
                 ? "bg-white/10 text-white"
                 : "text-neutral-500 hover:bg-white/[0.04] hover:text-neutral-300",
             )}
           >
             <span className="relative">
-              <Icon className={cn("h-[20px] w-[20px]", active && "stroke-[2.25px]")} />
+              <Icon className={cn("h-[18px] w-[18px]", active && "stroke-[2.25px]")} />
               {"badge" in tab && tab.badge && msgUnread > 0 && (
-                <span className="absolute -right-2 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-sky-500 px-1 text-[9px] font-bold text-white">
+                <span className="absolute -right-1.5 -top-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-sky-500 px-0.5 text-[8px] font-bold text-white">
                   {msgUnread > 9 ? "9+" : msgUnread}
                 </span>
               )}
             </span>
-            <span className={cn("text-[10px] font-medium", active ? "text-white" : "text-neutral-500")}>
+            <span className={cn("text-[9px] font-medium leading-tight", active ? "text-white" : "text-neutral-500")}>
               {tab.label}
             </span>
-            {active && <span className="absolute -bottom-0.5 h-0.5 w-5 rounded-full bg-sky-400" />}
+            {active && <span className="absolute -bottom-0.5 h-0.5 w-4 rounded-full bg-sky-400" />}
           </Link>
         );
       })}
@@ -140,7 +143,7 @@ export function BottomNav() {
 
   if (useIsland) {
     return (
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {islandOpen && (
           <button
             type="button"
@@ -154,7 +157,7 @@ export function BottomNav() {
             <button
               type="button"
               onClick={() => setIslandOpen(true)}
-              className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#121214]/90 shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition hover:scale-105 active:scale-95"
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-[#121214]/92 shadow-[0_8px_28px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition hover:scale-105 active:scale-95"
               aria-label="Open navigation"
             >
               <span className="flex gap-1">
@@ -164,7 +167,7 @@ export function BottomNav() {
               </span>
             </button>
           ) : (
-            <div className="flex w-[min(100vw-1.5rem,20rem)] items-stretch gap-0.5 rounded-[1.5rem] border border-white/12 bg-[#121214]/92 px-1.5 py-1.5 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex w-[min(100vw-1.5rem,18rem)] items-stretch gap-0.5 rounded-[1.35rem] border border-white/12 bg-[#121214]/94 px-1 py-1 shadow-[0_8px_36px_rgba(0,0,0,0.55)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200">
               {navInner}
             </div>
           )}
@@ -175,10 +178,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       aria-label="Main"
     >
-      <div className="pointer-events-auto flex w-full max-w-md items-stretch gap-0.5 rounded-[1.75rem] border border-white/12 bg-[#121214]/82 px-1.5 py-1.5 shadow-[0_8px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+      <div className="pointer-events-auto flex w-full max-w-[20rem] items-stretch gap-0.5 rounded-[1.35rem] border border-white/12 bg-[#121214]/85 px-1 py-1 shadow-[0_8px_36px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
         {navInner}
       </div>
     </nav>
