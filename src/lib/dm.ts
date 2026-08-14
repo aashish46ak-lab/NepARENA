@@ -11,6 +11,9 @@ export type DmThread = {
   status: "active" | "request" | "declined" | "blocked";
   initiated_by: string | null;
   peer_streak?: number;
+  is_group?: boolean;
+  title?: string | null;
+  member_count?: number;
 };
 
 export type DmMessage = {
@@ -21,6 +24,8 @@ export type DmMessage = {
   image_url: string | null;
   reaction: string | null;
   created_at: string;
+  edited_at?: string | null;
+  deleted_at?: string | null;
 };
 
 export type UserNote = {
@@ -76,13 +81,24 @@ export async function listDmThreads(userId: string): Promise<DmThread[]> {
 
   const { data: convs } = await supabase
     .from("dm_conversations")
-    .select("id, status, initiated_by")
+    .select("id, status, initiated_by, is_group, title, created_by")
     .in("id", convIds);
 
-  const statusMap = new Map(
-    ((convs ?? []) as { id: string; status: string; initiated_by: string | null }[]).map((c) => [
+  const convMeta = new Map(
+    ((convs ?? []) as {
+      id: string;
+      status: string;
+      initiated_by: string | null;
+      is_group?: boolean;
+      title?: string | null;
+    }[]).map((c) => [
       c.id,
-      { status: (c.status || "active") as DmThread["status"], initiated_by: c.initiated_by },
+      {
+        status: (c.status || "active") as DmThread["status"],
+        initiated_by: c.initiated_by,
+        is_group: !!c.is_group,
+        title: c.title ?? null,
+      },
     ]),
   );
 
@@ -93,8 +109,14 @@ export async function listDmThreads(userId: string): Promise<DmThread[]> {
     .neq("user_id", userId);
 
   const peerByConv = new Map<string, string>();
+  const membersByConv = new Map<string, string[]>();
   for (const p of peers ?? []) {
-    peerByConv.set(p.conversation_id as string, p.user_id as string);
+    const cid = p.conversation_id as string;
+    const uid = p.user_id as string;
+    if (!peerByConv.has(cid)) peerByConv.set(cid, uid);
+    const arr = membersByConv.get(cid) ?? [];
+    arr.push(uid);
+    membersByConv.set(cid, arr);
   }
 
   const peerIds = [...new Set([...peerByConv.values()])];
@@ -139,18 +161,31 @@ export async function listDmThreads(userId: string): Promise<DmThread[]> {
     const peerId = peerByConv.get(cid) ?? "";
     const prof = profileMap.get(peerId);
     const last = lastByConv.get(cid);
-    const st = statusMap.get(cid);
+    const st = convMeta.get(cid);
+    const memberIds = membersByConv.get(cid) ?? [];
+    const isGroup = !!st?.is_group;
+    const groupNames = memberIds
+      .map((id) => {
+        const pr = profileMap.get(id);
+        return pr?.full_name?.trim() || pr?.username?.trim() || "Player";
+      })
+      .slice(0, 3);
     return {
       conversation_id: cid,
       peer_id: peerId,
-      peer_name: prof?.full_name?.trim() || prof?.username?.trim() || "Player",
-      peer_avatar: prof?.avatar_url ?? null,
+      peer_name: isGroup
+        ? (st?.title || groupNames.join(", ") || "Group")
+        : (prof?.full_name?.trim() || prof?.username?.trim() || "Player"),
+      peer_avatar: isGroup ? null : (prof?.avatar_url ?? null),
       last_body: last?.body ?? null,
       last_at: last?.at ?? null,
       unread: unreadByConv.get(cid) ?? 0,
       status: st?.status ?? "active",
       initiated_by: st?.initiated_by ?? null,
       peer_streak: Number(prof?.login_streak ?? 0),
+      is_group: isGroup,
+      title: st?.title ?? null,
+      member_count: memberIds.length + 1,
     };
   });
 
@@ -169,7 +204,7 @@ export async function listDmMessages(
 ): Promise<DmMessage[]> {
   const { data } = await supabase
     .from("dm_messages")
-    .select("id, conversation_id, sender_id, body, image_url, reaction, created_at")
+    .select("id, conversation_id, sender_id, body, image_url, reaction, created_at, edited_at, deleted_at")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
     .limit(limit);
@@ -274,4 +309,57 @@ export async function listFriendNotes(peerIds: string[]): Promise<UserNote[]> {
       avatar: p?.avatar_url ?? null,
     };
   });
+}
+
+/** Soft-delete (unsend) own message */
+export async function deleteDmMessage(messageId: string): Promise<{ error?: string }> {
+  const { data, error } = await supabase.rpc("soft_delete_dm_message", {
+    p_message_id: messageId,
+  });
+  if (error) {
+    const { error: e2 } = await supabase
+      .from("dm_messages")
+      .update({ body: null, image_url: null, deleted_at: new Date().toISOString(), reaction: null })
+      .eq("id", messageId);
+    if (e2) return { error: e2.message };
+    return {};
+  }
+  if (!data) return { error: "Could not delete message" };
+  return {};
+}
+
+/** Edit own message text */
+export async function editDmMessage(
+  messageId: string,
+  body: string,
+): Promise<{ error?: string }> {
+  const trimmed = body.trim();
+  if (!trimmed) return { error: "Empty message" };
+  const { data, error } = await supabase.rpc("edit_dm_message", {
+    p_message_id: messageId,
+    p_body: trimmed,
+  });
+  if (error) {
+    const { error: e2 } = await supabase
+      .from("dm_messages")
+      .update({ body: trimmed, edited_at: new Date().toISOString() })
+      .eq("id", messageId);
+    if (e2) return { error: e2.message };
+    return {};
+  }
+  if (!data) return { error: "Could not edit message" };
+  return {};
+}
+
+/** Create group chat — needs at least 2 other user ids (3 total) */
+export async function createGroupChat(
+  title: string,
+  memberIds: string[],
+): Promise<{ id?: string; error?: string }> {
+  const { data, error } = await supabase.rpc("create_dm_group", {
+    p_title: title,
+    p_member_ids: memberIds,
+  });
+  if (error) return { error: error.message };
+  return { id: data as string };
 }
