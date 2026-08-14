@@ -1,16 +1,17 @@
 /**
- * NepARENA homepage route — page body in PlatformHomePage.
+ * Home route — feed-first PlatformHomePage.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { buildSeoHead } from "@/lib/seo";
 import { PlatformHomePage } from "@/components/PlatformHomePage";
+import { buildSeoHead } from "@/lib/seo";
+import { PLATFORM_NAME } from "@/lib/organizers";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     ...buildSeoHead({
-      title: "NepARENA – Worldwide Multi Organizer Esports Platform",
+      title: `${PLATFORM_NAME} — Esports Platform`,
       description:
-        "NepARENA is a worldwide multi-organizer esports platform where tournament organizers manage competitions, members, communities and events.",
+        "NepARENA — multi-organizer esports platform. Feed, tournaments, games, and community.",
       path: "/",
     }),
   }),
