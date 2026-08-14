@@ -27,6 +27,7 @@ import { InlineStreak } from "@/components/StreakBadge";
 import { isSuperAdminEmail } from "@/lib/organizers";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { CreatePostModal } from "@/components/CreatePostModal";
+import { PlatformIcon } from "@/lib/platforms";
 
 export const Route = createFileRoute("/members/$id")({
   head: () => ({
@@ -127,7 +128,6 @@ function MemberProfilePage() {
     if (isOwn || followBusy) return;
     setFollowBusy(true);
     const wasFollowing = iFollow;
-    // Optimistic update — keep UI stable; soft revalidate later
     qc.setQueryData(["user_follow", user.id, id], !wasFollowing);
     qc.setQueryData(["member_profile", id], (old: typeof data) => {
       if (!old) return old;
@@ -144,9 +144,8 @@ function MemberProfilePage() {
         if (res.error) throw new Error(res.error.message);
         toast.success("Following");
       }
-      // Delayed soft invalidate so optimistic count is not overwritten by stale read
       window.setTimeout(() => {
-        void qc.invalidateQueries({ queryKey: ["member_profile", id], refetchType: "none" });
+        void qc.invalidateQueries({ queryKey: ["member_profile", id] });
         void qc.invalidateQueries({ queryKey: ["user_follow", user.id, id] });
       }, 1200);
     } catch (e) {
@@ -183,17 +182,21 @@ function MemberProfilePage() {
   }
 
   const { profile, achievements, followingOrgs, ownedOrgs = [], followerCount, followingCount, streak } = data;
-  const displayName = profile.username?.trim() || profile.full_name?.trim() || "Player";
-  const realName = profile.full_name?.trim() || null;
+  // Prefer real name as primary heading, username secondary
+  const primaryName = profile.full_name?.trim() || profile.username?.trim() || "Player";
+  const username = profile.username?.trim() || null;
+  const showUsername = !!username && username.toLowerCase() !== primaryName.toLowerCase();
   const links = (profile.social_links ?? {}) as Record<string, string>;
   const banner = links.banner_url || null;
 
-  const socials: { key: string; label: string; href: string }[] = [];
-  if (links.facebook) socials.push({ key: "facebook", label: "Facebook", href: normalizeUrl(links.facebook) });
-  if (links.instagram) socials.push({ key: "instagram", label: "Instagram", href: normalizeUrl(links.instagram) });
-  if (links.twitter || links.x) socials.push({ key: "x", label: "X / Twitter", href: normalizeUrl(links.twitter || links.x) });
-  if (links.tiktok) socials.push({ key: "tiktok", label: "TikTok", href: normalizeUrl(links.tiktok) });
-  if (links.youtube) socials.push({ key: "youtube", label: "YouTube", href: normalizeUrl(links.youtube) });
+  const socials: { key: string; href: string }[] = [];
+  if (links.facebook) socials.push({ key: "facebook", href: normalizeUrl(links.facebook) });
+  if (links.instagram) socials.push({ key: "instagram", href: normalizeUrl(links.instagram) });
+  if (links.twitter || links.x) socials.push({ key: "twitter", href: normalizeUrl(links.twitter || links.x || "") });
+  if (links.tiktok) socials.push({ key: "tiktok", href: normalizeUrl(links.tiktok) });
+  if (links.youtube) socials.push({ key: "youtube", href: normalizeUrl(links.youtube) });
+  if (links.discord) socials.push({ key: "discord", href: normalizeUrl(links.discord) });
+  if (links.website) socials.push({ key: "website", href: normalizeUrl(links.website) });
 
   return (
     <PageShell force="platform" hideChrome>
@@ -208,7 +211,7 @@ function MemberProfilePage() {
               <div className="-mt-12 h-24 w-24 overflow-hidden rounded-full ring-4 ring-[#121214]">
                 <Avatar className="h-full w-full">
                   <AvatarImage src={profile.avatar_url ?? undefined} />
-                  <AvatarFallback className="text-2xl">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="text-2xl">{primaryName.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
               </div>
               <div className="relative mb-1">
@@ -280,30 +283,46 @@ function MemberProfilePage() {
               </div>
             </div>
             <div className="mt-3">
-              <h1 className="text-xl font-bold text-white">{displayName}</h1>
-              {realName && profile.username && <p className="text-sm text-neutral-400">{realName}</p>}
-              {profile.bio && <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-300">{profile.bio}</p>}
-              <div className="mt-3 flex flex-wrap gap-3 text-sm text-neutral-400">
-                <span><strong className="text-white tabular-nums">{followerCount}</strong> followers</span>
-                <span><strong className="text-white tabular-nums">{followingCount}</strong> following</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold text-white">{primaryName}</h1>
                 {streak > 0 && <InlineStreak streak={streak} />}
               </div>
+              {showUsername && <p className="text-sm text-neutral-500">@{username}</p>}
+              {profile.bio && <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-300">{profile.bio}</p>}
 
               {socials.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   {socials.map((s) => (
                     <a
                       key={s.key}
                       href={s.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-neutral-200 hover:border-white/25 hover:bg-white/10"
+                      className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/[0.05] transition hover:border-white/25 hover:bg-white/10"
+                      aria-label={s.key}
                     >
-                      {s.label}
+                      <PlatformIcon platform={s.key} className="h-4 w-4" />
                     </a>
                   ))}
                 </div>
               )}
+
+              <div className="mt-3 flex flex-wrap gap-4 text-sm text-neutral-400">
+                <Link
+                  to="/followers/$id"
+                  params={{ id }}
+                  className="hover:text-white"
+                >
+                  <strong className="text-white tabular-nums">{followerCount}</strong> followers
+                </Link>
+                <Link
+                  to="/following-people/$id"
+                  params={{ id }}
+                  className="hover:text-white"
+                >
+                  <strong className="text-white tabular-nums">{followingCount}</strong> following
+                </Link>
+              </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {isOwn ? (
@@ -315,7 +334,7 @@ function MemberProfilePage() {
                     <Button size="sm" variant={iFollow ? "outline" : "default"} className="rounded-full" disabled={followBusy} onClick={() => void toggleFollow()}>
                       {iFollow ? <><UserMinus className="mr-1.5 h-3.5 w-3.5" /> Following</> : <><UserPlus className="mr-1.5 h-3.5 w-3.5" /> Follow</>}
                     </Button>
-                    <MessageProfileButton userId={id} name={displayName} />
+                    <MessageProfileButton userId={id} name={primaryName} />
                   </>
                 )}
               </div>
