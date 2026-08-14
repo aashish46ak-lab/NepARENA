@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import { registerPWA } from "@/lib/pwa-register";
 import {
   SITE_TITLE,
@@ -310,6 +311,7 @@ function RootComponent() {
           <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
             <RoleRedirect />
             <Outlet />
+            {!showSplash && <OnboardingTour />}
           </div>
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
