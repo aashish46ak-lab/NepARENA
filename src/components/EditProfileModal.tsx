@@ -1,7 +1,5 @@
 /**
- * Expandable Edit Profile modal — Instagram-style sheet.
- * Fields: photo, banner, display name, username, bio, club, national team,
- * player, country, social links, tags. Preview + Save.
+ * Expandable Edit Profile modal — neutral dark theme (no blue box).
  */
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -170,7 +168,7 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden border-white/12 bg-[#121214] p-0 sm:max-w-lg [&>button]:hidden">
+      <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden border-white/12 bg-[#0e0e10] p-0 sm:max-w-lg [&>button]:hidden">
         <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-4 py-3">
           <DialogHeader className="space-y-0">
             <DialogTitle className="text-base font-semibold text-white">
@@ -184,7 +182,7 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-medium transition",
                 preview
-                  ? "bg-sky-500/20 text-sky-300"
+                  ? "bg-white/15 text-white"
                   : "text-neutral-400 hover:bg-white/8 hover:text-white",
               )}
             >
@@ -208,7 +206,7 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
             </div>
           ) : preview ? (
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-              <div className="relative h-28 bg-gradient-to-br from-sky-900 via-slate-900 to-violet-950">
+              <div className="relative h-28 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black">
                 {form.banner_url ? (
                   <img
                     src={form.banner_url}
@@ -219,7 +217,7 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
               </div>
               <div className="relative px-4 pb-5">
-                <div className="-mt-10 mb-3 h-20 w-20 overflow-hidden rounded-full ring-4 ring-[#121214]">
+                <div className="-mt-10 mb-3 h-20 w-20 overflow-hidden rounded-full ring-4 ring-[#0e0e10]">
                   {form.avatar_url ? (
                     <img
                       src={form.avatar_url}
@@ -242,30 +240,6 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
                   <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-300">
                     {form.bio}
                   </p>
-                )}
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-400">
-                  {form.country && <span>📍 {form.country}</span>}
-                  {form.favourite_club && <span>⚽ {form.favourite_club}</span>}
-                  {form.favourite_national_team && (
-                    <span>🏳️ {form.favourite_national_team}</span>
-                  )}
-                  {form.favourite_player && <span>⭐ {form.favourite_player}</span>}
-                </div>
-                {form.tags && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {form.tags
-                      .split(/[,#]+/)
-                      .map((t) => t.trim())
-                      .filter(Boolean)
-                      .map((t) => (
-                        <span
-                          key={t}
-                          className="rounded-full bg-white/8 px-2 py-0.5 text-[11px] text-neutral-300"
-                        >
-                          #{t}
-                        </span>
-                      ))}
-                  </div>
                 )}
               </div>
             </div>
@@ -398,7 +372,7 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
         {!loading && form && (
           <div className="shrink-0 border-t border-white/8 px-4 py-3">
             <Button
-              className="w-full rounded-xl bg-sky-500 font-semibold text-white hover:bg-sky-400"
+              className="w-full rounded-xl bg-white font-semibold text-black hover:bg-neutral-200"
               disabled={saving}
               onClick={() => void save()}
             >
