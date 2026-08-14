@@ -1,7 +1,7 @@
 /**
  * Instagram-style top bar.
- * Logo + title ONLY on Home (showLogo).
- * Other pages: pageTitle only (Messages, Games, Organizers, …).
+ * Logo + title ONLY on Home (showLogo) — slightly larger.
+ * Other pages: pageTitle only.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 type Props = {
   onCreatePost?: () => void;
   className?: string;
-  /** When true, show centered logo+title. Default: only on home. */
   showLogo?: boolean;
   pageTitle?: string;
 };
@@ -41,7 +40,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
               <button
                 type="button"
                 onClick={() => setCreateOpen((v) => !v)}
-                className="grid h-9 w-9 place-items-center rounded-full text-neutral-200 transition hover:bg-white/10"
+                className="grid h-9 w-9 place-items-center rounded-full text-neutral-200 transition hover:bg-white/10 active:scale-95"
                 aria-label="Create"
                 data-tour="create-btn"
               >
@@ -55,14 +54,13 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
                     aria-label="Close create menu"
                     onClick={() => setCreateOpen(false)}
                   />
-                  <div className="absolute left-0 top-11 z-50 min-w-[200px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl">
+                  <div className="absolute left-0 top-11 z-50 min-w-[200px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
                     <button
                       type="button"
                       className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
                       onClick={() => {
                         setCreateOpen(false);
                         onCreatePost?.();
-                        if (!onCreatePost) window.location.href = "/feed";
                       }}
                     >
                       <FileText className="h-4 w-4 text-sky-400" />
@@ -76,9 +74,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
                     >
                       <BarChart3 className="h-4 w-4" />
                       Create Poll
-                      <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">
-                        Soon
-                      </span>
+                      <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">Soon</span>
                     </button>
                     {(isAdmin || isSuperAdmin) && (
                       <Link
@@ -101,16 +97,16 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
 
         <div className="flex min-w-0 flex-1 items-center justify-center">
           {displayLogo ? (
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2.5">
               <img
                 src="/neparena-logo.png"
                 alt=""
-                className="h-7 w-7 rounded-lg object-contain"
+                className="h-8 w-8 rounded-xl object-contain shadow-sm ring-1 ring-white/10"
                 onError={(e) => {
                   e.currentTarget.src = "/pwa-192x192.png";
                 }}
               />
-              <span className="text-[15px] font-bold tracking-tight text-white">{PLATFORM_NAME}</span>
+              <span className="text-[16px] font-bold tracking-tight text-white">{PLATFORM_NAME}</span>
             </Link>
           ) : pageTitle ? (
             <h1 className="truncate text-[15px] font-semibold text-white">{pageTitle}</h1>
