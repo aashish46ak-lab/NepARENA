@@ -10,8 +10,8 @@ import {
 
 const DISMISS_KEY = "neparena-install-fab-dismissed";
 
-/** Floating Install NepARENA with logo — opens native install when available. */
-export function InstallFAB() {
+/** Compact install control for top bar (not bottom FAB). */
+export function InstallTopButton({ className }: { className?: string }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [open, setOpen] = useState(false);
   const [standalone, setStandalone] = useState(false);
@@ -52,24 +52,20 @@ export function InstallFAB() {
       <button
         type="button"
         onClick={() => void runInstall()}
-        className="fixed bottom-5 left-5 z-50 flex h-14 max-w-[min(100vw-2.5rem,280px)] items-center gap-2.5 rounded-full border border-white/20 bg-[#111]/95 pl-1.5 pr-4 text-sm font-semibold text-neutral-100 shadow-2xl backdrop-blur-md"
+        className={
+          className ??
+          "inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-neutral-200 transition hover:bg-white/10"
+        }
         aria-label={`Install ${PLATFORM_NAME}`}
       >
-        <img
-          src="/neparena-logo.png"
-          alt=""
-          className="h-11 w-11 shrink-0 rounded-full object-contain bg-black p-1 ring-1 ring-white/25"
-          onError={(e) => {
-            e.currentTarget.src = "/pwa-192x192.png";
-          }}
-        />
-        <span className="truncate">Install {PLATFORM_NAME}</span>
-        <Download className="h-4 w-4 shrink-0 text-neutral-400" />
+        <Download className="h-3.5 w-3.5" />
+        Install
       </button>
 
       {open && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 p-4 sm:items-center">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#111] shadow-2xl">
+          <button type="button" className="absolute inset-0" aria-label="Close" onClick={() => setOpen(false)} />
+          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#111] shadow-2xl">
             <div className="flex items-start justify-between gap-3 p-5">
               <div className="flex gap-3">
                 <img
@@ -81,68 +77,39 @@ export function InstallFAB() {
                   }}
                 />
                 <div>
-                  <p className="text-lg font-semibold text-neutral-100">
-                    Install {PLATFORM_NAME}
-                  </p>
+                  <p className="text-lg font-semibold text-neutral-100">Install {PLATFORM_NAME}</p>
                   <p className="mt-1 text-sm text-neutral-400">
                     Add to your home screen — works offline-friendly like a native app.
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="text-neutral-500 hover:text-neutral-300"
-                onClick={() => setOpen(false)}
-              >
+              <button type="button" className="text-neutral-500 hover:text-neutral-300" onClick={() => setOpen(false)}>
                 <X className="h-5 w-5" />
               </button>
             </div>
-
             <div className="space-y-3 px-5 pb-5">
               {deferred ? (
-                <Button
-                  disabled={busy}
-                  className="w-full bg-neutral-100 text-black hover:bg-white"
-                  onClick={() => void runInstall()}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Install now
+                <Button disabled={busy} className="w-full bg-neutral-100 text-black hover:bg-white" onClick={() => void runInstall()}>
+                  <Download className="mr-2 h-4 w-4" /> Install now
                 </Button>
               ) : isIOS ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-300">
                   <p className="font-medium text-neutral-100">iPhone / iPad</p>
                   <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-neutral-400">
-                    <li>
-                      Tap <Share className="inline h-3.5 w-3.5" /> <strong>Share</strong>
-                    </li>
-                    <li>
-                      Scroll and tap <strong>Add to Home Screen</strong>
-                    </li>
-                    <li>
-                      Tap <strong>Add</strong>
-                    </li>
+                    <li>Tap <Share className="inline h-3.5 w-3.5" /> <strong>Share</strong></li>
+                    <li>Scroll and tap <strong>Add to Home Screen</strong></li>
+                    <li>Tap <strong>Add</strong></li>
                   </ol>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-400">
                   <p className="font-medium text-neutral-100">Install from browser menu</p>
                   <ol className="mt-2 list-decimal space-y-1.5 pl-4">
-                    <li>
-                      Open the <strong className="text-neutral-200">⋮</strong> (three dots) menu
-                    </li>
-                    <li>
-                      Tap <strong className="text-neutral-200">Install app</strong> or{" "}
-                      <strong className="text-neutral-200">Add to Home screen</strong>
-                    </li>
+                    <li>Open the <strong className="text-neutral-200">⋮</strong> menu</li>
+                    <li>Tap <strong className="text-neutral-200">Install app</strong> or <strong className="text-neutral-200">Add to Home screen</strong></li>
                   </ol>
-                  <p className="mt-3 text-xs text-neutral-500">
-                    Chrome / Edge on Android: visit the site once, then install appears.
-                    Use HTTPS (neparena.xyz). If you dismissed install earlier, clear site
-                    data and reopen.
-                  </p>
                 </div>
               )}
-
               <button
                 type="button"
                 className="w-full text-center text-xs text-neutral-600 hover:text-neutral-400"
@@ -160,4 +127,9 @@ export function InstallFAB() {
       )}
     </>
   );
+}
+
+/** @deprecated bottom FAB removed — use InstallTopButton */
+export function InstallFAB() {
+  return null;
 }

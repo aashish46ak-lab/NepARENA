@@ -15,7 +15,6 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
-import { InstallFAB } from "@/components/InstallFAB";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { registerPWA } from "@/lib/pwa-register";
 import {
@@ -31,24 +30,48 @@ import {
 } from "@/lib/seo";
 
 const ENABLE_LOGIN_POPUPS = false;
-const ENABLE_INSTALL_FAB = true;
 const ENABLE_ADSENSE = true;
 const ADSENSE_CLIENT = "ca-pub-3033911443659343";
 
-function NotFoundComponent() {
+function BrandErrorBox({
+  title,
+  message,
+  actions,
+}: {
+  title: string;
+  message?: string;
+  actions?: ReactNode;
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 text-white">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold">404</h1>
-        <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
-        <Link
-          to="/"
-          className="mt-6 inline-flex rounded-md bg-white px-4 py-2 text-sm font-medium text-black"
-        >
-          Go home
-        </Link>
+      <div className="w-full max-w-md rounded-3xl border border-white/12 bg-[#121214] p-8 text-center shadow-2xl">
+        <img
+          src="/neparena-logo.png"
+          alt="NepARENA"
+          className="mx-auto h-16 w-16 rounded-2xl object-contain ring-1 ring-white/15"
+          onError={(e) => {
+            e.currentTarget.src = "/pwa-192x192.png";
+          }}
+        />
+        <h1 className="mt-5 text-xl font-semibold">{title}</h1>
+        {message && <p className="mt-2 break-words text-sm text-neutral-400">{message}</p>}
+        {actions && <div className="mt-6 flex flex-wrap justify-center gap-2">{actions}</div>}
       </div>
     </div>
+  );
+}
+
+function NotFoundComponent() {
+  return (
+    <BrandErrorBox
+      title="Page not found"
+      message="This page doesn’t exist or was moved."
+      actions={
+        <Link to="/" className="inline-flex rounded-full bg-white px-5 py-2 text-sm font-medium text-black">
+          Go home
+        </Link>
+      }
+    />
   );
 }
 
@@ -56,14 +79,14 @@ function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void 
   console.error(error);
   const router = useRouter();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 text-white">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-red-400 break-words">{error.message}</p>
-        <div className="mt-6 flex justify-center gap-2">
+    <BrandErrorBox
+      title="Something went wrong"
+      message={error.message}
+      actions={
+        <>
           <button
             type="button"
-            className="rounded-md bg-white px-4 py-2 text-sm text-black"
+            className="rounded-full bg-white px-5 py-2 text-sm text-black"
             onClick={() => {
               window.location.href = "/";
             }}
@@ -72,7 +95,7 @@ function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void 
           </button>
           <button
             type="button"
-            className="rounded-md border border-white/30 px-4 py-2 text-sm"
+            className="rounded-full border border-white/30 px-5 py-2 text-sm"
             onClick={() => {
               router.invalidate();
               reset();
@@ -80,9 +103,9 @@ function SafeErrorComponent({ error, reset }: { error: Error; reset: () => void 
           >
             Try again
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }
 
@@ -100,19 +123,19 @@ class ClientErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 text-center text-white">
-          <div>
-            <h1 className="text-lg font-semibold">Something went wrong</h1>
-            <p className="mt-2 text-sm text-red-400">{this.state.error.message}</p>
+        <BrandErrorBox
+          title="Something went wrong"
+          message={this.state.error.message}
+          actions={
             <button
               type="button"
-              className="mt-4 rounded-md bg-white px-4 py-2 text-sm text-black"
+              className="rounded-full bg-white px-5 py-2 text-sm text-black"
               onClick={() => window.location.reload()}
             >
               Reload
             </button>
-          </div>
-        </div>
+          }
+        />
       );
     }
     return this.props.children;
@@ -223,16 +246,17 @@ function RootShell({ children }: { children: ReactNode }) {
           dangerouslySetInnerHTML={{
             __html:
               "html,body{margin:0;min-height:100%;background:#0a0a0a;color:#f5f5f5}" +
-              "html.neparena-splash-pending [data-neparena-app]{visibility:hidden!important}",
+              "html.neparena-splash-pending [data-neparena-app]{visibility:hidden!important}" +
+              "html.light,html.light body{background:#f3efe6;color:#14120f}",
           }}
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var k='neparena_splash_seen_v3';if(!sessionStorage.getItem(k)&&location.pathname==='/'){document.documentElement.classList.add('neparena-splash-pending');}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('neparena-theme');var r=document.documentElement;if(t==='light'){r.classList.add('light');r.classList.remove('dark');r.style.colorScheme='light';}else{r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';}var k='neparena_splash_seen_v3';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
           }}
         />
       </head>
-      <body className="bg-[#0a0a0a] text-foreground antialiased" suppressHydrationWarning>
+      <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -286,28 +310,12 @@ function RootComponent() {
           <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
             <RoleRedirect />
             <Outlet />
-            {ENABLE_INSTALL_FAB && <PlatformInstallFab />}
           </div>
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   );
-}
-
-function PlatformInstallFab() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const show =
-    pathname === "/" ||
-    pathname.startsWith("/organizers") ||
-    pathname.startsWith("/following") ||
-    pathname.startsWith("/users") ||
-    pathname.startsWith("/ownership") ||
-    pathname.startsWith("/platform") ||
-    pathname.startsWith("/feed") ||
-    pathname.startsWith("/about");
-  if (!show) return null;
-  return <InstallFAB />;
 }
 
 export { ENABLE_LOGIN_POPUPS };
