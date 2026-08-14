@@ -1,6 +1,6 @@
 /**
  * Organizers directory
- * Title → Search | Become (50/50) → View Status → Following → Remaining
+ * Search | Become (or View Status if applied) — premium styling
  * Sort: followed first, then highest followers
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/organizers";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { Building2, Search, Star, ClipboardList } from "lucide-react";
+import { Building2, Search, Star, FileText } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,20 @@ function OrganizersPage() {
       return map;
     },
     staleTime: 60_000,
+  });
+
+  const { data: hasApplication = false } = useQuery({
+    queryKey: ["org_app_exists", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("organizer_applications")
+        .select("id")
+        .eq("user_id", user!.id)
+        .limit(1)
+        .maybeSingle();
+      return !!data;
+    },
   });
 
   const list = useMemo(() => {
@@ -132,20 +146,32 @@ function OrganizersPage() {
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
             className={cn(
-              "flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.05] px-3 py-3.5 text-sm font-semibold text-neutral-100 transition hover:border-sky-400/40 hover:bg-sky-500/10",
+              "flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.05] px-3 py-3.5 text-sm font-semibold text-neutral-100 transition hover:border-sky-400/40 hover:bg-sky-500/10 active:scale-[0.98]",
               searchOpen && "border-sky-400/40 bg-sky-500/10",
             )}
           >
             <Search className="h-4 w-4 text-sky-400" />
             Search Organizers
           </button>
-          <Link
-            to="/become-organizer"
-            className="flex items-center justify-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-3.5 text-sm font-semibold text-amber-100 transition hover:border-amber-400/50 hover:bg-amber-500/20"
-          >
-            <Star className="h-4 w-4 text-amber-400" />
-            Become Organizer
-          </Link>
+
+          {hasApplication ? (
+            <Link
+              to="/become-organizer"
+              className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-sky-400/40 bg-gradient-to-br from-sky-500/25 via-sky-600/15 to-violet-600/20 px-3 py-3.5 text-sm font-semibold text-sky-50 shadow-[0_0_24px_rgba(56,189,248,0.15)] transition hover:border-sky-300/50 hover:shadow-[0_0_32px_rgba(56,189,248,0.25)] active:scale-[0.98]"
+            >
+              <FileText className="relative z-10 h-4 w-4 text-sky-300" />
+              <span className="relative z-10">View Status</span>
+            </Link>
+          ) : (
+            <Link
+              to="/become-organizer"
+              className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-400/30 via-orange-500/20 to-rose-500/15 px-3 py-3.5 text-sm font-semibold text-amber-50 shadow-[0_0_24px_rgba(251,191,36,0.2)] transition hover:border-amber-300/55 hover:shadow-[0_0_36px_rgba(251,191,36,0.35)] active:scale-[0.98]"
+            >
+              <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-transparent to-white/10 opacity-0 transition group-hover:opacity-100" />
+              <Star className="relative z-10 h-4 w-4 fill-amber-300/80 text-amber-300" />
+              <span className="relative z-10">Become Organizer</span>
+            </Link>
+          )}
         </div>
 
         {searchOpen && (
@@ -159,15 +185,6 @@ function OrganizersPage() {
             />
           </div>
         )}
-
-        <Link
-          to="/become-organizer"
-          search={{ status: true } as never}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm font-medium text-neutral-300 transition hover:border-white/20 hover:bg-white/[0.06]"
-        >
-          <ClipboardList className="h-4 w-4 text-neutral-400" />
-          View Application Status
-        </Link>
 
         <p className="mt-5 text-xs text-neutral-500">
           Following first, then by community size on {PLATFORM_NAME}.
