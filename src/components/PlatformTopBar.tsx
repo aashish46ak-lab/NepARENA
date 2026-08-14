@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus, Megaphone, BarChart3, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,12 +9,18 @@ import { cn } from "@/lib/utils";
 type Props = {
   onCreatePost?: () => void;
   className?: string;
+  /** When true (default on home), show centered logo+title. On other pages show pageTitle instead. */
+  showLogo?: boolean;
+  pageTitle?: string;
 };
 
-export function PlatformTopBar({ onCreatePost, className }: Props) {
+export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }: Props) {
   const { user, isAdmin } = useAuth();
   const isSuperAdmin = isSuperAdminEmail(user?.email);
   const [createOpen, setCreateOpen] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isHome = pathname === "/" || pathname === "";
+  const displayLogo = showLogo ?? isHome;
 
   return (
     <header
@@ -51,9 +57,7 @@ export function PlatformTopBar({ onCreatePost, className }: Props) {
                       onClick={() => {
                         setCreateOpen(false);
                         onCreatePost?.();
-                        if (!onCreatePost) {
-                          window.location.href = "/feed";
-                        }
+                        if (!onCreatePost) window.location.href = "/feed";
                       }}
                     >
                       <FileText className="h-4 w-4 text-sky-400" />
@@ -67,9 +71,7 @@ export function PlatformTopBar({ onCreatePost, className }: Props) {
                     >
                       <BarChart3 className="h-4 w-4" />
                       Create Poll
-                      <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">
-                        Soon
-                      </span>
+                      <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">Soon</span>
                     </button>
                     {(isAdmin || isSuperAdmin) && (
                       <Link
@@ -96,19 +98,23 @@ export function PlatformTopBar({ onCreatePost, className }: Props) {
           )}
         </div>
 
-        <Link to="/" className="flex items-center gap-2" data-tour="logo">
-          <img
-            src="/neparena-logo.png"
-            alt=""
-            className="h-8 w-8 rounded-xl object-cover ring-1 ring-white/20"
-            onError={(e) => {
-              e.currentTarget.src = "/pwa-192x192.png";
-            }}
-          />
-          <span className="text-[17px] font-semibold tracking-tight text-white">
-            {PLATFORM_NAME}
+        {displayLogo ? (
+          <Link to="/" className="flex items-center gap-2" data-tour="logo">
+            <img
+              src="/neparena-logo.png"
+              alt=""
+              className="h-8 w-8 rounded-xl object-cover ring-1 ring-white/20"
+              onError={(e) => {
+                e.currentTarget.src = "/pwa-192x192.png";
+              }}
+            />
+            <span className="text-[17px] font-semibold tracking-tight text-white">{PLATFORM_NAME}</span>
+          </Link>
+        ) : (
+          <span className="text-[15px] font-semibold tracking-tight text-white">
+            {pageTitle ?? ""}
           </span>
-        </Link>
+        )}
 
         <div className="flex w-12 justify-end" data-tour="notifications">
           {user ? (
