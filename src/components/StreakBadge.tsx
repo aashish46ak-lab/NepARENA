@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Premium flame with number inside — used beside usernames everywhere */
+/** White circle in fire with black number — used beside usernames everywhere */
 export function InlineStreak({
   streak,
   className,
@@ -13,20 +13,30 @@ export function InlineStreak({
   return (
     <span
       className={cn(
-        "relative inline-flex h-5 min-w-5 items-center justify-center",
+        "relative inline-flex h-6 w-6 shrink-0 items-center justify-center",
         className,
       )}
       title={`${n} day login streak`}
     >
       <span
-        className="pointer-events-none absolute inset-0 animate-pulse rounded-full bg-orange-500/25 blur-[6px]"
+        className="pointer-events-none absolute -inset-1 animate-pulse rounded-full bg-gradient-to-t from-orange-600/50 via-amber-400/30 to-transparent blur-[4px]"
         aria-hidden
       />
-      <span className="relative text-[15px] leading-none drop-shadow-[0_0_6px_rgba(251,146,60,0.7)]" aria-hidden>
-        🔥
-      </span>
-      <span className="absolute inset-0 flex items-center justify-center pt-[3px] text-[9px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">
-        {n > 99 ? "99+" : n}
+      <span
+        className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-t from-orange-600 via-amber-500 to-yellow-300 opacity-90"
+        aria-hidden
+        style={{
+          maskImage:
+            "radial-gradient(circle at 50% 55%, transparent 42%, black 46%)",
+          WebkitMaskImage:
+            "radial-gradient(circle at 50% 55%, transparent 42%, black 46%)",
+        }}
+      />
+      <span className="pointer-events-none absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-amber-300/90 blur-[1px]" aria-hidden />
+      <span className="relative z-[1] grid h-[18px] w-[18px] place-items-center rounded-full bg-white shadow-[0_0_6px_rgba(251,146,60,0.55)] ring-1 ring-orange-400/40">
+        <span className="text-[9px] font-black tabular-nums leading-none text-black">
+          {n > 99 ? "99+" : n}
+        </span>
       </span>
     </span>
   );

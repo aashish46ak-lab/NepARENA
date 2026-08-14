@@ -46,8 +46,14 @@ export function PageShell({
     }
   }, [mode, pathname]);
 
-  const showBottomNav = mode === "platform";
-  const padBottom = showBottomNav;
+  // BottomNav always mounts; it self-hides on auth/dashboard and uses island on deep pages
+  const showBottomNav = true;
+  const padBottom =
+    showBottomNav &&
+    !pathname.startsWith("/auth") &&
+    !pathname.startsWith("/reset-password") &&
+    !pathname.startsWith("/dashboard") &&
+    !pathname.startsWith("/platform");
 
   return (
     <div
@@ -66,7 +72,7 @@ export function PageShell({
       }
     >
       {!hideChrome && <Header mode={mode} />}
-      <main className={`flex-1 ${padBottom ? "pb-24" : ""}`}>{children}</main>
+      <main className={`flex-1 ${padBottom ? "pb-20" : ""}`}>{children}</main>
       {!hideChrome && <Footer mode={mode} />}
       {showBottomNav && <BottomNav />}
     </div>
