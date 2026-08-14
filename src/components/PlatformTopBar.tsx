@@ -1,7 +1,7 @@
 /**
  * Instagram-style top bar.
- * Logo + title ONLY on Home (showLogo) — slightly larger.
- * Other pages: pageTitle only.
+ * Logo + title ONLY on Home (showLogo).
+ * Create Post opens centered modal — never navigates.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { PLATFORM_NAME, isSuperAdminEmail } from "@/lib/organizers";
 import { cn } from "@/lib/utils";
+import { CreatePostModal } from "@/components/CreatePostModal";
 
 type Props = {
   onCreatePost?: () => void;
@@ -22,101 +23,108 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
   const { user, isAdmin } = useAuth();
   const isSuperAdmin = isSuperAdminEmail(user?.email);
   const [createOpen, setCreateOpen] = useState(false);
+  const [postModalOpen, setPostModalOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isHome = pathname === "/" || pathname === "";
   const displayLogo = showLogo ?? isHome;
 
+  const openCreatePost = () => {
+    setCreateOpen(false);
+    if (onCreatePost) onCreatePost();
+    else setPostModalOpen(true);
+  };
+
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-xl",
-        className,
-      )}
-    >
-      <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-3">
-        <div className="relative flex w-12 justify-start">
-          {user ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setCreateOpen((v) => !v)}
-                className="grid h-9 w-9 place-items-center rounded-full text-neutral-200 transition hover:bg-white/10 active:scale-95"
-                aria-label="Create"
-                data-tour="create-btn"
-              >
-                <Plus className="h-6 w-6" strokeWidth={1.75} />
-              </button>
-              {createOpen && (
-                <>
-                  <button
-                    type="button"
-                    className="fixed inset-0 z-40"
-                    aria-label="Close create menu"
-                    onClick={() => setCreateOpen(false)}
-                  />
-                  <div className="absolute left-0 top-11 z-50 min-w-[200px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+    <>
+      <header
+        className={cn(
+          "sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-xl",
+          className,
+        )}
+      >
+        <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-3">
+          <div className="relative flex w-12 justify-start">
+            {user ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen((v) => !v)}
+                  className="grid h-9 w-9 place-items-center rounded-full text-neutral-200 transition hover:bg-white/10 active:scale-95"
+                  aria-label="Create"
+                  data-tour="create-btn"
+                >
+                  <Plus className="h-6 w-6" strokeWidth={1.75} />
+                </button>
+                {createOpen && (
+                  <>
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
-                      onClick={() => {
-                        setCreateOpen(false);
-                        onCreatePost?.();
-                      }}
-                    >
-                      <FileText className="h-4 w-4 text-sky-400" />
-                      Create Post
-                    </button>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-500"
-                      disabled
-                      title="Coming soon"
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      Create Poll
-                      <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">Soon</span>
-                    </button>
-                    {(isAdmin || isSuperAdmin) && (
-                      <Link
-                        to={isSuperAdmin ? "/platform" : "/dashboard"}
+                      className="fixed inset-0 z-40"
+                      aria-label="Close create menu"
+                      onClick={() => setCreateOpen(false)}
+                    />
+                    <div className="absolute left-0 top-11 z-50 min-w-[200px] overflow-hidden rounded-2xl border border-white/12 bg-[#141416]/98 py-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                      <button
+                        type="button"
                         className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
-                        onClick={() => setCreateOpen(false)}
+                        onClick={openCreatePost}
                       >
-                        <BarChart3 className="h-4 w-4 text-amber-400" />
-                        Dashboard
-                      </Link>
-                    )}
-                  </div>
-                </>
-              )}
-            </>
-          ) : (
-            <span className="w-9" />
-          )}
-        </div>
+                        <FileText className="h-4 w-4 text-sky-400" />
+                        Create Post
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-500"
+                        disabled
+                        title="Coming soon"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                        Create Poll
+                        <span className="ml-auto text-[10px] uppercase tracking-wide text-neutral-600">Soon</span>
+                      </button>
+                      {(isAdmin || isSuperAdmin) && (
+                        <Link
+                          to={isSuperAdmin ? "/platform" : "/dashboard"}
+                          className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8"
+                          onClick={() => setCreateOpen(false)}
+                        >
+                          <BarChart3 className="h-4 w-4 text-amber-400" />
+                          Dashboard
+                        </Link>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="w-9" />
+            )}
+          </div>
 
-        <div className="flex min-w-0 flex-1 items-center justify-center">
-          {displayLogo ? (
-            <Link to="/" className="flex items-center gap-2.5">
-              <img
-                src="/neparena-logo.png"
-                alt=""
-                className="h-8 w-8 rounded-xl object-contain shadow-sm ring-1 ring-white/10"
-                onError={(e) => {
-                  e.currentTarget.src = "/pwa-192x192.png";
-                }}
-              />
-              <span className="text-[16px] font-bold tracking-tight text-white">{PLATFORM_NAME}</span>
-            </Link>
-          ) : pageTitle ? (
-            <h1 className="truncate text-[15px] font-semibold text-white">{pageTitle}</h1>
-          ) : null}
-        </div>
+          <div className="flex min-w-0 flex-1 items-center justify-center">
+            {displayLogo ? (
+              <Link to="/" className="flex items-center gap-2.5">
+                <img
+                  src="/neparena-logo.png"
+                  alt=""
+                  className="h-8 w-8 rounded-xl object-contain shadow-sm ring-1 ring-white/10"
+                  onError={(e) => {
+                    e.currentTarget.src = "/pwa-192x192.png";
+                  }}
+                />
+                <span className="text-[16px] font-bold tracking-tight text-white">{PLATFORM_NAME}</span>
+              </Link>
+            ) : pageTitle ? (
+              <h1 className="truncate text-[15px] font-semibold text-white">{pageTitle}</h1>
+            ) : null}
+          </div>
 
-        <div className="flex w-12 justify-end">
-          {user ? <NotificationsBell /> : <span className="w-9" />}
+          <div className="flex w-12 justify-end">
+            {user ? <NotificationsBell /> : <span className="w-9" />}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      <CreatePostModal open={postModalOpen} onOpenChange={setPostModalOpen} />
+    </>
   );
 }
