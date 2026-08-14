@@ -1,6 +1,6 @@
 /**
  * Organizer public profile — theme-aware cover, join cards, share isolation.
- * Announcements expand on tap.
+ * Announcements expand on tap. Optimistic follower counts.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -85,7 +85,7 @@ function OrganizerPublicPage() {
     });
   }, [organizer]);
 
-  const { data: following, refetch: refetchFollow } = useQuery({
+  const { data: following } = useQuery({
     queryKey: ["following", organizer?.id, user?.id],
     enabled: !!organizer?.id && !!user?.id,
     queryFn: () => isFollowing(organizer!.id, user!.id),
@@ -160,14 +160,34 @@ function OrganizerPublicPage() {
 
   const toggleFollow = async () => {
     if (!user) { toast.message("Sign in to follow organizers"); return; }
-    if (!organizer) return;
+    if (!organizer || followBusy) return;
     setFollowBusy(true);
-    if (following) { await unfollowOrganizer(organizer.id, user.id); toast.success("Unfollowed"); }
-    else { await followOrganizer(organizer.id, user.id); toast.success("Following"); }
-    setFollowBusy(false);
-    void refetchFollow();
-    void qc.invalidateQueries({ queryKey: ["org_followers", organizer.id] });
-    void qc.invalidateQueries({ queryKey: ["home_following_orgs"] });
+    const wasFollowing = !!following;
+    // Optimistic: flip following + bump/dip count immediately
+    qc.setQueryData(["following", organizer.id, user.id], !wasFollowing);
+    qc.setQueryData(["org_followers", organizer.id], (prev: number | undefined) =>
+      Math.max(0, (prev ?? followers ?? 0) + (wasFollowing ? -1 : 1)),
+    );
+    try {
+      if (wasFollowing) {
+        await unfollowOrganizer(organizer.id, user.id);
+        toast.success("Unfollowed");
+      } else {
+        await followOrganizer(organizer.id, user.id);
+        toast.success("Following");
+      }
+    } catch {
+      qc.setQueryData(["following", organizer.id, user.id], wasFollowing);
+      qc.setQueryData(["org_followers", organizer.id], (prev: number | undefined) =>
+        Math.max(0, (prev ?? followers ?? 0) + (wasFollowing ? 1 : -1)),
+      );
+      toast.error("Could not update follow");
+    } finally {
+      setFollowBusy(false);
+      void qc.invalidateQueries({ queryKey: ["following", organizer.id, user.id] });
+      void qc.invalidateQueries({ queryKey: ["org_followers", organizer.id] });
+      void qc.invalidateQueries({ queryKey: ["home_following_orgs"] });
+    }
   };
 
   const share = async () => {
@@ -239,7 +259,7 @@ function OrganizerPublicPage() {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
-              <span><strong className="text-foreground">{followers}</strong> followers</span>
+              <span><strong className="tabular-nums text-foreground">{followers}</strong> followers</span>
               <Link to="/tournaments" className="hover:text-foreground"><strong className="text-foreground">{tournaments.length}</strong> tournaments</Link>
               <Link to="/feed" className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 text-xs font-medium text-sky-200 hover:bg-sky-500/20">Feed</Link>
             </div>
