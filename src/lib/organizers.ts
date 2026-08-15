@@ -165,6 +165,13 @@ export async function getOrganizerBySlug(slug: string): Promise<Organizer | null
 }
 
 export async function getFollowerCount(organizerId: string): Promise<number> {
+  // Prefer SECURITY DEFINER RPC so count is never blocked by RLS
+  const rpc = await supabase.rpc("get_organizer_follower_count", {
+    p_organizer_id: organizerId,
+  });
+  if (!rpc.error && typeof rpc.data === "number") {
+    return Math.max(0, rpc.data);
+  }
   // Composite PK (organizer_id, user_id) — no `id` column
   const { count, error } = await supabase
     .from("organizer_followers")
@@ -181,7 +188,7 @@ export async function getFollowerCount(organizerId: string): Promise<number> {
 export async function followOrganizer(organizerId: string, userId: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user || auth.user.id !== userId) {
-    return { error: { message: "Unauthorized" } } as const;
+    return { error: { message: "Unauthorized" } as const;
   }
   const rpc = await supabase.rpc("secure_follow_organizer", {
     p_organizer_id: organizerId,
@@ -266,7 +273,6 @@ export async function getPlatformStats() {
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(20),
-    // UNREAD only — clears after admin opens threads
     supabase
       .from("platform_messages")
       .select("id", { count: "exact", head: true })
@@ -321,7 +327,6 @@ export async function setOrganizerVerified(organizerId: string, verified: boolea
     .eq("id", organizerId);
 }
 
-/** Server-driven auto-verify when criteria met (logo, banner, contact, ≥1 completed tournament). */
 export async function evaluateOrganizerVerification(organizerId: string) {
   return supabase.rpc("evaluate_organizer_verification", {
     p_organizer_id: organizerId,
@@ -380,7 +385,6 @@ export async function setOrganizerStatus(
   return supabase.from("organizers").update({ status }).eq("id", organizerId);
 }
 
-/** Ensure user is owner/admin of eFootball Nepal (idempotent). */
 export async function ensureEfootballNepalAdmin(userId: string) {
   const org = await getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
   if (!org) return { ok: false as const, error: "Organizer missing — run SQL 11" };
