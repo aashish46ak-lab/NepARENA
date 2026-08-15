@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   CheckCircle2,
   ChevronDown,
+  ChevronUp,
   Clock,
   ImagePlus,
   Loader2,
@@ -25,9 +26,7 @@ export interface SubmitResultCardProps {
   awayLabel: string;
   homePhoto: string | null;
   awayPhoto: string | null;
-  /** e.g. "Tournament · Matchday 3" */
   meta?: string;
-  /** The signed-in player's participant row id for this match */
   participantId: string | null;
   submission: MatchSubmission | null;
   onDone: () => void;
@@ -35,7 +34,7 @@ export interface SubmitResultCardProps {
 
 /**
  * Match card for result submission.
- * Always starts collapsed. Form opens only when user taps "Submit Result".
+ * Tap the whole card to expand/collapse score + screenshot form.
  */
 export function SubmitResultCard({
   matchId,
@@ -51,7 +50,6 @@ export function SubmitResultCard({
   const { user } = useAuth();
   const status = submission?.status;
 
-  // Always start collapsed
   const [open, setOpen] = useState(false);
   const [hs, setHs] = useState(
     submission?.home_score != null ? String(submission.home_score) : "",
@@ -127,10 +125,19 @@ export function SubmitResultCard({
     }
   };
 
+  const canExpand = status !== "approved";
+
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/40 overflow-hidden">
-      {/* Collapsed header — logos + names only (no form) */}
-      <div className="flex w-full items-center gap-3 px-3 py-3">
+    <div className="rounded-2xl border border-border/60 bg-card/40 overflow-hidden transition-all">
+      {/* Whole header is tappable to expand/collapse */}
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-white/[0.03] active:bg-white/[0.05]"
+        onClick={() => {
+          if (canExpand) setOpen((v) => !v);
+        }}
+        aria-expanded={open}
+      >
         <Avatar className="h-9 w-9 shrink-0">
           {homePhoto ? <AvatarImage src={homePhoto} /> : null}
           <AvatarFallback className="text-[10px]">{homeLabel.slice(0, 2)}</AvatarFallback>
@@ -164,35 +171,16 @@ export function SubmitResultCard({
           {awayPhoto ? <AvatarImage src={awayPhoto} /> : null}
           <AvatarFallback className="text-[10px]">{awayLabel.slice(0, 2)}</AvatarFallback>
         </Avatar>
-      </div>
+        {canExpand && (
+          <span className="shrink-0 text-neutral-500">
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </span>
+        )}
+      </button>
 
-      {/* Explicit expand control — only this opens the form */}
-      {!open && status !== "approved" && (
-        <div className="border-t border-border/40 px-3 pb-3">
-          <Button
-            type="button"
-            size="sm"
-            className="w-full bg-gradient-brand text-primary-foreground"
-            onClick={() => setOpen(true)}
-          >
-            Submit Result
-            <ChevronDown className="ml-1.5 h-4 w-4" />
-          </Button>
-        </div>
-      )}
-
-      {open && (
-        <div className="border-t border-border/50 px-3 py-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground">Enter score & screenshot</p>
-            <button
-              type="button"
-              className="text-[11px] text-muted-foreground hover:text-foreground"
-              onClick={() => setOpen(false)}
-            >
-              Collapse
-            </button>
-          </div>
+      {open && canExpand && (
+        <div className="border-t border-border/50 px-3 py-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
+          <p className="text-xs font-medium text-muted-foreground">Enter score & screenshot</p>
           <div className="flex items-center justify-center gap-2">
             <Input
               inputMode="numeric"
