@@ -232,7 +232,7 @@ export function SuperAdminPanelImpl() {
                     <BarChart data={barData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                       <XAxis dataKey="name" tick={{ fill: "#a3a3a3", fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "#a3a3a3" fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <YAxis tick={{ fill: "#a3a3a3", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
                       <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }} />
                       <Bar dataKey="value" fill="#38bdf8" radius={[8, 8, 0, 0]} />
                     </BarChart>
