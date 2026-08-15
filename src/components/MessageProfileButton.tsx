@@ -35,7 +35,7 @@ export function MessageProfileButton({
     try {
       const cid = await getOrCreateDm(peerId);
       if (!cid) {
-        toast.error("Could not start chat");
+        toast.error("Could not start chat — try again or open Messages");
         return;
       }
       const res = await sendDmMessage({
@@ -44,13 +44,16 @@ export function MessageProfileButton({
         body: body.trim(),
       });
       if (res.error) {
-        toast.error(res.error);
+        toast.error(res.error || "Send failed");
+        void navigate({ to: "/messages", search: { c: cid, with: peerId } });
         return;
       }
       setOpen(false);
       setBody("");
       toast.success("Message sent");
       void navigate({ to: "/messages", search: { c: cid, with: peerId } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Send failed");
     } finally {
       setBusy(false);
     }
