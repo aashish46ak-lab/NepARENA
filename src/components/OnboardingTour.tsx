@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { X, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "neparena_onboarding_done_v1";
+const STORAGE_KEY = "neparena_onboarding_done_v2";
 
 type Step = {
   id: string;
@@ -209,19 +209,17 @@ export function OnboardingTour() {
 
   return (
     <div className="fixed inset-0 z-[200]" aria-modal role="dialog">
-      {/* Full-viewport blur + dim base (under spotlight hole) */}
       <div
-        className="pointer-events-none fixed inset-0 bg-black/70 backdrop-blur-[4px] transition-opacity duration-500"
+        className="pointer-events-none fixed inset-0 bg-black/75 backdrop-blur-md transition-opacity duration-500"
         style={{ opacity: hole ? 1 : 1 }}
       />
-      {/* Circular spotlight cutout — clears blur inside the hole via box-shadow mask */}
       <div
         className="pointer-events-none fixed transition-all duration-500 ease-out"
         style={
           hole
             ? {
                 background: "transparent",
-                boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
                 borderRadius: "9999px",
                 left: hole.left,
                 top: hole.top,
@@ -233,7 +231,6 @@ export function OnboardingTour() {
             : { display: "none" }
         }
       />
-      {/* Soft ring around spotlight */}
       {hole && (
         <div
           className="pointer-events-none fixed z-[201] rounded-full border-2 border-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.45)] transition-all duration-500 ease-out"
@@ -246,7 +243,6 @@ export function OnboardingTour() {
         />
       )}
 
-      {/* Tooltip card */}
       <div
         className={cn(
           "rounded-2xl border border-white/15 bg-black/90 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl",
