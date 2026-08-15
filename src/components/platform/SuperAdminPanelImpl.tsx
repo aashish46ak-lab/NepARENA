@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { MessagesInbox } from "@/components/MessagesInbox";
 import { OrganizerRequestsPanel } from "@/components/platform/OrganizerRequestsPanel";
 import { GaAnalyticsDashboard } from "@/components/platform/GaAnalyticsDashboard";
+import { UserVerificationPanel } from "@/components/platform/UserVerificationPanel";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
@@ -139,7 +140,6 @@ export function SuperAdminPanelImpl() {
     );
   }
 
-  // Order: Overview → Messages → Analytics (GA) → rest
   const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "messages", label: "Messages", icon: MessageSquare },
@@ -232,7 +232,7 @@ export function SuperAdminPanelImpl() {
                     <BarChart data={barData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                       <XAxis dataKey="name" tick={{ fill: "#a3a3a3", fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "#a3a3a3", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <YAxis tick={{ fill: "#a3a3a3" fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
                       <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }} />
                       <Bar dataKey="value" fill="#38bdf8" radius={[8, 8, 0, 0]} />
                     </BarChart>
@@ -360,18 +360,11 @@ export function SuperAdminPanelImpl() {
         )}
 
         {tab === "users" && (
-          <Section title="Latest users">
-            <div className="overflow-hidden rounded-2xl border border-white/10">
-              {(stats?.recentUsers ?? []).map((u) => (
-                <Link key={u.id} to="/members/$id" params={{ id: u.id }} className="flex items-center gap-3 border-b border-white/5 px-4 py-3 last:border-0 hover:bg-white/[0.03]">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{u.full_name || u.username || "User"}</p>
-                    <p className="text-xs text-neutral-500">joined {new Date(u.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <ExternalLink className="h-4 w-4 text-neutral-600" />
-                </Link>
-              ))}
-            </div>
+          <Section title="Users · Verify blue tick">
+            <p className="mb-4 text-sm text-neutral-400">
+              Search any member and grant or remove the verified badge.
+            </p>
+            <UserVerificationPanel />
           </Section>
         )}
       </div>
