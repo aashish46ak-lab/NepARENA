@@ -167,3 +167,39 @@
 .pb-nav {
   padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
+
+
+/* Motion polish */
+@media (prefers-reduced-motion: no-preference) {
+  a, button {
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  }
+  button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .card-lift {
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-lift:active {
+    transform: scale(0.985);
+  }
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Feed / list entrance */
+@keyframes na-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .na-fade-up {
+    animation: na-fade-up 0.35s ease both;
+  }
+}
