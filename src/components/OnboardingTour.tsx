@@ -209,22 +209,28 @@ export function OnboardingTour() {
 
   return (
     <div className="fixed inset-0 z-[200]" aria-modal role="dialog">
-      {/* Dim overlay with circular spotlight cutout via box-shadow */}
+      {/* Full-viewport blur + dim base (under spotlight hole) */}
       <div
-        className="pointer-events-none fixed inset-0 transition-all duration-500 ease-out"
+        className="pointer-events-none fixed inset-0 bg-black/70 backdrop-blur-[4px] transition-opacity duration-500"
+        style={{ opacity: hole ? 1 : 1 }}
+      />
+      {/* Circular spotlight cutout — clears blur inside the hole via box-shadow mask */}
+      <div
+        className="pointer-events-none fixed transition-all duration-500 ease-out"
         style={
           hole
             ? {
                 background: "transparent",
-                boxShadow: `0 0 0 9999px rgba(0,0,0,0.72)`,
+                boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
                 borderRadius: "9999px",
                 left: hole.left,
                 top: hole.top,
                 width: hole.width,
                 height: hole.height,
                 position: "fixed",
+                zIndex: 1,
               }
-            : { background: "rgba(0,0,0,0.72)" }
+            : { display: "none" }
         }
       />
       {/* Soft ring around spotlight */}
@@ -249,47 +255,65 @@ export function OnboardingTour() {
         )}
         style={hole ? tooltipStyle : undefined}
       >
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-400">
-            {step + 1} / {total}
-          </span>
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-sky-400">
+              {step + 1} / {total}
+            </p>
+            <h3 className="mt-0.5 text-base font-semibold text-white">{current?.title}</h3>
+          </div>
           <button
             type="button"
             onClick={complete}
-            className="rounded-full p-1 text-neutral-400 hover:bg-white/10 hover:text-white"
-            aria-label="Skip tour"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
+            aria-label="Skip"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <h3 className="text-base font-bold text-white">{current.title}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-neutral-300">{current.body}</p>
+        <p className="text-sm leading-relaxed text-neutral-300">{current?.body}</p>
         <div className="mt-4 flex items-center justify-between gap-2">
           <Button
+            type="button"
             variant="ghost"
             size="sm"
-            className="rounded-full text-neutral-400 hover:text-white"
+            className="rounded-full text-neutral-400"
             disabled={step === 0}
             onClick={() => setStep((s) => Math.max(0, s - 1))}
           >
-            <ChevronLeft className="mr-1 h-4 w-4" /> Back
+            <ChevronLeft className="mr-0.5 h-4 w-4" /> Back
           </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" className="rounded-full text-neutral-400" onClick={complete}>
-              Skip
-            </Button>
+          <div className="flex gap-1">
+            {Array.from({ length: Math.min(total, 10) }).map((_, i) => (
+              <span
+                key={i}
+                className={cn("h-1.5 w-1.5 rounded-full transition", i === step ? "bg-sky-400" : "bg-white/20")}
+              />
+            ))}
+          </div>
+          {isLast ? (
             <Button
+              type="button"
               size="sm"
               className="rounded-full bg-sky-500 text-white hover:bg-sky-400"
-              onClick={() => {
-                if (isLast) setFinished(true);
-                else setStep((s) => s + 1);
-              }}
+              onClick={() => setFinished(true)}
             >
-              {isLast ? "Finish" : "Next"} <ChevronRight className="ml-1 h-4 w-4" />
+              Finish
             </Button>
-          </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-full bg-white text-black hover:bg-neutral-100"
+              onClick={() => setStep((s) => s + 1)}
+            >
+              Next <ChevronRight className="ml-0.5 h-4 w-4" />
+            </Button>
+          )}
         </div>
+        <button type="button" className="mt-2 w-full text-center text-xs text-neutral-500 hover:text-neutral-300" onClick={complete}>
+          Skip tour
+        </button>
       </div>
     </div>
   );
