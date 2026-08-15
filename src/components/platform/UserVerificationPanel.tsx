@@ -41,7 +41,7 @@ export function UserVerificationPanel() {
         .from("profiles")
         .select("id, full_name, username, avatar_url, is_verified, created_at")
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(400);
       if (error) {
         console.warn(error.message);
         return [] as Row[];
@@ -63,14 +63,24 @@ export function UserVerificationPanel() {
   }, [users, q]);
 
   const toggle = async (u: Row) => {
-    setBusyId(u.id);
     const next = !u.is_verified;
+    const label = u.full_name || u.username || "this user";
+    if (
+      !window.confirm(
+        next
+          ? `Grant verified blue tick to ${label}?`
+          : `Remove verified badge from ${label}?`,
+      )
+    ) {
+      return;
+    }
+    setBusyId(u.id);
     try {
       const res = await adminSetProfileVerified(u.id, next);
       if ((res as { error?: { message?: string } }).error) {
         throw new Error((res as { error: { message: string } }).error.message);
       }
-      toast.success(next ? "Verified" : "Verification removed");
+      toast.success(next ? "Verified ✓" : "Verification removed");
       void qc.invalidateQueries({ queryKey: ["admin_user_verify_list"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not update verification");
@@ -85,7 +95,7 @@ export function UserVerificationPanel() {
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
         <Input
           className="pl-9"
-          placeholder="Search by name, username…"
+          placeholder="Search by name or username…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -115,7 +125,9 @@ export function UserVerificationPanel() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="truncate font-medium text-white">{name}</p>
-                    {u.is_verified && <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" />}
+                    {u.is_verified && (
+                      <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" aria-label="Verified" />
+                    )}
                   </div>
                   <p className="truncate text-xs text-neutral-500">
                     {u.username ? `@${u.username}` : u.id.slice(0, 8)}
@@ -124,8 +136,12 @@ export function UserVerificationPanel() {
               </Link>
               <Button
                 size="sm"
-                variant="outline"
-                className="shrink-0 border-white/15"
+                variant={u.is_verified ? "outline" : "default"}
+                className={
+                  u.is_verified
+                    ? "shrink-0 border-white/15"
+                    : "shrink-0 bg-sky-500 text-white hover:bg-sky-400"
+                }
                 disabled={busyId === u.id}
                 onClick={() => void toggle(u)}
               >
