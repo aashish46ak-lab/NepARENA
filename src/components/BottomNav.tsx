@@ -1,5 +1,5 @@
 /**
- * Compact floating glass bottom nav — lifted ~0.5in from bottom.
+ * Compact floating glass bottom nav — levitated ~0.6in, slightly larger touch targets.
  * Island mode on organizer profiles, member profiles, tournaments, etc.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -102,8 +102,8 @@ export function BottomNav() {
       pathname.startsWith("/gallery") ||
       pathname.startsWith("/about"));
 
-  // ~0.5 inch lift from bottom edge
-  const bottomPad = "pb-[calc(0.75rem+12px+env(safe-area-inset-bottom,0px))]";
+  // Levitated ~0.6 inch from bottom for floating feel
+  const bottomPad = "pb-[calc(0.95rem+16px+env(safe-area-inset-bottom,0px))]";
 
   const navInner = (
     <>
@@ -114,27 +114,40 @@ export function BottomNav() {
           tab.to === "/profile" && user
             ? { to: "/members/$id" as const, params: { id: user.id } }
             : { to: tab.to };
+        const onboard =
+          tab.label === "Home"
+            ? "feed"
+            : tab.label === "Organizers"
+              ? "organizers"
+              : tab.label === "Messages"
+                ? "messages"
+                : tab.label === "Games"
+                  ? "games"
+                  : tab.label === "Profile"
+                    ? "profile"
+                    : undefined;
         return (
           <Link
             key={tab.label}
             {...(href as { to: string; params?: { id: string } })}
+            data-onboard={onboard}
             onClick={() => setIslandOpen(false)}
             className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-0 rounded-xl py-1.5 transition-all duration-200",
+              "relative flex flex-1 flex-col items-center justify-center gap-0 rounded-xl py-2 transition-all duration-200",
               active
                 ? "bg-white/10 text-white"
                 : "text-neutral-500 hover:bg-white/[0.04] hover:text-neutral-300",
             )}
           >
             <span className="relative">
-              <Icon className={cn("h-[18px] w-[18px]", active && "stroke-[2.25px]")} />
+              <Icon className={cn("h-[20px] w-[20px]", active && "stroke-[2.25px]")} />
               {"badge" in tab && tab.badge && msgUnread > 0 && (
                 <span className="absolute -right-1.5 -top-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-sky-500 px-0.5 text-[8px] font-bold text-white">
                   {msgUnread > 9 ? "9+" : msgUnread}
                 </span>
               )}
             </span>
-            <span className={cn("text-[9px] font-medium leading-tight", active ? "text-white" : "text-neutral-500")}>
+            <span className={cn("text-[10px] font-medium leading-tight", active ? "text-white" : "text-neutral-500")}>
               {tab.label}
             </span>
             {active && <span className="absolute -bottom-0.5 h-0.5 w-4 rounded-full bg-sky-400" />}
@@ -160,7 +173,7 @@ export function BottomNav() {
             <button
               type="button"
               onClick={() => setIslandOpen(true)}
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-[#121214]/92 shadow-[0_8px_28px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition hover:scale-105 active:scale-95"
+              className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-[#121214]/92 shadow-[0_8px_28px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition hover:scale-105 active:scale-95"
               aria-label="Open navigation"
             >
               <span className="flex gap-1">
@@ -170,7 +183,7 @@ export function BottomNav() {
               </span>
             </button>
           ) : (
-            <div className="flex w-[min(100vw-1.5rem,18rem)] items-stretch gap-0.5 rounded-[1.35rem] border border-white/12 bg-[#121214]/94 px-1 py-1 shadow-[0_8px_36px_rgba(0,0,0,0.55)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex w-[min(100vw-1.5rem,19rem)] items-stretch gap-0.5 rounded-[1.35rem] border border-white/12 bg-[#121214]/94 px-1 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200">
               {navInner}
             </div>
           )}
@@ -182,9 +195,9 @@ export function BottomNav() {
   return (
     <nav
       className={cn("pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3", bottomPad)}
-      aria-label="Main"
+      aria-label="Main" data-onboard="bottom-nav"
     >
-      <div className="pointer-events-auto flex w-full max-w-[20rem] items-stretch gap-0.5 rounded-[1.35rem] border border-white/12 bg-[#121214]/85 px-1 py-1 shadow-[0_8px_36px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+      <div className="pointer-events-auto flex w-full max-w-[21rem] items-stretch gap-0.5 rounded-[1.35rem] border border-white/12 bg-[#121214]/85 px-1 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
         {navInner}
       </div>
     </nav>
