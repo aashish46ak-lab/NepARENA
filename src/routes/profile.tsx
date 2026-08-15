@@ -38,9 +38,7 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !user) router.navigate({ to: "/auth" });
-  }, [loading, user, router]);
+  // Guest view when not signed in — no hard redirect
 
   useEffect(() => {
     if (!user) return;
@@ -146,9 +144,51 @@ function ProfilePage() {
     qc.invalidateQueries({ queryKey: ["member_profile"] });
   };
 
-  if (loading || !user || !row) {
+  if (loading) {
     return (
-      <PageShell>
+      <PageShell force="platform" hideChrome>
+        <div className="grid min-h-[60vh] place-items-center text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (!user) {
+    return (
+      <PageShell force="platform" hideChrome>
+        <div className="mx-auto max-w-lg px-3 pb-28 pt-3">
+          <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#121214]/90 shadow-2xl ring-1 ring-white/5">
+            <div className="relative h-32 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-40">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            </div>
+            <div className="relative px-4 pb-8">
+              <div className="-mt-12 h-24 w-24 rounded-full bg-neutral-800 ring-4 ring-[#121214]" />
+              <h1 className="mt-3 text-xl font-bold text-white">Guest</h1>
+              <p className="text-sm text-neutral-500">Sign in to unlock your profile</p>
+              <div className="mt-4 flex flex-wrap gap-6 text-sm text-neutral-400">
+                <span><strong className="text-white">0</strong> followers</span>
+                <span><strong className="text-white">0</strong> following</span>
+                <span><strong className="text-white">0</strong> posts</span>
+              </div>
+              <div className="mt-8 flex flex-col items-center gap-3">
+                <p className="text-center text-sm text-neutral-400">
+                  Create an account or sign in to post, follow organizers, and chat.
+                </p>
+                <Button asChild className="w-full max-w-xs rounded-full bg-sky-500 text-white hover:bg-sky-400">
+                  <Link to="/auth">Sign In / Register</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (!row) {
+    return (
+      <PageShell force="platform" hideChrome>
         <div className="grid min-h-[60vh] place-items-center text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
