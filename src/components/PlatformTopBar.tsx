@@ -48,7 +48,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
                 type="button"
                 onClick={openCreate}
                 className="grid h-9 w-9 place-items-center rounded-full text-neutral-200 transition hover:bg-white/10 active:scale-95"
-                aria-label="Create post"
+                aria-label="Create post" data-onboard="create-post"
                 data-tour="create-btn"
               >
                 <Plus className="h-6 w-6" strokeWidth={1.75} />
@@ -80,7 +80,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
           </div>
 
           <div className="flex min-w-[2.75rem] justify-end">
-            {showActions && user ? <NotificationsBell /> : <span className="w-9" />}
+            {showActions && user ? <span data-onboard="notifications" className="inline-flex"><NotificationsBell /></span> : <span className="w-9" />}
           </div>
         </div>
       </header>
