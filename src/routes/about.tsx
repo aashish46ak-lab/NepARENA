@@ -1,24 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { buildSeoHead } from "@/lib/seo";
 import { PageShell } from "@/components/PageShell";
 import { OrganizerSubnav } from "@/components/OrganizerSubnav";
-import { getOrganizerContext } from "@/lib/organizer-context";
+import { getOrganizerContext, setOrganizerContext } from "@/lib/organizer-context";
 import { getOrganizerBySlug, getFollowerCount } from "@/lib/organizers";
 import { supabase } from "@/lib/supabase";
 import { PlatformIcon } from "@/lib/platforms";
 import {
   Mail, Target, Eye, Sparkles, Trophy, Gamepad2, MessageCircle, Globe, Users,
-  MapPin, Calendar, Loader2, BadgeCheck,
+  Loader2, BadgeCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/about")({
+  validateSearch: (s: Record<string, unknown>): { org?: string } => ({
+    org: typeof s.org === "string" ? s.org : undefined,
+  }),
   head: () => ({
     ...buildSeoHead({
       title: "About — NepARENA",
-      description:
-        "About the organizer community or NepARENA platform.",
+      description: "About the organizer community or NepARENA platform.",
       path: "/about",
     }),
   }),
@@ -46,8 +49,9 @@ function Section({
 }
 
 function AboutPage() {
+  const search = Route.useSearch();
   const ctx = typeof window !== "undefined" ? getOrganizerContext() : null;
-  const slug = ctx?.slug;
+  const slug = search.org || ctx?.slug;
 
   if (slug) {
     return <OrganizerAbout slug={slug} />;
@@ -60,6 +64,17 @@ function OrganizerAbout({ slug }: { slug: string }) {
     queryKey: ["organizer_about", slug],
     queryFn: () => getOrganizerBySlug(slug),
   });
+
+  useEffect(() => {
+    if (org) {
+      setOrganizerContext({
+        slug: org.slug,
+        id: org.id,
+        name: org.name,
+        logo_url: org.logo_url,
+      });
+    }
+  }, [org?.id, org?.slug]);
 
   const { data: followers = 0 } = useQuery({
     queryKey: ["org_followers_about", org?.id],
@@ -77,6 +92,42 @@ function OrganizerAbout({ slug }: { slug: string }) {
         .eq("organizer_id", org!.id)
         .eq("is_published", true);
       return count ?? 0;
+    },
+  });
+
+  const { data: team = [] } = useQuery({
+    queryKey: ["org_team", org?.id],
+    enabled: !!org?.id,
+    queryFn: async () => {
+      const { data: members } = await supabase
+        .from("organizer_members")
+        .select("user_id, role")
+        .eq("organizer_id", org!.id)
+        .in("role", ["owner", "admin", "moderator"]);
+      const rows = (members ?? []) as { user_id: string; role: string }[];
+      if (!rows.length) return [] as { id: string; role: string; name: string; avatar: string | null }[];
+      const ids = rows.map((r) => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, avatar_url")
+        .in("id", ids);
+      const map = new Map(
+        ((profiles ?? []) as { id: string; username: string | null; full_name: string | null; avatar_url: string | null }[]).map(
+          (p) => [p.id, p],
+        ),
+      );
+      const order = { owner: 0, admin: 1, moderator: 2 } as Record<string, number>;
+      return rows
+        .map((r) => {
+          const p = map.get(r.user_id);
+          return {
+            id: r.user_id,
+            role: r.role,
+            name: (p?.full_name || p?.username || "Member").trim(),
+            avatar: p?.avatar_url ?? null,
+          };
+        })
+        .sort((a, b) => (order[a.role] ?? 9) - (order[b.role] ?? 9));
     },
   });
 
@@ -144,6 +195,35 @@ function OrganizerAbout({ slug }: { slug: string }) {
             value={org.created_at ? new Date(org.created_at).toLocaleDateString() : "—"}
           />
         </div>
+
+        {team.length > 0 && (
+          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">Admins & Moderators</h2>
+            <ul className="space-y-2">
+              {team.map((m) => (
+                <li key={m.id}>
+                  <Link
+                    to="/members/$id"
+                    params={{ id: m.id }}
+                    className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/20 px-3 py-2.5 transition hover:border-sky-400/30 hover:bg-sky-500/5"
+                  >
+                    {m.avatar ? (
+                      <img src={m.avatar} alt="" className="h-9 w-9 rounded-full object-cover ring-1 ring-white/15" />
+                    ) : (
+                      <span className="grid h-9 w-9 place-items-center rounded-full bg-neutral-700 text-xs font-bold text-white">
+                        {m.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-white">{m.name}</p>
+                      <p className="text-[11px] capitalize text-neutral-500">{m.role}</p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {(org.contact_email || socials.length > 0) && (
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
