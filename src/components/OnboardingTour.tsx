@@ -2,7 +2,7 @@
  * First-login spotlight tour — circular hole + dim overlay + tooltips.
  * Persisted in localStorage so it runs once per browser.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -197,7 +197,7 @@ export function OnboardingTour() {
     );
   }
 
-  const tooltipStyle: React.CSSProperties = hole
+  const tooltipStyle: CSSProperties = hole
     ? {
         position: "fixed",
         left: Math.min(Math.max(16, hole.left + hole.width / 2 - 160), window.innerWidth - 336),
@@ -207,42 +207,41 @@ export function OnboardingTour() {
       }
     : {};
 
+  // Radial mask: clear circle (transparent) over target, dim+blur everywhere else
+  const maskStyle: CSSProperties | undefined = hole
+    ? (() => {
+        const cx = hole.left + hole.width / 2;
+        const cy = hole.top + hole.height / 2;
+        const r = Math.max(hole.width, hole.height) / 2;
+        const soft = Math.max(8, r * 0.12);
+        return {
+          maskImage: `radial-gradient(circle ${r}px at ${cx}px ${cy}px, transparent ${r - soft}px, black ${r}px)`,
+          WebkitMaskImage: `radial-gradient(circle ${r}px at ${cx}px ${cy}px, transparent ${r - soft}px, black ${r}px)`,
+        };
+      })()
+    : undefined;
+
   return (
     <div className="fixed inset-0 z-[200]" aria-modal role="dialog">
+      {/* Dim + blur overlay with circular hole punched through via CSS mask */}
       <div
-        className="pointer-events-none fixed inset-0 bg-black/75 backdrop-blur-md transition-opacity duration-500"
-        style={{ opacity: hole ? 1 : 1 }}
+        className="pointer-events-none fixed inset-0 bg-black/72 backdrop-blur-md transition-all duration-500 ease-out"
+        style={maskStyle}
       />
-      <div
-        className="pointer-events-none fixed transition-all duration-500 ease-out"
-        style={
-          hole
-            ? {
-                background: "transparent",
-                boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
-                borderRadius: "9999px",
-                left: hole.left,
-                top: hole.top,
-                width: hole.width,
-                height: hole.height,
-                position: "fixed",
-                zIndex: 1,
-              }
-            : { display: "none" }
-        }
-      />
+      {/* Soft ring around spotlight */}
       {hole && (
         <div
-          className="pointer-events-none fixed z-[201] rounded-full border-2 border-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.45)] transition-all duration-500 ease-out"
+          className="pointer-events-none fixed z-[201] rounded-full border-2 border-sky-400/85 shadow-[0_0_28px_rgba(56,189,248,0.5)] transition-all duration-500 ease-out"
           style={{
-            left: hole.left - 3,
-            top: hole.top - 3,
-            width: hole.width + 6,
-            height: hole.height + 6,
+            left: hole.left - 4,
+            top: hole.top - 4,
+            width: hole.width + 8,
+            height: hole.height + 8,
           }}
         />
       )}
 
+      {/* Tooltip card */}
       <div
         className={cn(
           "rounded-2xl border border-white/15 bg-black/90 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl",
