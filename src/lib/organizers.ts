@@ -188,7 +188,7 @@ export async function getFollowerCount(organizerId: string): Promise<number> {
 export async function followOrganizer(organizerId: string, userId: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user || auth.user.id !== userId) {
-    return { error: { message: "Unauthorized" } as const;
+    return { error: { message: "Unauthorized" } } as const;
   }
   const rpc = await supabase.rpc("secure_follow_organizer", {
     p_organizer_id: organizerId,
