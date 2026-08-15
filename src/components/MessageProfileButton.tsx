@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, MessageCircle, Send } from "lucide-react";
 import { toast } from "sonner";
 
-/** Compose first message on profile — creates conversation only on Send */
+/** Profile Message — open existing chat or compose first message */
 export function MessageProfileButton({
   peerId,
   peerName,
@@ -29,40 +29,36 @@ export function MessageProfileButton({
 
   if (!user || user.id === peerId) return null;
 
-  const send = async () => {
-    if (!body.trim() || busy) return;
+  const openChat = async (withMessage?: string) => {
     setBusy(true);
     try {
       const cid = await getOrCreateDm(peerId);
       if (!cid) {
-        // Last resort: open Messages with peer so user can retry from inbox
-        toast.error("Could not start chat — opening Messages");
-        setOpen(false);
-        void navigate({ to: "/messages", search: { with: peerId } });
-        return;
+        toast.error("Could not start chat. Check your connection and try again.");
+        return null;
       }
-      const res = await sendDmMessage({
-        conversationId: cid,
-        senderId: user.id,
-        body: body.trim(),
-      });
-      if (res.error) {
-        // Still open the thread so user can retry
-        toast.error(res.error || "Send failed — you can retry in chat");
-        setOpen(false);
-        void navigate({ to: "/messages", search: { c: cid, with: peerId } });
-        return;
+      if (withMessage?.trim()) {
+        const res = await sendDmMessage({
+          conversationId: cid,
+          senderId: user.id,
+          body: withMessage.trim(),
+        });
+        if (res.error) {
+          toast.error(res.error);
+        }
       }
       setOpen(false);
       setBody("");
-      toast.success("Message sent");
       void navigate({ to: "/messages", search: { c: cid, with: peerId } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Send failed");
-      void navigate({ to: "/messages", search: { with: peerId } });
+      return cid;
     } finally {
       setBusy(false);
     }
+  };
+
+  const send = async () => {
+    if (!body.trim() || busy) return;
+    await openChat(body);
   };
 
   return (
@@ -71,9 +67,15 @@ export function MessageProfileButton({
         size="sm"
         variant="outline"
         className="border-white/15"
+        disabled={busy}
         onClick={() => setOpen(true)}
       >
-        <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> Message
+        {busy ? (
+          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <MessageCircle className="mr-1.5 h-3.5 w-3.5" />
+        )}
+        Message
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="border-white/10 bg-[#111] sm:max-w-md">
@@ -85,27 +87,38 @@ export function MessageProfileButton({
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your first message…"
+            placeholder="Write a message (optional)…"
             className="min-h-[100px] resize-none border-white/10 bg-black/40"
             maxLength={2000}
             autoFocus
           />
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-neutral-500">{body.length}/2000</span>
+          <div className="flex items-center justify-between gap-2">
             <Button
               size="sm"
-              disabled={busy || !body.trim()}
-              onClick={() => void send()}
-              className="bg-sky-500 text-white hover:bg-sky-400"
+              variant="ghost"
+              disabled={busy}
+              className="text-neutral-300"
+              onClick={() => void openChat()}
             >
-              {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <>
-                  <Send className="mr-1.5 h-3.5 w-3.5" /> Send
-                </>
-              )}
+              Open chat
             </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-neutral-500">{body.length}/2000</span>
+              <Button
+                size="sm"
+                disabled={busy || !body.trim()}
+                onClick={() => void send()}
+                className="bg-sky-500 text-white hover:bg-sky-400"
+              >
+                {busy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="mr-1.5 h-3.5 w-3.5" /> Send
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
           <p className="text-[11px] text-neutral-500">
             If they don’t follow you, this goes to their Message Requests.
