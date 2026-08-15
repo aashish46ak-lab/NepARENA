@@ -11,6 +11,7 @@ export type DmThread = {
   status: "active" | "request" | "declined" | "blocked";
   initiated_by: string | null;
   peer_streak?: number;
+  peer_verified?: boolean;
   is_group?: boolean;
   title?: string | null;
   member_count?: number;
@@ -37,15 +38,90 @@ export type UserNote = {
   avatar?: string | null;
 };
 
+/** Create or resume 1:1 DM — RPC first, then client fallback (fixes profile Message failures). */
 export async function getOrCreateDm(peerId: string): Promise<string | null> {
+  if (!peerId) return null;
+
   const { data, error } = await supabase.rpc("get_or_create_dm", {
     other_user: peerId,
   });
-  if (error) {
-    console.warn("get_or_create_dm", error.message);
+  if (!error && data) return data as string;
+
+  // Fallback path when RPC missing / RLS / schema drift
+  const { data: auth } = await supabase.auth.getUser();
+  const me = auth.user?.id;
+  if (!me || me === peerId) return null;
+
+  try {
+    const { data: myRows } = await supabase
+      .from("dm_members")
+      .select("conversation_id")
+      .eq("user_id", me);
+    const myConvIds = (myRows ?? []).map((r: { conversation_id: string }) => r.conversation_id);
+
+    if (myConvIds.length) {
+      const { data: peerRows } = await supabase
+        .from("dm_members")
+        .select("conversation_id")
+        .eq("user_id", peerId)
+        .in("conversation_id", myConvIds);
+      const shared = (peerRows ?? []).map((r: { conversation_id: string }) => r.conversation_id);
+      if (shared.length) {
+        const { data: convs } = await supabase
+          .from("dm_conversations")
+          .select("id, is_group, status")
+          .in("id", shared);
+        const oneToOne = (convs ?? []).find(
+          (c: { id: string; is_group?: boolean | null }) => !c.is_group,
+        );
+        if (oneToOne?.id) return oneToOne.id as string;
+      }
+    }
+
+    const { data: conv, error: cErr } = await supabase
+      .from("dm_conversations")
+      .insert({
+        status: "request",
+        initiated_by: me,
+        is_group: false,
+        created_by: me,
+      })
+      .select("id")
+      .single();
+
+    if (cErr || !conv) {
+      // Retry without optional columns
+      const { data: conv2, error: cErr2 } = await supabase
+        .from("dm_conversations")
+        .insert({ status: "request", initiated_by: me })
+        .select("id")
+        .single();
+      if (cErr2 || !conv2) {
+        console.warn("getOrCreateDm fallback", cErr2?.message || cErr?.message || error?.message);
+        return null;
+      }
+      await supabase.from("dm_members").upsert(
+        [
+          { conversation_id: conv2.id, user_id: me },
+          { conversation_id: conv2.id, user_id: peerId },
+        ],
+        { onConflict: "conversation_id,user_id" },
+      );
+      return conv2.id as string;
+    }
+
+    await supabase.from("dm_members").upsert(
+      [
+        { conversation_id: conv.id, user_id: me },
+        { conversation_id: conv.id, user_id: peerId },
+      ],
+      { onConflict: "conversation_id,user_id" },
+    );
+    return conv.id as string;
+  } catch (e) {
+    console.warn("getOrCreateDm", e);
     return null;
   }
-  return (data as string) ?? null;
 }
 
 export async function acceptDmRequest(conversationId: string): Promise<boolean> {
@@ -123,7 +199,7 @@ export async function listDmThreads(userId: string): Promise<DmThread[]> {
   const { data: profiles } = peerIds.length
     ? await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url, login_streak")
+        .select("id, username, full_name, avatar_url, login_streak, is_verified")
         .in("id", peerIds)
     : { data: [] as any[] };
 
@@ -183,6 +259,7 @@ export async function listDmThreads(userId: string): Promise<DmThread[]> {
       status: st?.status ?? "active",
       initiated_by: st?.initiated_by ?? null,
       peer_streak: Number(prof?.login_streak ?? 0),
+      peer_verified: !!prof?.is_verified,
       is_group: isGroup,
       title: st?.title ?? null,
       member_count: memberIds.length + 1,
@@ -229,7 +306,6 @@ export async function sendDmMessage(opts: {
     .update({ updated_at: new Date().toISOString() })
     .eq("id", opts.conversationId);
 
-  // Notify other members (in-app + phone push via edge function)
   try {
     const [{ data: members }, { data: senderProf }] = await Promise.all([
       supabase
@@ -313,7 +389,6 @@ export function formatMsgTime(iso: string | null): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-/** Instagram-style notes (24h) */
 export async function getMyNote(userId: string): Promise<UserNote | null> {
   const { data } = await supabase
     .from("user_notes")
@@ -367,7 +442,6 @@ export async function listFriendNotes(peerIds: string[]): Promise<UserNote[]> {
   });
 }
 
-/** Soft-delete (unsend) own message */
 export async function deleteDmMessage(messageId: string): Promise<{ error?: string }> {
   const { data, error } = await supabase.rpc("soft_delete_dm_message", {
     p_message_id: messageId,
@@ -384,7 +458,6 @@ export async function deleteDmMessage(messageId: string): Promise<{ error?: stri
   return {};
 }
 
-/** Platform admin hard-delete any DM message */
 export async function adminDeleteDmMessage(messageId: string): Promise<{ error?: string }> {
   const { data, error } = await supabase.rpc("admin_delete_dm_message", {
     p_message_id: messageId,
@@ -394,7 +467,6 @@ export async function adminDeleteDmMessage(messageId: string): Promise<{ error?:
   return {};
 }
 
-/** Edit own message text */
 export async function editDmMessage(
   messageId: string,
   body: string,
@@ -417,7 +489,6 @@ export async function editDmMessage(
   return {};
 }
 
-/** Create group chat — needs at least 2 other user ids (3 total) */
 export async function createGroupChat(
   title: string,
   memberIds: string[],
