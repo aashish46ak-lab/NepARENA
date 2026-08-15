@@ -15,6 +15,8 @@ import {
   unfollowOrganizer,
   getFollowerCount,
 } from "@/lib/organizers";
+import { listOrganizerTeam } from "@/lib/organizer-team";
+import { absImage, absUrl } from "@/lib/seo";
 import {
   setOrganizerContext,
   setOrganizerThemeContext,
@@ -23,7 +25,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Loader2, Users, Bell, BellOff, Share2, History, Image, Info, Swords, Medal, Megaphone, Pin, ArrowLeft, ChevronRight,
+  Loader2, Users, Bell, BellOff, Share2, History, Image, Info, Swords, Medal, Megaphone, Pin, ArrowLeft, ChevronRight, MessagesSquare, BadgeCheck, Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
@@ -37,26 +39,44 @@ export const Route = createFileRoute("/o/$slug")({
     return { org };
   },
   head: ({ params, loaderData }) => {
-    const org = loaderData?.org as { name?: string; description?: string | null; tagline?: string | null; logo_url?: string | null; banner_url?: string | null } | null | undefined;
+    const org = loaderData?.org as {
+      name?: string;
+      description?: string | null;
+      tagline?: string | null;
+      logo_url?: string | null;
+      banner_url?: string | null;
+    } | null | undefined;
     const name = org?.name ?? params.slug;
-    const desc = org?.description || org?.tagline || `${name} — organizer on NepARENA`;
-    const rawImg = org?.logo_url || org?.banner_url || "https://neparena.xyz/neparena-logo.png";
-    const image = rawImg.startsWith("http") ? rawImg : `https://neparena.xyz${rawImg.startsWith("/") ? "" : "/"}${rawImg}`;
-    const url = `https://neparena.xyz/o/${params.slug}`;
+    const desc =
+      org?.description ||
+      org?.tagline ||
+      `${name} — organizer on NepARENA. Follow for tournaments, community and updates.`;
+    const image = absImage(org?.logo_url || org?.banner_url);
+    const url = absUrl(`/o/${params.slug}`);
+    const title = `${name} — NepARENA`;
     return {
       meta: [
-        { title: `${name} — NepARENA` },
+        { title },
         { name: "description", content: desc },
-        { property: "og:title", content: name },
+        { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:image", content: image },
+        { property: "og:image:secure_url", content: image },
+        { property: "og:image:alt", content: `${name} logo` },
+        { property: "og:image:type", content: "image/png" },
+        { property: "og:image:width", content: "512" },
+        { property: "og:image:height", content: "512" },
         { property: "og:url", content: url },
-        { property: "og:type", content: "website" },
+        { property: "og:type", content: "profile" },
         { property: "og:site_name", content: "NepARENA" },
-        { name: "twitter:card", content: "summary" },
-        { name: "twitter:title", content: name },
+        { property: "og:locale", content: "en_NP" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: desc },
         { name: "twitter:image", content: image },
+        { name: "twitter:image:alt", content: `${name} logo` },
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: OrganizerPublicPage,
@@ -96,6 +116,12 @@ function OrganizerPublicPage() {
     queryKey: ["org_followers", organizer?.id],
     enabled: !!organizer?.id,
     queryFn: () => getFollowerCount(organizer!.id),
+  });
+
+  const { data: team = [] } = useQuery({
+    queryKey: ["organizer_team", organizer?.id],
+    enabled: !!organizer?.id,
+    queryFn: () => listOrganizerTeam(organizer!.id),
   });
 
   const { data: tournaments = [] } = useQuery({
@@ -225,13 +251,13 @@ function OrganizerPublicPage() {
   const logo = organizer.logo_url || site?.logo_url || null;
   const description = organizer.description || organizer.tagline || site?.about_short || site?.tagline || "Competitive esports community on NepARENA.";
 
-  const navItems = [
-    { label: "Tournaments", desc: "Fixtures, standings & registration", to: "/tournaments" as const, icon: Swords },
-    { label: "Hall of Fame", desc: "Champions & legends", to: "/hall-of-fame" as const, icon: Medal },
-    { label: "History", desc: "Past seasons & winners", to: "/history" as const, icon: History },
-    { label: "Gallery", desc: "Photos & highlights", to: "/gallery" as const, icon: Image },
-    { label: "Members", desc: "Players in this community", to: "/members" as const, icon: Users },
-    { label: "About", desc: "Story & contact", to: "/about" as const, icon: Info },
+  const navItems: { label: string; desc: string; to: "/tournaments" | "/hall-of-fame" | "/history" | "/gallery" | "/members" | "/about"; icon: typeof Swords; withOrg?: boolean }[] = [
+    { label: "Tournaments", desc: "Fixtures, standings & registration", to: "/tournaments", icon: Swords },
+    { label: "Hall of Fame", desc: "Champions & legends", to: "/hall-of-fame", icon: Medal },
+    { label: "History", desc: "Past seasons & winners", to: "/history", icon: History },
+    { label: "Gallery", desc: "Photos & highlights", to: "/gallery", icon: Image },
+    { label: "Members", desc: "Players in this community", to: "/members", icon: Users },
+    { label: "About", desc: "Story & contact", to: "/about", icon: Info, withOrg: true },
   ];
 
   return (
@@ -267,6 +293,9 @@ function OrganizerPublicPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <OrganizerChatFab organizerId={organizer.id} organizerName={organizer.name} organizerLogo={logo} />
+                  <Button size="sm" variant="outline" className="border-white/15" asChild>
+                    <Link to="/messages"><MessagesSquare className="mr-1.5 h-3.5 w-3.5" /> Group Chat</Link>
+                  </Button>
                   <Button size="sm" variant="outline" className="border-white/15" onClick={() => void share()}><Share2 className="mr-1.5 h-3.5 w-3.5" /> Share</Button>
                   <Button size="sm" className={following ? "bg-white/10 text-white hover:bg-white/15" : ""} style={following ? undefined : { background: theme.cover, color: "#0a0a0a" }} disabled={followBusy} onClick={() => void toggleFollow()}>
                     {followBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : following ? <><BellOff className="mr-1.5 h-3.5 w-3.5" /> Following</> : <><Bell className="mr-1.5 h-3.5 w-3.5" /> Follow</>}
@@ -313,28 +342,6 @@ function OrganizerPublicPage() {
 
           <PendingMatchesPanel />
 
-          <section>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Explore</h2>
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/25">
-              {navItems.map((item, i) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex items-center gap-3 px-4 py-3.5 transition hover:bg-white/[0.04] ${i > 0 ? "border-t border-white/8" : ""}`}
-                >
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.06] ring-1 ring-white/10">
-                    <item.icon className="h-4.5 w-4.5 text-neutral-100" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-white">{item.label}</span>
-                    <span className="block text-[11px] text-neutral-500">{item.desc}</span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-neutral-600" />
-                </Link>
-              ))}
-            </div>
-          </section>
-
           {tournaments.length > 0 && (
             <div>
               <div className="mb-3 flex items-center justify-between">
@@ -366,6 +373,69 @@ function OrganizerPublicPage() {
               </div>
             </div>
           )}
+
+          {team.length > 0 && (
+            <section className="animate-in fade-in duration-300">
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                <Shield className="h-3.5 w-3.5" /> Owner & team
+              </h2>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {team.map((m) => {
+                  const name = m.full_name?.trim() || m.username?.trim() || "Member";
+                  const roleLabel = m.role === "owner" ? "Owner" : m.role === "admin" ? "Admin" : "Moderator";
+                  return (
+                    <Link
+                      key={`${m.user_id}-${m.role}`}
+                      to="/members/$id"
+                      params={{ id: m.user_id }}
+                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 transition hover:border-white/20 hover:bg-black/35"
+                    >
+                      {m.avatar_url ? (
+                        <img src={m.avatar_url} alt="" className="h-11 w-11 rounded-full object-cover ring-1 ring-white/10" />
+                      ) : (
+                        <div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-sky-600 to-violet-700 text-xs font-bold text-white">
+                          {name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <p className="truncate text-sm font-semibold text-white">{name}</p>
+                          {m.is_verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-400" />}
+                        </div>
+                        <p className="text-[11px] text-neutral-500">
+                          {roleLabel}
+                          {m.username ? ` · @${m.username}` : ""}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Explore</h2>
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+              {navItems.map((item, i) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  search={item.withOrg ? { org: slug } : undefined}
+                  className={`flex items-center gap-3 px-4 py-3.5 transition hover:bg-white/[0.04] ${i > 0 ? "border-t border-white/8" : ""}`}
+                >
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.06] ring-1 ring-white/10">
+                    <item.icon className="h-4.5 w-4.5 text-neutral-100" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-white">{item.label}</span>
+                    <span className="block text-[11px] text-neutral-500">{item.desc}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-neutral-600" />
+                </Link>
+              ))}
+            </div>
+          </section>
 
           {communityLinks.length > 0 && (
             <section>
