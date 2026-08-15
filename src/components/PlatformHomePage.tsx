@@ -8,7 +8,8 @@ import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { SocialFeed } from "@/components/SocialFeed";
 import { StreakAssistant } from "@/components/StreakAssistant";
 import { CreatePostModal } from "@/components/CreatePostModal";
-import { Newspaper, Info, Users } from "lucide-react";
+import { Newspaper, Info, Users, MessageCircle, Trophy, Swords } from "lucide-react";
+import { StoriesRow } from "@/components/StoriesRow";
 import { cn } from "@/lib/utils";
 
 export function PlatformHomePage() {
@@ -35,6 +36,10 @@ export function PlatformHomePage() {
       <PlatformTopBar showLogo onCreatePost={() => setPostOpen(true)} />
       <StreakAssistant />
 
+      <div className="mx-auto max-w-md px-3 pt-2">
+        <StoriesRow />
+      </div>
+
       <div
         className={cn(
           "sticky top-12 z-30 border-b border-white/5 bg-[#0a0a0a]/85 backdrop-blur-md transition-all duration-300",
@@ -42,20 +47,41 @@ export function PlatformHomePage() {
         )}
         data-tour="about-members"
       >
-        <div className="mx-auto flex max-w-3xl gap-2 px-4 py-2">
+        <div className="mx-auto flex max-w-3xl gap-1.5 overflow-x-auto px-3 py-2 scrollbar-none">
           <Link
-            to="/about"
-            className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
+            to="/messages"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/20"
           >
-            <Info className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-            About Us
+            <MessageCircle className="h-3.5 w-3.5" />
+            Messages
           </Link>
           <Link
             to="/members"
-            className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-white"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
           >
-            <Users className="h-3.5 w-3.5 shrink-0 text-sky-400" />
-            Members
+            <Users className="h-3.5 w-3.5 text-sky-400" />
+            Players
+          </Link>
+          <Link
+            to="/tournaments"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+          >
+            <Swords className="h-3.5 w-3.5 text-sky-400" />
+            Tournaments
+          </Link>
+          <Link
+            to="/about"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+          >
+            <Info className="h-3.5 w-3.5 text-sky-400" />
+            Organizers
+          </Link>
+          <Link
+            to="/hall-of-fame"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+          >
+            <Trophy className="h-3.5 w-3.5 text-amber-400" />
+            Hall of Fame
           </Link>
         </div>
       </div>
