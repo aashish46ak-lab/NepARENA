@@ -8,6 +8,9 @@ import { buildSeoHead } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/feed")({
+  validateSearch: (s: Record<string, unknown>): { post?: string } => ({
+    post: typeof s.post === "string" ? s.post : undefined,
+  }),
   head: () => ({
     ...buildSeoHead({
       title: "Feed — NepARENA",
@@ -20,6 +23,7 @@ export const Route = createFileRoute("/feed")({
 
 function FeedPage() {
   const [tab, setTab] = useState<"for_you" | "following">("for_you");
+  const { post: focusPostId } = Route.useSearch();
 
   return (
     <PageShell force="platform" hideChrome>
@@ -47,7 +51,7 @@ function FeedPage() {
             </button>
           ))}
         </div>
-        <SocialFeed mode={tab} hideComposer />
+        <SocialFeed mode={tab} hideComposer focusPostId={focusPostId} />
       </div>
     </PageShell>
   );

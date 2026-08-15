@@ -8,9 +8,24 @@ export type StreakResult = {
   error?: string;
 };
 
-/** Record today's login and return updated streak (server-side calendar logic). */
+/** Browser IANA timezone — used so midnight is the user's local country time. */
+export function detectUserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kathmandu";
+  } catch {
+    return "Asia/Kathmandu";
+  }
+}
+
+/** Record today's login using the user's local timezone calendar day. */
 export async function recordLoginStreak(): Promise<StreakResult> {
-  const { data, error } = await supabase.rpc("record_login_streak");
+  const tz = detectUserTimezone();
+  let { data, error } = await supabase.rpc("record_login_streak", { p_tz: tz });
+  if (error) {
+    const retry = await supabase.rpc("record_login_streak");
+    data = retry.data;
+    error = retry.error;
+  }
   if (error) {
     return { ok: false, streak: 0, longest: 0, error: error.message };
   }
