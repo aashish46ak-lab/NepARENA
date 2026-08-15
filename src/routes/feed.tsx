@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { SocialFeed } from "@/components/SocialFeed";
+import { StoriesRow } from "@/components/StoriesRow";
 import { buildSeoHead } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ function FeedPage() {
     <PageShell force="platform" hideChrome>
       <PlatformTopBar showLogo={false} pageTitle="Feed" />
       <div className="mx-auto max-w-md px-3 pb-28 pt-3">
+        <StoriesRow className="mb-3" />
         <div className="mb-4 flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
           {(
             [
