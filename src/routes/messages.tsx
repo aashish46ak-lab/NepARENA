@@ -15,7 +15,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ImagePlus, Loader2, Mic, Plus, Search, Send, Square, Trash2, Users } from "lucide-react";
+import {
+  ArrowLeft, ImagePlus, Loader2, Mic, MoreVertical, Plus, Search, Send,
+  Square, StickyNote, Trash2, UserPlus, Users, X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { uploadPublicImage } from "@/lib/upload";
 
@@ -36,6 +39,8 @@ export const Route = createFileRoute("/messages")({
 
 const REACTIONS = ["❤️", "👍", "😂", "😮", "🔥", "⚽"];
 
+type FriendOpt = { id: string; name: string; avatar: string | null };
+
 function MessagesPage() {
   const { user, profile } = useAuth();
   const navigate = useNavigate({ from: "/messages" });
@@ -52,16 +57,22 @@ function MessagesPage() {
   const [myNote, setMyNoteState] = useState<UserNote | null>(null);
   const [friendNotes, setFriendNotes] = useState<UserNote[]>([]);
   const [noteDraft, setNoteDraft] = useState("");
+  const [ownMenuOpen, setOwnMenuOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState("");
-  const [groupMembers, setGroupMembers] = useState("");
+  const [friends, setFriends] = useState<FriendOpt[]>([]);
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [threadMenuId, setThreadMenuId] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [longPressMsgId, setLongPressMsgId] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const recordStartedAt = useRef(0);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const inbox = useMemo(() => threads.filter((t) => t.status === "active"), [threads]);
   const requests = useMemo(() => threads.filter((t) => t.status === "request"), [threads]);
@@ -82,6 +93,33 @@ function MessagesPage() {
   const reloadThreads = async () => {
     if (!user) return;
     setThreads(await listDmThreads(user.id));
+  };
+
+  const loadFriends = async () => {
+    if (!user) return;
+    const { data: fl } = await supabase
+      .from("user_follows")
+      .select("following_id")
+      .eq("follower_id", user.id)
+      .limit(80);
+    const ids = (fl ?? []).map((r: { following_id: string }) => r.following_id);
+    if (!ids.length) {
+      setFriends([]);
+      return;
+    }
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, avatar_url")
+      .in("id", ids);
+    setFriends(
+      ((profs ?? []) as { id: string; username: string | null; full_name: string | null; avatar_url: string | null }[]).map(
+        (p) => ({
+          id: p.id,
+          name: (p.full_name || p.username || "Player").trim(),
+          avatar: p.avatar_url,
+        }),
+      ),
+    );
   };
 
   useEffect(() => {
@@ -138,6 +176,7 @@ function MessagesPage() {
   const openThread = (id: string) => {
     setActiveId(id);
     setMobileChat(true);
+    setThreadMenuId(null);
     void navigate({ search: { c: id } });
   };
 
@@ -222,30 +261,84 @@ function MessagesPage() {
   const removeMessage = async (id: string) => {
     const res = await deleteDmMessage(id);
     if (res.error) toast.error(res.error);
-    else setMessages((prev) => prev.filter((m) => m.id !== id));
+    else {
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      setLongPressMsgId(null);
+      toast.success("Deleted");
+    }
+  };
+
+  const deleteChat = async (conversationId: string) => {
+    if (!user) return;
+    setThreadMenuId(null);
+    const ok = window.confirm("Delete this chat from your inbox?");
+    if (!ok) return;
+    await declineDmRequest(conversationId);
+    await supabase.from("dm_members").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
+    if (activeId === conversationId) {
+      setActiveId(null);
+      setMobileChat(false);
+      void navigate({ search: {} });
+    }
+    await reloadThreads();
+    toast.success("Chat removed");
+  };
+
+  const openCreateGroup = async () => {
+    setGroupOpen(true);
+    setSelectedFriends([]);
+    setGroupTitle("");
+    await loadFriends();
   };
 
   const submitGroup = async () => {
     if (!user || busy) return;
-    const ids = groupMembers
-      .split(/[,\s]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (ids.length < 2) {
-      toast.error("Add at least 2 member user IDs");
+    if (selectedFriends.length < 2) {
+      toast.error("Select at least 2 friends");
       return;
     }
     setBusy(true);
-    const res = await createGroupChat(groupTitle.trim() || "Group", ids);
+    const res = await createGroupChat(groupTitle.trim() || "Group", selectedFriends);
     setBusy(false);
     if (res.error) toast.error(res.error);
     else {
       toast.success("Group created");
       setGroupOpen(false);
       setGroupTitle("");
-      setGroupMembers("");
+      setSelectedFriends([]);
       await reloadThreads();
       if (res.id) openThread(res.id);
+    }
+  };
+
+  const inviteToGroup = async () => {
+    if (!user || !activeId || !selectedFriends.length) return;
+    setBusy(true);
+    try {
+      for (const uid of selectedFriends) {
+        await supabase.from("dm_members").upsert(
+          { conversation_id: activeId, user_id: uid },
+          { onConflict: "conversation_id,user_id" },
+        );
+      }
+      toast.success("Invited");
+      setInviteOpen(false);
+      setSelectedFriends([]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Invite failed");
+    }
+    setBusy(false);
+  };
+
+  const saveNote = async () => {
+    if (!user || !noteDraft.trim()) return;
+    const res = await setMyNote(user.id, noteDraft.trim());
+    if (res.error) toast.error(res.error);
+    else {
+      setMyNoteState(await getMyNote(user.id));
+      setNoteOpen(false);
+      setNoteDraft("");
+      toast.success("Note set (24h)");
     }
   };
 
@@ -255,7 +348,7 @@ function MessagesPage() {
     return Number.isFinite(n) ? n : null;
   };
 
-  const initials = (profile?.username || "U").slice(0, 2).toUpperCase();
+  const noteFor = (userId: string) => friendNotes.find((n) => n.user_id === userId);
 
   if (!user) {
     return (
@@ -274,11 +367,103 @@ function MessagesPage() {
         <header className="z-40 shrink-0 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-md">
           <div className="mx-auto flex h-12 max-w-5xl items-center justify-between gap-2 px-3">
             <h1 className="text-[15px] font-semibold text-white">Messages</h1>
-            <Button type="button" size="sm" variant="outline" className="h-8 rounded-full border-white/15 text-xs" onClick={() => setGroupOpen(true)}>
+            <Button type="button" size="sm" variant="outline" className="h-8 rounded-full border-white/15 text-xs" onClick={() => void openCreateGroup()}>
               <Users className="mr-1 h-3.5 w-3.5" /> Group
             </Button>
           </div>
         </header>
+
+        {/* Chat heads row — stays above list, bounded */}
+        <div className="mx-auto w-full max-w-5xl shrink-0 border-b border-white/5 px-2 py-2 sm:px-4">
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+            {/* Own head — Note / Story */}
+            <button
+              type="button"
+              onClick={() => setOwnMenuOpen((v) => !v)}
+              className="relative flex w-16 shrink-0 flex-col items-center gap-1"
+            >
+              <div className="relative">
+                <Avatar className="h-14 w-14 ring-2 ring-sky-500/50">
+                  <AvatarImage src={profile?.avatar_url ?? undefined} />
+                  <AvatarFallback>{(profile?.username || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full bg-sky-500 text-white ring-2 ring-[#0a0a0a]">
+                  <Plus className="h-3 w-3" />
+                </span>
+              </div>
+              <span className="w-full truncate text-center text-[10px] text-neutral-400">Your note</span>
+              {myNote && (
+                <span className="absolute -top-1 left-1/2 z-10 max-w-[72px] -translate-x-1/2 truncate rounded-full bg-white px-1.5 py-0.5 text-[9px] font-medium text-black shadow">
+                  {myNote.body}
+                </span>
+              )}
+            </button>
+            {chatHeads.map((t) => {
+              const n = noteFor(t.peer_id);
+              return (
+                <button
+                  key={t.conversation_id}
+                  type="button"
+                  onClick={() => openThread(t.conversation_id)}
+                  className="relative flex w-16 shrink-0 flex-col items-center gap-1"
+                >
+                  <Avatar className={cn("h-14 w-14", t.unread > 0 && "ring-2 ring-sky-400")}>
+                    <AvatarImage src={t.peer_avatar ?? undefined} />
+                    <AvatarFallback>{t.peer_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="w-full truncate text-center text-[10px] text-neutral-400">{t.peer_name}</span>
+                  {n && (
+                    <span className="absolute -top-1 left-1/2 z-10 max-w-[72px] -translate-x-1/2 truncate rounded-full bg-white px-1.5 py-0.5 text-[9px] font-medium text-black shadow">
+                      {n.body}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {ownMenuOpen && (
+            <>
+              <button type="button" className="fixed inset-0 z-40" aria-label="Close" onClick={() => setOwnMenuOpen(false)} />
+              <div className="relative z-50 mt-1 max-w-xs rounded-2xl border border-white/12 bg-[#141416] py-1 shadow-xl">
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-white hover:bg-white/8"
+                  onClick={() => {
+                    setOwnMenuOpen(false);
+                    setNoteDraft(myNote?.body ?? "");
+                    setNoteOpen(true);
+                  }}
+                >
+                  <StickyNote className="h-4 w-4 text-sky-400" /> Note (24h)
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-white hover:bg-white/8"
+                  onClick={() => {
+                    setOwnMenuOpen(false);
+                    toast.message("Story — coming soon; use Create Post for now");
+                  }}
+                >
+                  <ImagePlus className="h-4 w-4 text-violet-400" /> Story
+                </button>
+                {myNote && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-rose-300 hover:bg-white/8"
+                    onClick={async () => {
+                      await deleteMyNote(user.id);
+                      setMyNoteState(null);
+                      setOwnMenuOpen(false);
+                      toast.success("Note cleared");
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Clear note
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden px-2 py-2 sm:px-4">
           <div className="mb-2 shrink-0">
@@ -301,20 +486,59 @@ function MessagesPage() {
                   <p className="p-6 text-center text-sm text-neutral-500">{query ? "No chats match." : tab === "requests" ? "No requests." : "No conversations yet."}</p>
                 )}
                 {filteredList.map((t) => (
-                  <div key={t.conversation_id} className={cn("border-b border-white/5 px-3 py-3 transition hover:bg-white/[0.04]", activeId === t.conversation_id && "bg-white/[0.06]")}>
-                    <button type="button" onClick={() => openThread(t.conversation_id)} className="flex w-full items-center gap-3 text-left">
-                      <Avatar className="h-11 w-11">
-                        <AvatarImage src={t.peer_avatar ?? undefined} />
-                        <AvatarFallback>{t.peer_name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-neutral-100">{t.peer_name}</p>
-                          {t.unread > 0 && <span className="shrink-0 rounded-full bg-sky-500 px-1.5 text-[10px] font-semibold text-white">{t.unread}</span>}
+                  <div key={t.conversation_id} className={cn("relative border-b border-white/5 px-3 py-3 transition hover:bg-white/[0.04]", activeId === t.conversation_id && "bg-white/[0.06]")}>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => openThread(t.conversation_id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <Avatar className="h-11 w-11">
+                          <AvatarImage src={t.peer_avatar ?? undefined} />
+                          <AvatarFallback>{t.peer_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-medium text-neutral-100">{t.peer_name}</p>
+                            {t.unread > 0 && <span className="shrink-0 rounded-full bg-sky-500 px-1.5 text-[10px] font-semibold text-white">{t.unread}</span>}
+                          </div>
+                          <p className="truncate text-xs text-neutral-500">{t.last_body?.startsWith("__voice__:") ? "🎤 Voice message" : (t.last_body || "Start chatting")}</p>
                         </div>
-                        <p className="truncate text-xs text-neutral-500">{t.last_body?.startsWith("__voice__:") ? "🎤 Voice message" : (t.last_body || "Start chatting")}</p>
+                      </button>
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setThreadMenuId((id) => (id === t.conversation_id ? null : t.conversation_id));
+                          }}
+                          aria-label="Chat options"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                        {threadMenuId === t.conversation_id && (
+                          <>
+                            <button type="button" className="fixed inset-0 z-40" onClick={() => setThreadMenuId(null)} />
+                            <div className="absolute right-0 z-50 mt-1 min-w-[160px] overflow-hidden rounded-xl border border-white/12 bg-[#151515] py-1 shadow-xl">
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-neutral-200 hover:bg-white/8"
+                                onClick={() => {
+                                  setThreadMenuId(null);
+                                  void openCreateGroup();
+                                }}
+                              >
+                                <Users className="h-3.5 w-3.5" /> Create group
+                              </button>
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-rose-400 hover:bg-white/8"
+                                onClick={() => void deleteChat(t.conversation_id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Delete chat
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    </button>
+                    </div>
                     {tab === "requests" && t.status === "request" && (
                       <div className="mt-2 flex gap-2 pl-14">
                         <Button size="sm" className="h-7 bg-sky-500 text-xs text-white" onClick={() => void acceptDmRequest(t.conversation_id).then(() => reloadThreads())}>Accept</Button>
@@ -335,26 +559,67 @@ function MessagesPage() {
                     <Button type="button" size="icon" variant="ghost" className="md:hidden" onClick={() => { setMobileChat(false); void navigate({ search: {} }); }}>
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <Link to="/members/$id" params={{ id: activeThread.peer_id }} className="flex min-w-0 items-center gap-2">
+                    <Link to="/members/$id" params={{ id: activeThread.peer_id }} className="flex min-w-0 flex-1 items-center gap-2">
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={activeThread.peer_avatar ?? undefined} />
                         <AvatarFallback>{activeThread.peer_name.slice(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-neutral-100">{activeThread.peer_name}</p>
-                        <p className="text-[10px] text-neutral-500">{activeThread.status === "request" ? "Message request" : "NepARENA chat"}</p>
+                        <p className="text-[10px] text-neutral-500">
+                          {activeThread.is_group ? "Group chat" : activeThread.status === "request" ? "Message request" : "NepARENA chat"}
+                        </p>
                       </div>
                     </Link>
+                    {activeThread.is_group && (
+                      <button
+                        type="button"
+                        className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 hover:bg-white/10"
+                        onClick={async () => {
+                          setInviteOpen(true);
+                          setSelectedFriends([]);
+                          await loadFriends();
+                        }}
+                        aria-label="Invite"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="grid h-9 w-9 place-items-center rounded-full text-neutral-400 hover:bg-white/10"
+                      onClick={() => setThreadMenuId((id) => (id === activeThread.conversation_id ? null : activeThread.conversation_id))}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
                   </div>
                   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
                     {messages.map((m) => {
+                      if (m.deleted_at) return null;
                       const mine = m.sender_id === user.id;
                       const shared = m.body ? parseSharedPost(m.body) : null;
                       const isVoice = !!m.body?.startsWith("__voice__:") && !!m.image_url;
                       const vDur = voiceDuration(m.body);
                       return (
                         <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                          <div className={cn("max-w-[75%] rounded-2xl px-3 py-2 text-sm", mine ? "bg-sky-500 text-white" : "bg-white/10 text-neutral-100")}>
+                          <div
+                            className={cn("relative max-w-[75%] rounded-2xl px-3 py-2 text-sm", mine ? "bg-sky-500 text-white" : "bg-white/10 text-neutral-100")}
+                            onContextMenu={(e) => {
+                              if (!mine) return;
+                              e.preventDefault();
+                              setLongPressMsgId(m.id);
+                            }}
+                            onTouchStart={() => {
+                              if (!mine) return;
+                              longPressTimer.current = setTimeout(() => setLongPressMsgId(m.id), 450);
+                            }}
+                            onTouchEnd={() => {
+                              if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                            }}
+                            onTouchMove={() => {
+                              if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                            }}
+                          >
                             {shared ? (
                               <a href={shared.url} className="block"><div className="rounded-xl bg-black/20 p-2"><p className="text-xs font-semibold">{shared.authorName}</p>{shared.text && <p className="mt-0.5 line-clamp-3 text-xs opacity-90">{shared.text}</p>}</div></a>
                             ) : isVoice ? (
@@ -365,7 +630,7 @@ function MessagesPage() {
                             ) : (
                               <>
                                 {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
-                                {m.image_url && <img src={m.image_url} alt="" className="mt-1 max-h-48 rounded-lg object-cover" />}
+                                {m.image_url && !isVoice && <img src={m.image_url} alt="" className="mt-1 max-h-48 rounded-lg object-cover" />}
                               </>
                             )}
                             <div className="mt-1 flex items-center justify-between gap-2">
@@ -374,14 +639,30 @@ function MessagesPage() {
                                 {REACTIONS.map((r) => (
                                   <button key={r} type="button" className="text-[11px] opacity-60 hover:opacity-100" onClick={() => void reactToDm(m.id, m.reaction === r ? null : r)}>{r}</button>
                                 ))}
-                                {mine && (
-                                  <button type="button" className="ml-1 opacity-60 hover:opacity-100" onClick={() => void removeMessage(m.id)} aria-label="Delete">
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                )}
                               </div>
                             </div>
                             {m.reaction && <span className="mt-0.5 inline-block rounded-full bg-black/30 px-1.5 text-xs">{m.reaction}</span>}
+                            {longPressMsgId === m.id && mine && (
+                              <>
+                                <button type="button" className="fixed inset-0 z-40" onClick={() => setLongPressMsgId(null)} />
+                                <div className="absolute bottom-full right-0 z-50 mb-1 min-w-[120px] overflow-hidden rounded-xl border border-white/15 bg-[#1a1a1c] py-1 shadow-2xl">
+                                  <button
+                                    type="button"
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-rose-400 hover:bg-white/10"
+                                    onClick={() => void removeMessage(m.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-neutral-300 hover:bg-white/10"
+                                    onClick={() => setLongPressMsgId(null)}
+                                  >
+                                    <X className="h-3.5 w-3.5" /> Cancel
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       );
@@ -414,17 +695,89 @@ function MessagesPage() {
         </div>
       </div>
 
+      {noteOpen && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm p-4 sm:items-center" onClick={() => setNoteOpen(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-white/12 bg-[#121214] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-white">Your note</h3>
+            <p className="mt-1 text-xs text-neutral-500">Visible 24 hours on your chat head.</p>
+            <Input className="mt-3 border-white/10 bg-white/5" maxLength={60} placeholder="What's up?" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => setNoteOpen(false)}>Cancel</Button>
+              <Button type="button" size="sm" className="bg-sky-500 text-white" disabled={!noteDraft.trim()} onClick={() => void saveNote()}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {groupOpen && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 sm:items-center" onClick={() => setGroupOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl border border-white/12 bg-[#121214] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm p-4 sm:items-center" onClick={() => setGroupOpen(false)}>
+          <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl border border-white/12 bg-[#121214] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-white">New group</h3>
-            <p className="mt-1 text-xs text-neutral-500">Enter a title and at least 2 member user IDs (comma-separated).</p>
+            <p className="mt-1 text-xs text-neutral-500">Pick friends you follow (min 2).</p>
             <Input className="mt-3 border-white/10 bg-white/5" placeholder="Group name" value={groupTitle} onChange={(e) => setGroupTitle(e.target.value)} />
-            <Input className="mt-2 border-white/10 bg-white/5" placeholder="user-id-1, user-id-2" value={groupMembers} onChange={(e) => setGroupMembers(e.target.value)} />
+            <div className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto">
+              {friends.length === 0 && <p className="py-4 text-center text-xs text-neutral-500">Follow people first to add them.</p>}
+              {friends.map((f) => {
+                const on = selectedFriends.includes(f.id);
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedFriends((prev) =>
+                        on ? prev.filter((x) => x !== f.id) : [...prev, f.id],
+                      )
+                    }
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left",
+                      on ? "bg-sky-500/20" : "hover:bg-white/5",
+                    )}
+                  >
+                    <Avatar className="h-9 w-9"><AvatarImage src={f.avatar ?? undefined} /><AvatarFallback>{f.name.slice(0, 2)}</AvatarFallback></Avatar>
+                    <span className="flex-1 truncate text-sm text-white">{f.name}</span>
+                    {on && <span className="text-xs font-semibold text-sky-400">Added</span>}
+                  </button>
+                );
+              })}
+            </div>
             <div className="mt-4 flex justify-end gap-2">
               <Button type="button" size="sm" variant="ghost" onClick={() => setGroupOpen(false)}>Cancel</Button>
-              <Button type="button" size="sm" disabled={busy} className="bg-sky-500 text-white hover:bg-sky-400" onClick={() => void submitGroup()}>
+              <Button type="button" size="sm" disabled={busy || selectedFriends.length < 2} className="bg-sky-500 text-white hover:bg-sky-400" onClick={() => void submitGroup()}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {inviteOpen && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 backdrop-blur-sm p-4 sm:items-center" onClick={() => setInviteOpen(false)}>
+          <div className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl border border-white/12 bg-[#121214] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-white">Invite to group</h3>
+            <div className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto">
+              {friends.map((f) => {
+                const on = selectedFriends.includes(f.id);
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedFriends((prev) =>
+                        on ? prev.filter((x) => x !== f.id) : [...prev, f.id],
+                      )
+                    }
+                    className={cn("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left", on ? "bg-sky-500/20" : "hover:bg-white/5")}
+                  >
+                    <Avatar className="h-9 w-9"><AvatarImage src={f.avatar ?? undefined} /><AvatarFallback>{f.name.slice(0, 2)}</AvatarFallback></Avatar>
+                    <span className="flex-1 truncate text-sm text-white">{f.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <Button type="button" size="sm" disabled={busy || !selectedFriends.length} className="bg-sky-500 text-white" onClick={() => void inviteToGroup()}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Invite"}
               </Button>
             </div>
           </div>
