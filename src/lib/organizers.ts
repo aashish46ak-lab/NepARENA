@@ -165,10 +165,15 @@ export async function getOrganizerBySlug(slug: string): Promise<Organizer | null
 }
 
 export async function getFollowerCount(organizerId: string): Promise<number> {
-  const { count } = await supabase
+  // Composite PK (organizer_id, user_id) — no `id` column
+  const { count, error } = await supabase
     .from("organizer_followers")
-    .select("id", { count: "exact", head: true })
+    .select("user_id", { count: "exact", head: true })
     .eq("organizer_id", organizerId);
+  if (error) {
+    console.warn("getFollowerCount", error.message);
+    return 0;
+  }
   return count ?? 0;
 }
 
