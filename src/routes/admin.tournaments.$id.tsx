@@ -29,8 +29,8 @@ function AdminTournamentPage() {
 
   if (isLoading) {
     return (
-      <PageShell>
-        <div className="min-h-[50vh] grid place-items-center">
+      <PageShell force="platform" hideChrome>
+        <div className="grid min-h-[50vh] place-items-center">
           <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
       </PageShell>
@@ -39,12 +39,13 @@ function AdminTournamentPage() {
 
   if (error || !tournament) {
     return (
-      <PageShell>
+      <PageShell force="platform" hideChrome>
         <div className="py-20 text-center text-muted-foreground">
           Tournament not found
           <div className="mt-4">
             <Button asChild variant="outline">
               <Link to="/dashboard" search={{ t: "tournaments" }}>
+                <ArrowLeft className="mr-1.5 h-4 w-4" />
                 Back to tournaments
               </Link>
             </Button>
@@ -55,11 +56,11 @@ function AdminTournamentPage() {
   }
 
   return (
-    <PageShell>
-      <div className="max-w-7xl mx-auto px-4 py-10 space-y-4">
+    <PageShell force="platform" hideChrome>
+      <div className="mx-auto max-w-7xl space-y-4 px-4 py-6">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link to="/dashboard" search={{ t: "tournaments" }}>
-            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
             Back to tournaments
           </Link>
         </Button>
