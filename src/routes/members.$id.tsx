@@ -201,8 +201,8 @@ function MemberProfilePage() {
   return (
     <PageShell force="platform" hideChrome>
       <div className="mx-auto max-w-lg px-3 pb-28 pt-3">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#121214]/90 shadow-2xl ring-1 ring-white/5">
-          <div className="relative h-32 overflow-hidden bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-40">
+        <div className="relative rounded-3xl border border-white/10 bg-[#121214]/90 shadow-2xl ring-1 ring-white/5">
+          <div className="relative h-32 overflow-hidden rounded-t-3xl bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-40">
             {banner ? <img src={banner} alt="" className="absolute inset-0 h-full w-full object-cover" /> : null}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           </div>
@@ -225,8 +225,8 @@ function MemberProfilePage() {
                 </button>
                 {menuOpen && (
                   <>
-                    <button type="button" className="fixed inset-0 z-40" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-11 z-50 w-max min-w-[220px] max-w-[min(280px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/80 py-1.5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
+                    <button type="button" className="fixed inset-0 z-[60]" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 top-11 z-[70] w-56 max-h-[calc(100vh-80px)] overflow-y-auto max-w-[min(280px,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-neutral-950/95 py-1.5 shadow-2xl backdrop-blur-xl ring-1 ring-white/10 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
                       {isOwn ? (
                         <>
                           <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm text-neutral-100 hover:bg-white/8" onClick={() => { setMenuOpen(false); void navigate({ to: "/auth" }); }}>
@@ -254,7 +254,7 @@ function MemberProfilePage() {
                           </a>
                           <div className="my-1 border-t border-white/10" />
                           <button type="button" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-sm font-medium text-rose-400 hover:bg-rose-500/10" onClick={async () => { setMenuOpen(false); await signOut(); void navigate({ to: "/" }); }}>
-                            <LogOut className="h-4 w-4" /> Logout
+                            <LogOut className="h-4 w-4" /> Sign Out
                           </button>
                         </>
                       ) : (
