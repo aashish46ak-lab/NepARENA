@@ -1,5 +1,5 @@
 /**
- * Super Admin — clean shell, tabs (Analytics under options), 3-dot menu.
+ * Super Admin — Overview includes analytics; no separate Analytics tab.
  */
 import { Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -19,8 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, Loader2, Shield, Trophy, Users, UserPlus, Ban, CheckCircle,
-  LayoutDashboard, Activity, MessageSquare, RefreshCw, Search, ExternalLink,
-  Copy, BadgeCheck, Clock, MoreVertical, User, Home, TrendingUp,
+  LayoutDashboard, Activity, MessageSquare, RefreshCw, Search,
+  Copy, BadgeCheck, Clock, MoreVertical, User, Home,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MessagesInbox } from "@/components/MessagesInbox";
@@ -32,7 +32,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from "recharts";
 
-type Tab = "overview" | "messages" | "analytics" | "requests" | "organizers" | "invites" | "users";
+type Tab = "overview" | "messages" | "requests" | "organizers" | "invites" | "users";
 const PIE_COLORS = ["#38bdf8", "#a78bfa", "#f472b6", "#34d399", "#fbbf24"];
 
 export function SuperAdminPanelImpl() {
@@ -143,7 +143,6 @@ export function SuperAdminPanelImpl() {
   const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "messages", label: "Messages", icon: MessageSquare },
-    { id: "analytics", label: "Analytics", icon: TrendingUp },
     { id: "requests", label: "Org requests", icon: UserPlus },
     { id: "organizers", label: "Organizers", icon: Building2 },
     { id: "invites", label: "Invites", icon: UserPlus },
@@ -271,14 +270,18 @@ export function SuperAdminPanelImpl() {
                 </ResponsiveContainer>
               </div>
             </div>
+
+            {/* Merged GA analytics (was separate tab) */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+              <h3 className="mb-4 text-sm font-semibold text-neutral-100">Traffic analytics</h3>
+              <GaAnalyticsDashboard />
+            </div>
           </div>
         )}
 
         {tab === "messages" && (
           <MessagesInbox mode="platform" onUnreadChange={(n) => { setUnreadOverride(n); if (n === 0) void reload(); }} />
         )}
-
-        {tab === "analytics" && <GaAnalyticsDashboard />}
 
         {tab === "requests" && <OrganizerRequestsPanel />}
 
