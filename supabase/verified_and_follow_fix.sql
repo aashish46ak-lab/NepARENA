@@ -137,3 +137,26 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.soft_delete_dm_message(uuid) TO authenticated;
+
+-- Ensure both founders verified
+UPDATE public.profiles p
+SET is_verified = true
+FROM auth.users u
+WHERE p.id = u.id
+  AND lower(u.email) IN (
+    'aashish46ak@gmail.com',
+    'baralk851@gmail.com'
+  );
+
+-- Optional multi-tenant columns so About / Members / announcements are per-organizer
+ALTER TABLE public.announcements
+  ADD COLUMN IF NOT EXISTS organizer_id uuid REFERENCES public.organizers(id) ON DELETE CASCADE;
+ALTER TABLE public.community_links
+  ADD COLUMN IF NOT EXISTS organizer_id uuid REFERENCES public.organizers(id) ON DELETE CASCADE;
+ALTER TABLE public.owner_info
+  ADD COLUMN IF NOT EXISTS organizer_id uuid REFERENCES public.organizers(id) ON DELETE CASCADE;
+ALTER TABLE public.moderators
+  ADD COLUMN IF NOT EXISTS organizer_id uuid REFERENCES public.organizers(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS announcements_organizer_idx ON public.announcements (organizer_id);
+CREATE INDEX IF NOT EXISTS community_links_organizer_idx ON public.community_links (organizer_id);
