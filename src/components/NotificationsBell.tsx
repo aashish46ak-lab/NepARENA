@@ -38,12 +38,7 @@ export function NotificationsBell() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(25);
-    const rows = ((data ?? []) as NotifRow[]).filter((n) => {
-      const t = (n.type ?? "").toLowerCase();
-      const title = (n.title ?? "").toLowerCase();
-      if (t === "message" || t === "dm" || title.includes("sent you a message")) return false;
-      return true;
-    });
+    const rows = (data ?? []) as NotifRow[];
     setItems(rows);
 
     const actors = [
@@ -147,15 +142,29 @@ export function NotificationsBell() {
       prev.map((x) => (x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x)),
     );
     const link = n.link;
-    if (link) {
-      try {
-        const path = link.startsWith("http")
-          ? new URL(link).pathname + new URL(link).search
-          : link;
-        void navigate({ to: path as "/" });
-      } catch {
-        window.location.href = link;
+    if (!link) return;
+    try {
+      const path = link.startsWith("http")
+        ? new URL(link).pathname + new URL(link).search
+        : link;
+      // Deep-link: messages, feed post, profile, tournaments
+      if (path.startsWith("/messages")) {
+        const u = new URL(path, window.location.origin);
+        void navigate({ to: "/messages", search: { c: u.searchParams.get("c") || undefined } as never });
+        return;
       }
+      if (path.startsWith("/feed")) {
+        const u = new URL(path, window.location.origin);
+        void navigate({ to: "/feed", search: { post: u.searchParams.get("post") || undefined } as never });
+        return;
+      }
+      if (path.startsWith("/members/")) {
+        const id = path.split("/").filter(Boolean)[1];
+        if (id) { void navigate({ to: "/members/$id", params: { id } }); return; }
+      }
+      void navigate({ to: path as "/" });
+    } catch {
+      window.location.href = link;
     }
   };
 
@@ -253,6 +262,19 @@ export function NotificationsBell() {
                   )}
                   {isFollow && mutual && (
                     <span className="text-[11px] text-emerald-400">You follow each other</span>
+                  )}
+                  {((n.type ?? "").toLowerCase() === "message" || (n.type ?? "").toLowerCase() === "dm") && n.link && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void openNotif(n);
+                      }}
+                      className="mt-1 rounded-full bg-sky-500/90 px-3 py-1 text-[11px] font-semibold text-white hover:bg-sky-400"
+                    >
+                      Reply
+                    </button>
                   )}
                 </DropdownMenuItem>
               );
