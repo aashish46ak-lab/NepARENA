@@ -209,6 +209,7 @@ export function OnboardingTour() {
 
   return (
     <div className="fixed inset-0 z-[200]" aria-modal role="dialog">
+      {/* Dim overlay with circular spotlight cutout via box-shadow */}
       <div
         className="pointer-events-none fixed inset-0 transition-all duration-500 ease-out"
         style={
@@ -226,6 +227,7 @@ export function OnboardingTour() {
             : { background: "rgba(0,0,0,0.72)" }
         }
       />
+      {/* Soft ring around spotlight */}
       {hole && (
         <div
           className="pointer-events-none fixed z-[201] rounded-full border-2 border-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.45)] transition-all duration-500 ease-out"
@@ -238,6 +240,7 @@ export function OnboardingTour() {
         />
       )}
 
+      {/* Tooltip card */}
       <div
         className={cn(
           "rounded-2xl border border-white/15 bg-black/90 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl",
@@ -246,65 +249,47 @@ export function OnboardingTour() {
         )}
         style={hole ? tooltipStyle : undefined}
       >
-        <div className="mb-2 flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-sky-400">
-              {step + 1} / {total}
-            </p>
-            <h3 className="mt-0.5 text-base font-semibold text-white">{current?.title}</h3>
-          </div>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-400">
+            {step + 1} / {total}
+          </span>
           <button
             type="button"
             onClick={complete}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
-            aria-label="Skip"
+            className="rounded-full p-1 text-neutral-400 hover:bg-white/10 hover:text-white"
+            aria-label="Skip tour"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-sm leading-relaxed text-neutral-300">{current?.body}</p>
+        <h3 className="text-base font-bold text-white">{current.title}</h3>
+        <p className="mt-1 text-sm leading-relaxed text-neutral-300">{current.body}</p>
         <div className="mt-4 flex items-center justify-between gap-2">
           <Button
-            type="button"
             variant="ghost"
             size="sm"
-            className="rounded-full text-neutral-400"
+            className="rounded-full text-neutral-400 hover:text-white"
             disabled={step === 0}
             onClick={() => setStep((s) => Math.max(0, s - 1))}
           >
-            <ChevronLeft className="mr-0.5 h-4 w-4" /> Back
+            <ChevronLeft className="mr-1 h-4 w-4" /> Back
           </Button>
-          <div className="flex gap-1">
-            {Array.from({ length: Math.min(total, 10) }).map((_, i) => (
-              <span
-                key={i}
-                className={cn("h-1.5 w-1.5 rounded-full transition", i === step ? "bg-sky-400" : "bg-white/20")}
-              />
-            ))}
-          </div>
-          {isLast ? (
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" className="rounded-full text-neutral-400" onClick={complete}>
+              Skip
+            </Button>
             <Button
-              type="button"
               size="sm"
               className="rounded-full bg-sky-500 text-white hover:bg-sky-400"
-              onClick={() => setFinished(true)}
+              onClick={() => {
+                if (isLast) setFinished(true);
+                else setStep((s) => s + 1);
+              }}
             >
-              Finish
+              {isLast ? "Finish" : "Next"} <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              className="rounded-full bg-white text-black hover:bg-neutral-100"
-              onClick={() => setStep((s) => s + 1)}
-            >
-              Next <ChevronRight className="ml-0.5 h-4 w-4" />
-            </Button>
-          )}
+          </div>
         </div>
-        <button type="button" className="mt-2 w-full text-center text-xs text-neutral-500 hover:text-neutral-300" onClick={complete}>
-          Skip tour
-        </button>
       </div>
     </div>
   );
