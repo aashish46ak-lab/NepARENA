@@ -31,6 +31,7 @@ export async function notify(opts: {
     p_actor_id: opts.actorId ?? null,
     p_meta: opts.meta ?? {},
   });
+  let id: string | null = null;
   if (error) {
     // Fallback direct insert if RPC missing
     const { data: row } = await supabase
@@ -46,7 +47,23 @@ export async function notify(opts: {
       })
       .select("id")
       .maybeSingle();
-    return (row as { id?: string } | null)?.id ?? null;
+    id = (row as { id?: string } | null)?.id ?? null;
+  } else {
+    id = (data as string) ?? null;
   }
-  return (data as string) ?? null;
+
+  // Fan-out to phone (PWA) when edge function + VAPID are configured
+  void supabase.functions
+    .invoke("send-push", {
+      body: {
+        user_ids: [opts.userId],
+        title: opts.title,
+        body: opts.body ?? "",
+        url: opts.link ?? "/",
+        tag: String(opts.type ?? "info"),
+      },
+    })
+    .catch(() => {});
+
+  return id;
 }
