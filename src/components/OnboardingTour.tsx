@@ -1,8 +1,8 @@
 /**
- * First-time user onboarding — premium spotlight tour.
- * Shown once after first login; persisted in localStorage (+ optional profile flag).
+ * First-login spotlight tour — circular hole + dim overlay + tooltips.
+ * Persisted in localStorage so it runs once per browser.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,7 @@ type Step = {
   id: string;
   title: string;
   body: string;
-  /** CSS selector or data attribute target */
   target?: string;
-  /** Only show on these path prefixes (empty = any) */
   paths?: string[];
 };
 
@@ -25,35 +23,21 @@ const STEPS: Step[] = [
   {
     id: "create",
     title: "Create a post",
-    body: "Share updates, images and announcements with the community from here.",
+    body: "Share updates, photos and announcements with the community.",
     target: "[data-onboard='create-post']",
     paths: ["/"],
   },
   {
     id: "notifications",
     title: "Notifications",
-    body: "Get likes, follows, messages and tournament updates in one place.",
+    body: "Likes, follows, messages and tournament alerts land here.",
     target: "[data-onboard='notifications']",
-    paths: ["/"],
-  },
-  {
-    id: "about",
-    title: "About Us",
-    body: "Learn what NepARENA offers and meet the platform.",
-    target: "[data-onboard='about']",
-    paths: ["/"],
-  },
-  {
-    id: "members",
-    title: "Members",
-    body: "Browse registered players and discover new teammates.",
-    target: "[data-onboard='members']",
     paths: ["/"],
   },
   {
     id: "feed",
     title: "Your feed",
-    body: "This is your personalized feed for posts and announcements.",
+    body: "Scroll personalized posts and announcements.",
     target: "[data-onboard='feed']",
     paths: ["/", "/feed"],
   },
@@ -66,25 +50,25 @@ const STEPS: Step[] = [
   {
     id: "messages",
     title: "Messages",
-    body: "Chat with friends, organizers and groups.",
+    body: "Chat with friends, groups and organizers.",
     target: "[data-onboard='messages']",
   },
   {
     id: "games",
     title: "Games",
-    body: "Play skill games and explore gaming categories.",
+    body: "Play skill games and explore categories.",
     target: "[data-onboard='games']",
   },
   {
     id: "profile",
     title: "Your profile",
-    body: "Edit details, switch accounts and open dashboards from your profile menu.",
+    body: "Edit details, open dashboards and sign out from the menu.",
     target: "[data-onboard='profile']",
   },
   {
     id: "nav",
     title: "Bottom navigation",
-    body: "Jump anywhere in NepARENA with the bar at the bottom.",
+    body: "Jump anywhere with the bar at the bottom.",
     target: "[data-onboard='bottom-nav']",
   },
 ];
@@ -114,18 +98,39 @@ export function resetOnboarding() {
   }
 }
 
+type Rect = { top: number; left: number; width: number; height: number; radius: number };
+
+function measure(selector?: string): Rect | null {
+  if (!selector || typeof document === "undefined") return null;
+  const el = document.querySelector(selector) as HTMLElement | null;
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return null;
+  const pad = 10;
+  const size = Math.max(r.width, r.height) + pad * 2;
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  return {
+    left: cx - size / 2,
+    top: cy - size / 2,
+    width: size,
+    height: size,
+    radius: size / 2,
+  };
+}
+
 export function OnboardingTour() {
   const { user } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [hole, setHole] = useState<Rect | null>(null);
 
   useEffect(() => {
     if (!user) return;
     if (isOnboardingDone()) return;
-    // Delay so DOM targets exist
-    const t = window.setTimeout(() => setOpen(true), 800);
+    const t = window.setTimeout(() => setOpen(true), 700);
     return () => window.clearTimeout(t);
   }, [user?.id]);
 
@@ -136,21 +141,46 @@ export function OnboardingTour() {
     });
   }, [pathname]);
 
-  const current = activeSteps[step] ?? STEPS[step] ?? STEPS[0];
-  const total = Math.max(activeSteps.length, STEPS.length);
+  const steps = activeSteps.length ? activeSteps : STEPS;
+  const current = steps[Math.min(step, steps.length - 1)] ?? STEPS[0];
+  const total = steps.length;
   const isLast = step >= total - 1;
+
+  const refreshHole = useCallback(() => {
+    const rect = measure(current?.target);
+    setHole(rect);
+    if (rect && current?.target) {
+      const el = document.querySelector(current.target) as HTMLElement | null;
+      el?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    }
+  }, [current?.target, current?.id]);
+
+  useLayoutEffect(() => {
+    if (!open || finished) return;
+    refreshHole();
+    const onResize = () => refreshHole();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onResize, true);
+    const t = window.setTimeout(refreshHole, 350);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onResize, true);
+      window.clearTimeout(t);
+    };
+  }, [open, finished, step, refreshHole, pathname]);
 
   const complete = useCallback(() => {
     markOnboardingDone();
     setOpen(false);
     setFinished(false);
+    setStep(0);
   }, []);
 
   if (!user || !open) return null;
 
   if (finished) {
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
         <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#121214]/95 p-8 text-center shadow-2xl ring-1 ring-white/10 animate-in fade-in zoom-in-95 duration-300">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-500/20 text-sky-300">
             <Sparkles className="h-7 w-7" />
@@ -159,52 +189,81 @@ export function OnboardingTour() {
           <p className="mt-2 text-sm text-neutral-400">
             You are all set. Explore tournaments, connect with players and enjoy the platform.
           </p>
-          <div className="mt-6 flex flex-col gap-2">
-            <Button className="w-full rounded-full bg-white text-black hover:bg-neutral-100" onClick={complete}>
-              Start Exploring
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full rounded-full text-neutral-400"
-              onClick={() => {
-                setFinished(false);
-                setStep(0);
-              }}
-            >
-              Replay Tutorial
-            </Button>
-          </div>
+          <Button className="mt-6 w-full rounded-full bg-white text-black hover:bg-neutral-100" onClick={complete}>
+            Start Exploring
+          </Button>
         </div>
       </div>
     );
   }
 
+  const tooltipStyle: React.CSSProperties = hole
+    ? {
+        position: "fixed",
+        left: Math.min(Math.max(16, hole.left + hole.width / 2 - 160), window.innerWidth - 336),
+        top: Math.min(hole.top + hole.height + 16, window.innerHeight - 220),
+        width: 320,
+        zIndex: 202,
+      }
+    : {};
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/55 p-4 pb-28 backdrop-blur-[2px] sm:items-center sm:pb-4">
+    <div className="fixed inset-0 z-[200]" aria-modal role="dialog">
+      <div
+        className="pointer-events-none fixed inset-0 transition-all duration-500 ease-out"
+        style={
+          hole
+            ? {
+                background: "transparent",
+                boxShadow: `0 0 0 9999px rgba(0,0,0,0.72)`,
+                borderRadius: "9999px",
+                left: hole.left,
+                top: hole.top,
+                width: hole.width,
+                height: hole.height,
+                position: "fixed",
+              }
+            : { background: "rgba(0,0,0,0.72)" }
+        }
+      />
+      {hole && (
+        <div
+          className="pointer-events-none fixed z-[201] rounded-full border-2 border-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.45)] transition-all duration-500 ease-out"
+          style={{
+            left: hole.left - 3,
+            top: hole.top - 3,
+            width: hole.width + 6,
+            height: hole.height + 6,
+          }}
+        />
+      )}
+
       <div
         className={cn(
-          "w-full max-w-md rounded-3xl border border-white/15 bg-black/80 p-5 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl",
-          "animate-in fade-in slide-in-from-bottom-4 duration-300",
+          "rounded-2xl border border-white/15 bg-black/90 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl",
+          "animate-in fade-in zoom-in-95 duration-300",
+          !hole && "fixed bottom-28 left-1/2 w-[min(320px,calc(100vw-2rem))] -translate-x-1/2 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2",
         )}
+        style={hole ? tooltipStyle : undefined}
       >
-        <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="mb-2 flex items-start justify-between gap-2">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wider text-sky-400">
               {step + 1} / {total}
             </p>
-            <h3 className="mt-1 text-lg font-semibold text-white">{current?.title}</h3>
+            <h3 className="mt-0.5 text-base font-semibold text-white">{current?.title}</h3>
           </div>
           <button
             type="button"
             onClick={complete}
-            className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
             aria-label="Skip"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
         <p className="text-sm leading-relaxed text-neutral-300">{current?.body}</p>
-        <div className="mt-5 flex items-center justify-between gap-2">
+        <div className="mt-4 flex items-center justify-between gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -213,16 +272,13 @@ export function OnboardingTour() {
             disabled={step === 0}
             onClick={() => setStep((s) => Math.max(0, s - 1))}
           >
-            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+            <ChevronLeft className="mr-0.5 h-4 w-4" /> Back
           </Button>
           <div className="flex gap-1">
             {Array.from({ length: Math.min(total, 10) }).map((_, i) => (
               <span
                 key={i}
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full transition",
-                  i === step ? "bg-sky-400" : "bg-white/20",
-                )}
+                className={cn("h-1.5 w-1.5 rounded-full transition", i === step ? "bg-sky-400" : "bg-white/20")}
               />
             ))}
           </div>
@@ -242,15 +298,11 @@ export function OnboardingTour() {
               className="rounded-full bg-white text-black hover:bg-neutral-100"
               onClick={() => setStep((s) => s + 1)}
             >
-              Next <ChevronRight className="ml-1 h-4 w-4" />
+              Next <ChevronRight className="ml-0.5 h-4 w-4" />
             </Button>
           )}
         </div>
-        <button
-          type="button"
-          className="mt-3 w-full text-center text-xs text-neutral-500 hover:text-neutral-300"
-          onClick={complete}
-        >
+        <button type="button" className="mt-2 w-full text-center text-xs text-neutral-500 hover:text-neutral-300" onClick={complete}>
           Skip tour
         </button>
       </div>
