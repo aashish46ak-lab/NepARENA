@@ -3,6 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase, OWNER_EMAIL, type Profile, type Role } from "@/lib/supabase";
 import { analytics } from "@/lib/analytics";
 import { recordLoginStreak } from "@/lib/streaks";
+import { subscribeWebPush } from "@/lib/web-push";
 
 interface AuthContextValue {
   session: Session | null;
@@ -41,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void recordLoginStreak().then(() => {
       void loadProfileAndRoles(userId);
     });
+    // Register for phone push (PWA / browser) after login
+    void subscribeWebPush(userId).catch(() => {});
   };
 
   useEffect(() => {
