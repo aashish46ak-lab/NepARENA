@@ -1,45 +1,54 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchProfileStreak, recordLoginStreak } from "@/lib/streaks";
+import { cn } from "@/lib/utils";
 
 const SESSION_KEY = "neparena_streak_assistant_v1";
 
-/**
- * Occasional homepage assistant — rolls in, greets, rolls out.
- * Only for logged-in users; throttled via sessionStorage.
- */
 export function StreakAssistant() {
   const { user, loading } = useAuth();
   const [visible, setVisible] = useState(false);
   const [phase, setPhase] = useState<"enter" | "talk" | "exit">("enter");
   const [line, setLine] = useState("");
   const [streak, setStreak] = useState(0);
+  const [dimmed, setDimmed] = useState(false);
 
   useEffect(() => {
     if (loading || !user) return;
     try {
       if (sessionStorage.getItem(SESSION_KEY)) return;
-      // ~40% chance per session so it is not every visit
       if (Math.random() > 0.42) {
         sessionStorage.setItem(SESSION_KEY, "skip");
         return;
       }
     } catch {
-      /* private mode — show once */
+      /* private mode */
     }
 
     let cancelled = false;
     (async () => {
       const rec = await recordLoginStreak();
-      const s = rec.ok ? rec.streak : (await fetchProfileStreak(user.id)).streak;
+      let s = 0;
+      let dim = false;
+      if (rec.ok) {
+        s = rec.streak;
+        dim = false;
+      } else {
+        const f = await fetchProfileStreak(user.id);
+        s = f.streak;
+        dim = f.dimmed;
+      }
       if (cancelled) return;
       setStreak(s);
+      setDimmed(dim);
       if (s <= 0) {
-        setLine("Login for 3 consecutive days to unlock your first streak.");
+        setLine("Log in every day (local midnight) to build your streak.");
+      } else if (dim) {
+        setLine(`Your ${s}-day streak is cooling — log in before midnight to keep the fire!`);
       } else if (s < 3) {
         setLine(`You're on a ${s}-day streak. Reach 3 days to unlock the badge!`);
       } else {
-        setLine(`You're on a ${s}-day streak. Keep it going!`);
+        setLine(`You're on a ${s}-day streak. Keep logging in daily!`);
       }
       setVisible(true);
       setPhase("enter");
@@ -99,8 +108,8 @@ export function StreakAssistant() {
           <p className="font-semibold text-sky-300">👋 Hi! I'm Streak.</p>
           <p className="mt-1 leading-relaxed text-neutral-300">{line}</p>
           {streak > 0 && (
-            <p className="mt-1.5 text-[11px] font-bold text-amber-300">
-              🔥⚽ {streak} Day Streak
+            <p className={cn("mt-1.5 text-[11px] font-bold", dimmed ? "text-neutral-400" : "text-amber-300")}>
+              {dimmed ? "🧊" : "🔥"}⚽ {streak} Day Streak{dimmed ? " · dim" : ""}
             </p>
           )}
         </div>
