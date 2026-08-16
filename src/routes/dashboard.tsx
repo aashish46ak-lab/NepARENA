@@ -207,15 +207,15 @@ function DashboardPage() {
 
   return (
     <PageShell force="platform" hideChrome>
-      <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.05] via-white/[0.02] to-transparent px-3 py-2.5 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] sm:px-4">
           <div className="relative flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => memberships.length > 1 && setOrgSwitcherOpen((v) => !v)}
               className={cn(
-                "flex min-w-0 items-center gap-3 rounded-2xl text-left transition",
-                memberships.length > 1 && "pr-2 hover:bg-white/[0.04] active:scale-[0.99]",
+                "flex min-w-0 items-center gap-3 rounded-xl text-left transition",
+                memberships.length > 1 && "pr-1 hover:bg-white/[0.04] active:scale-[0.99]",
               )}
             >
               {orgMeta?.logo_url ? (
@@ -225,19 +225,19 @@ function DashboardPage() {
                   className="h-11 w-11 shrink-0 rounded-xl object-cover shadow-md ring-1 ring-white/15"
                 />
               ) : (
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-brand">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-violet-600 shadow-lg shadow-sky-500/20">
                   <Shield className="h-5 w-5 text-white" />
                 </div>
               )}
               <div className="min-w-0">
-                <h1 className="flex items-center gap-1.5 truncate text-xl font-bold md:text-2xl">
+                <h1 className="flex items-center gap-1.5 truncate text-lg font-bold tracking-tight md:text-xl">
                   <span className="truncate">{orgMeta?.name ?? "Organizer Dashboard"}</span>
                   {memberships.length > 1 && (
                     <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
                   )}
                 </h1>
-                <p className="truncate text-xs text-muted-foreground sm:text-sm">
-                  {user.email} · {roleLabel}
+                <p className="truncate text-[11px] text-neutral-500 sm:text-xs">
+                  {user.email} · <span className="capitalize text-neutral-400">{roleLabel}</span>
                 </p>
               </div>
             </button>
@@ -344,8 +344,8 @@ function DashboardPage() {
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition",
                     active === s.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      ? "bg-gradient-to-r from-sky-500/20 to-violet-500/10 text-white ring-1 ring-sky-400/30"
+                      : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-100",
                   )}
                 >
                   <s.icon className="h-4 w-4 shrink-0" />
@@ -363,7 +363,7 @@ function DashboardPage() {
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition",
                   active === s.id
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-gradient-to-r from-sky-500/25 to-violet-500/15 text-white ring-1 ring-sky-400/30"
                     : "glass text-muted-foreground",
                 )}
               >
