@@ -1,7 +1,6 @@
 /**
- * Premium floating-spotlight first-login tour.
- * Layers over the real homepage -- no separate tutorial page.
- * Persistence: localStorage keyed by user id when available.
+ * Arena Quest — playful first-login discovery (not a linear tutorial).
+ * Tap highlighted zones to unlock stamps. Persists per user.
  */
 import {
   useCallback,
@@ -12,59 +11,89 @@ import {
 } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { X, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import {
+  X,
+  Sparkles,
+  Trophy,
+  Users,
+  MessageCircle,
+  Newspaper,
+  UserCircle2,
+  Flame,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_PREFIX = "neparena_onboarding_done_v2:";
-const LEGACY_KEY = "neparena_onboarding_done_v1";
-const PAD = 8;
-const MAX_RADIUS = 16;
-const TRANSITION_MS = 280;
+const STORAGE_PREFIX = "neparena_onboarding_done_v3:";
+const LEGACY_KEYS = ["neparena_onboarding_done_v2:", "neparena_onboarding_done_v1"];
+const PAD = 10;
+const MAX_RADIUS = 18;
+const TRANSITION_MS = 320;
 const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
-type Step = {
+type Quest = {
   id: string;
+  stamp: string;
   title: string;
-  body: string;
+  hook: string;
+  tip: string;
   target?: string;
-  goTo?: string;
+  icon: "spark" | "feed" | "org" | "cup" | "msg" | "me";
 };
 
-const STEPS: Step[] = [
+const QUESTS: Quest[] = [
   {
     id: "welcome",
-    title: "Welcome to NepARENA",
-    body: "Discover organizers, join tournaments, and connect with players -- all in one place. A quick tour takes under a minute.",
+    stamp: "👋",
+    title: "You're in the Arena",
+    hook: "NepARENA is your esports HQ — organizers, tournaments, chat, games.",
+    tip: "Tap \"Let's explore\" and unlock spots around the app. No boring slides.",
+    icon: "spark",
   },
   {
     id: "feed",
-    title: "Your Feed",
-    body: "See posts and updates from people and organizers you follow.",
+    stamp: "📰",
+    title: "The Feed",
+    hook: "This is the pulse — posts, wins, and noise from people you follow.",
+    tip: "Scroll later. For now, tap the highlighted zone to stamp it.",
     target: "[data-onboard='feed']",
+    icon: "feed",
   },
   {
     id: "organizers",
-    title: "Find Organizers",
-    body: "Discover gaming organizers, follow them, and keep up with their communities.",
+    stamp: "🏟️",
+    title: "Organizers",
+    hook: "Every community lives under an organizer. Follow the ones you vibe with.",
+    tip: "Tap the spotlight to claim this stamp.",
     target: "[data-onboard='organizers']",
+    icon: "org",
   },
   {
     id: "tournaments",
+    stamp: "🏆",
     title: "Tournaments",
-    body: "Explore live and upcoming tournaments, fixtures, and results.",
+    hook: "Live brackets, upcoming cups, results — the competitive core.",
+    tip: "Find a cup, join when you're ready. Tap to unlock.",
     target: "[data-onboard='tournaments']",
+    icon: "cup",
   },
   {
     id: "messages",
+    stamp: "💬",
     title: "Messages",
-    body: "Chat privately, create groups, and stay connected without leaving the app.",
+    hook: "DMs, groups, organizer chats — Messenger-style, right here.",
+    tip: "Message from any profile. Tap to stamp Messages.",
     target: "[data-onboard='messages']",
+    icon: "msg",
   },
   {
     id: "profile",
-    title: "Your Profile",
-    body: "Manage your profile, settings, account switching, and dashboards from here.",
+    stamp: "⚡",
+    title: "Your base",
+    hook: "Profile, streaks, settings, account switch — your player hub.",
+    tip: "Last stamp. Tap your profile zone to finish the quest.",
     target: "[data-onboard='profile']",
+    icon: "me",
   },
 ];
 
@@ -84,9 +113,12 @@ export function isOnboardingDone(userId?: string | null): boolean {
   if (typeof window === "undefined") return true;
   try {
     if (localStorage.getItem(storageKey(userId)) === "1") return true;
-    if (localStorage.getItem(LEGACY_KEY) === "1") {
-      localStorage.setItem(storageKey(userId), "1");
-      return true;
+    for (const leg of LEGACY_KEYS) {
+      const k = leg.endsWith(":") ? `${leg}${userId || "anon"}` : leg;
+      if (localStorage.getItem(k) === "1" || localStorage.getItem(leg) === "1") {
+        localStorage.setItem(storageKey(userId), "1");
+        return true;
+      }
     }
     return false;
   } catch {
@@ -97,7 +129,7 @@ export function isOnboardingDone(userId?: string | null): boolean {
 export function markOnboardingDone(userId?: string | null) {
   try {
     localStorage.setItem(storageKey(userId), "1");
-    localStorage.setItem(LEGACY_KEY, "1");
+    localStorage.setItem("neparena_onboarding_done_v1", "1");
   } catch {
     /* ignore */
   }
@@ -106,7 +138,9 @@ export function markOnboardingDone(userId?: string | null) {
 export function resetOnboarding(userId?: string | null) {
   try {
     localStorage.removeItem(storageKey(userId));
-    localStorage.removeItem(LEGACY_KEY);
+    localStorage.removeItem("neparena_onboarding_done_v1");
+    if (userId) localStorage.removeItem(`neparena_onboarding_done_v2:${userId}`);
+    localStorage.removeItem("neparena_onboarding_done_v2:anon");
   } catch {
     /* ignore */
   }
@@ -136,8 +170,8 @@ function measureTarget(selector?: string): Rect | null {
 }
 
 function cardPosition(hole: Rect | null): React.CSSProperties {
-  const cardW = Math.min(320, window.innerWidth - 24);
-  const cardH = 200;
+  const cardW = Math.min(340, window.innerWidth - 24);
+  const cardH = 230;
   if (!hole) {
     return {
       position: "fixed",
@@ -151,12 +185,12 @@ function cardPosition(hole: Rect | null): React.CSSProperties {
   const spaceBelow = window.innerHeight - (hole.top + hole.height);
   const spaceAbove = hole.top;
   let top: number;
-  if (spaceBelow >= cardH + 24) {
-    top = hole.top + hole.height + 14;
-  } else if (spaceAbove >= cardH + 24) {
-    top = hole.top - cardH - 14;
+  if (spaceBelow >= cardH + 20) {
+    top = hole.top + hole.height + 16;
+  } else if (spaceAbove >= cardH + 20) {
+    top = hole.top - cardH - 16;
   } else {
-    top = Math.max(12, Math.min(hole.top + hole.height + 14, window.innerHeight - cardH - 12));
+    top = Math.max(12, Math.min(hole.top + hole.height + 16, window.innerHeight - cardH - 12));
   }
   const left = Math.min(
     Math.max(12, hole.left + hole.width / 2 - cardW / 2),
@@ -165,11 +199,31 @@ function cardPosition(hole: Rect | null): React.CSSProperties {
   return { position: "fixed", left, top, width: cardW, zIndex: 220 };
 }
 
+function QuestIcon({ icon, className }: { icon: Quest["icon"]; className?: string }) {
+  const c = cn("h-5 w-5", className);
+  switch (icon) {
+    case "feed":
+      return <Newspaper className={c} />;
+    case "org":
+      return <Users className={c} />;
+    case "cup":
+      return <Trophy className={c} />;
+    case "msg":
+      return <MessageCircle className={c} />;
+    case "me":
+      return <UserCircle2 className={c} />;
+    default:
+      return <Zap className={c} />;
+  }
+}
+
 export function OnboardingTour() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [unlocked, setUnlocked] = useState<string[]>([]);
+  const [pop, setPop] = useState(false);
   const [hole, setHole] = useState<Rect | null>(null);
   const [cardStyle, setCardStyle] = useState<React.CSSProperties>({});
   const retryRef = useRef(0);
@@ -188,6 +242,8 @@ export function OnboardingTour() {
     const start = () => {
       setStep(0);
       setFinished(false);
+      setUnlocked([]);
+      setPop(false);
       setOpen(true);
     };
     let replay = false;
@@ -198,7 +254,7 @@ export function OnboardingTour() {
       /* ignore */
     }
     if (replay || !isOnboardingDone(user.id)) {
-      const t = window.setTimeout(start, replay ? 200 : 800);
+      const t = window.setTimeout(start, replay ? 200 : 700);
       return () => window.clearTimeout(t);
     }
     const onReplay = () => start();
@@ -206,9 +262,10 @@ export function OnboardingTour() {
     return () => window.removeEventListener("neparena:replay-onboarding", onReplay);
   }, [user?.id]);
 
-  const current = STEPS[Math.min(step, STEPS.length - 1)]!;
-  const total = STEPS.length;
+  const current = QUESTS[Math.min(step, QUESTS.length - 1)]!;
+  const total = QUESTS.length;
   const isLast = step >= total - 1;
+  const isWelcome = step === 0;
 
   const refresh = useCallback(() => {
     const rect = measureTarget(current.target);
@@ -234,8 +291,8 @@ export function OnboardingTour() {
       const ok = refresh();
       if (!ok && current.target) {
         retryRef.current += 1;
-        if (retryRef.current < 6) {
-          window.setTimeout(tryMeasure, 120);
+        if (retryRef.current < 8) {
+          window.setTimeout(tryMeasure, 140);
         } else if (step < total - 1) {
           setStep((s) => s + 1);
         } else {
@@ -281,11 +338,19 @@ export function OnboardingTour() {
     setOpen(false);
     setFinished(false);
     setStep(0);
+    setUnlocked([]);
   }, [user?.id]);
 
-  const goNext = () => {
-    if (isLast) setFinished(true);
-    else setStep((s) => s + 1);
+  const unlockAndAdvance = () => {
+    const id = current.id;
+    setUnlocked((u) => (u.includes(id) ? u : [...u, id]));
+    setPop(true);
+    window.setTimeout(() => setPop(false), reducedMotion.current ? 120 : 450);
+    if (isLast) {
+      window.setTimeout(() => setFinished(true), reducedMotion.current ? 80 : 280);
+    } else {
+      window.setTimeout(() => setStep((s) => s + 1), reducedMotion.current ? 80 : 220);
+    }
   };
 
   if (!user || !open) return null;
@@ -296,21 +361,38 @@ export function OnboardingTour() {
   if (finished) {
     return (
       <div
-        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
         role="dialog"
         aria-modal
-        aria-label="Tour complete"
+        aria-label="Quest complete"
       >
-        <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#121214]/95 p-8 text-center shadow-2xl ring-1 ring-white/10">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-500/20 text-sky-300">
-            <Sparkles className="h-7 w-7" />
+        <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-b from-[#1a1a22] to-[#0c0c0e] p-7 text-center shadow-2xl ring-1 ring-sky-500/20">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-violet-500/15 blur-3xl" />
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-violet-500 text-white shadow-lg shadow-sky-500/30">
+            <Flame className="h-8 w-8" />
           </div>
-          <h2 className="mt-4 text-xl font-bold text-white">You&apos;re all set</h2>
+          <h2 className="mt-4 text-2xl font-black tracking-tight text-white">Quest complete</h2>
           <p className="mt-2 text-sm text-neutral-400">
-            Explore NepARENA -- find organizers, join tournaments, and connect with players.
+            You unlocked the Arena. Go find a tournament, follow an organizer, or message a player.
           </p>
-          <Button className="mt-6 w-full rounded-full bg-white text-black hover:bg-neutral-100" onClick={complete}>
-            Start Exploring
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {QUESTS.filter((q) => q.id !== "welcome").map((q) => (
+              <span
+                key={q.id}
+                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-sm"
+                title={q.title}
+              >
+                <span aria-hidden>{q.stamp}</span>
+                <span className="text-[11px] font-semibold text-neutral-300">{q.title}</span>
+              </span>
+            ))}
+          </div>
+          <Button
+            className="mt-6 w-full rounded-full bg-white text-black hover:bg-neutral-100"
+            onClick={complete}
+          >
+            Enter the Arena
           </Button>
         </div>
       </div>
@@ -318,12 +400,12 @@ export function OnboardingTour() {
   }
 
   return (
-    <div className="fixed inset-0 z-[200]" role="dialog" aria-modal aria-labelledby="onboard-title">
+    <div className="fixed inset-0 z-[200]" role="dialog" aria-modal aria-labelledby="quest-title">
       <div
-        className="fixed inset-0 bg-black/65"
+        className="fixed inset-0 bg-black/70"
         style={{
           pointerEvents: "auto",
-          backdropFilter: reducedMotion.current ? undefined : "blur(2px)",
+          backdropFilter: reducedMotion.current ? undefined : "blur(3px)",
         }}
         onClick={(e) => e.stopPropagation()}
         aria-hidden
@@ -339,25 +421,27 @@ export function OnboardingTour() {
               width: hole.width,
               height: hole.height,
               borderRadius: hole.radius,
-              boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
+              boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
               transition: `left ${dur} ${ease}, top ${dur} ${ease}, width ${dur} ${ease}, height ${dur} ${ease}, border-radius ${dur} ${ease}`,
               zIndex: 201,
             }}
           />
           <div
-            className="pointer-events-none fixed border-2 border-sky-400/70 shadow-[0_0_20px_rgba(56,189,248,0.35)]"
+            className="pointer-events-none fixed border-2 border-sky-400/80 shadow-[0_0_28px_rgba(56,189,248,0.45)]"
             style={{
-              left: hole.left - 2,
-              top: hole.top - 2,
-              width: hole.width + 4,
-              height: hole.height + 4,
-              borderRadius: hole.radius + 2,
+              left: hole.left - 3,
+              top: hole.top - 3,
+              width: hole.width + 6,
+              height: hole.height + 6,
+              borderRadius: hole.radius + 3,
               transition: `left ${dur} ${ease}, top ${dur} ${ease}, width ${dur} ${ease}, height ${dur} ${ease}, border-radius ${dur} ${ease}`,
               zIndex: 202,
+              animation: reducedMotion.current ? undefined : "questPulse 1.6s ease-in-out infinite",
             }}
           />
-          <div
-            className="fixed"
+          <button
+            type="button"
+            className="fixed cursor-pointer border-0 bg-transparent p-0"
             style={{
               left: hole.left,
               top: hole.top,
@@ -365,16 +449,27 @@ export function OnboardingTour() {
               height: hole.height,
               borderRadius: hole.radius,
               zIndex: 203,
-              pointerEvents: "none",
             }}
-            aria-hidden
+            aria-label={`Discover ${current.title}`}
+            onClick={unlockAndAdvance}
           />
         </>
       )}
 
+      {pop && (
+        <div
+          className="pointer-events-none fixed inset-0 z-[230] flex items-center justify-center"
+          aria-hidden
+        >
+          <span className="animate-in zoom-in-50 fade-in duration-300 text-5xl drop-shadow-lg">
+            {current.stamp}
+          </span>
+        </div>
+      )}
+
       <div
         className={cn(
-          "rounded-2xl border border-white/15 bg-[#0c0c0e]/95 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl",
+          "rounded-2xl border border-white/15 bg-[#0c0c0e]/96 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl",
         )}
         style={{
           ...cardStyle,
@@ -384,64 +479,99 @@ export function OnboardingTour() {
         }}
       >
         <div className="mb-2 flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-sky-400">
-              {step + 1} / {total}
-            </p>
-            <h3 id="onboard-title" className="mt-0.5 text-base font-semibold text-white">
-              {current.title}
-            </h3>
+          <div className="flex items-center gap-2">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-sky-500/30 to-violet-500/20 text-sky-300">
+              <QuestIcon icon={current.icon} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-400">
+                Arena Quest · {Math.min(step + 1, total)}/{total}
+              </p>
+              <h3 id="quest-title" className="text-base font-bold text-white">
+                {current.title}
+              </h3>
+            </div>
           </div>
           <button
             type="button"
             onClick={complete}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-white"
-            aria-label="Skip tour"
+            aria-label="Skip quest"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-sm leading-relaxed text-neutral-300">{current.body}</p>
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="rounded-full text-neutral-400"
-            disabled={step === 0}
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-          >
-            <ChevronLeft className="mr-0.5 h-4 w-4" /> Back
-          </Button>
-          <div className="flex gap-1" aria-hidden>
-            {STEPS.map((_, i) => (
+
+        <p className="text-sm font-medium leading-snug text-neutral-100">{current.hook}</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">{current.tip}</p>
+
+        <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Stamps collected">
+          {QUESTS.map((q, i) => {
+            const got = unlocked.includes(q.id) || i < step;
+            return (
               <span
-                key={i}
+                key={q.id}
                 className={cn(
-                  "h-1.5 w-1.5 rounded-full transition",
-                  i === step ? "bg-sky-400 scale-125" : "bg-white/20",
+                  "inline-flex h-7 min-w-7 items-center justify-center rounded-full border text-sm transition",
+                  got
+                    ? "border-sky-400/40 bg-sky-500/15 scale-105"
+                    : i === step
+                      ? "border-white/25 bg-white/10"
+                      : "border-white/8 bg-white/[0.03] opacity-40",
                 )}
-              />
-            ))}
-          </div>
-          {step === 0 ? (
-            <Button type="button" size="sm" className="rounded-full bg-sky-500 text-white hover:bg-sky-400" onClick={goNext}>
-              Get Started
-            </Button>
-          ) : isLast ? (
-            <Button type="button" size="sm" className="rounded-full bg-sky-500 text-white hover:bg-sky-400" onClick={() => setFinished(true)}>
-              Finish
+                title={q.title}
+              >
+                {q.stamp}
+              </span>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2">
+          {isWelcome ? (
+            <Button
+              type="button"
+              className="flex-1 rounded-full bg-gradient-to-r from-sky-500 to-violet-500 text-white hover:from-sky-400 hover:to-violet-400"
+              onClick={unlockAndAdvance}
+            >
+              <Sparkles className="mr-1.5 h-4 w-4" />
+              Let's explore
             </Button>
           ) : (
-            <Button type="button" size="sm" className="rounded-full bg-white text-black hover:bg-neutral-100" onClick={goNext}>
-              Next <ChevronRight className="ml-0.5 h-4 w-4" />
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-full text-neutral-400"
+                onClick={complete}
+              >
+                Skip
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="ml-auto rounded-full bg-white text-black hover:bg-neutral-100"
+                onClick={unlockAndAdvance}
+              >
+                {isLast ? "Claim last stamp" : "Got it — next"}
+              </Button>
+            </>
           )}
         </div>
-        <button type="button" className="mt-2 w-full text-center text-xs text-neutral-500 hover:text-neutral-300" onClick={complete}>
-          Skip tour
-        </button>
+        {!isWelcome && hole && (
+          <p className="mt-2 text-center text-[11px] text-neutral-500">
+            or tap the glowing area to discover
+          </p>
+        )}
       </div>
+
+      <style>{`
+        @keyframes questPulse {
+          0%, 100% { box-shadow: 0 0 18px rgba(56,189,248,0.35); }
+          50% { box-shadow: 0 0 32px rgba(56,189,248,0.65); }
+        }
+      `}</style>
     </div>
   );
 }
