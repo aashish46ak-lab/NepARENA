@@ -1,12 +1,10 @@
 /**
  * NepARENA multi-tenant helpers.
- * Existing SQL tables (organizers, organizer_members, followers, …) unchanged.
  */
 import { supabase } from "./supabase";
 
 export const PLATFORM_NAME = "NepARENA";
 
-/** Platform super admins — full /platform access */
 export const SUPER_ADMIN_EMAILS = [
   "aashish46ak@gmail.com",
   "baralk851@gmail.com",
@@ -59,20 +57,47 @@ export async function listActiveOrganizers(): Promise<Organizer[]> {
     .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
     .in("status", ["active", "pending"])
     .order("name");
-  if (error) {
-    console.warn("listActiveOrganizers", error.message);
-    return [];
+  let rows = (!error ? (data ?? []) : []) as Organizer[];
+  if (error) console.warn("listActiveOrganizers", error.message);
+  rows = rows.filter((o) => o.status === "active" || o.is_verified);
+
+  if (!rows.length) {
+    const { data: fallback } = await supabase
+      .from("organizers")
+      .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
+      .order("name")
+      .limit(50);
+    rows = (fallback ?? []) as Organizer[];
   }
-  const rows = (data ?? []) as Organizer[];
-  if (rows.length > 0) {
-    return rows.filter((o) => o.status === "active" || o.is_verified);
+
+  const hasDefault = rows.some(
+    (o) => o.slug === DEFAULT_ORGANIZER_SLUG || /efootball\s*nepal/i.test(o.name),
+  );
+  if (!hasDefault) {
+    const def = await ensureDefaultOrganizerPublic();
+    if (def) rows = [def, ...rows];
+  } else {
+    const { data: site } = await supabase
+      .from("site_settings")
+      .select("logo_url, hero_image_url")
+      .limit(1)
+      .maybeSingle();
+    const logo = (site as { logo_url?: string | null } | null)?.logo_url;
+    const cover = (site as { hero_image_url?: string | null } | null)?.hero_image_url;
+    if (logo || cover) {
+      rows = rows.map((o) => {
+        if (o.slug === DEFAULT_ORGANIZER_SLUG || /efootball\s*nepal/i.test(o.name)) {
+          return {
+            ...o,
+            logo_url: o.logo_url || logo || null,
+            cover_url: o.cover_url || cover || null,
+          };
+        }
+        return o;
+      });
+    }
   }
-  const { data: fallback } = await supabase
-    .from("organizers")
-    .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
-    .order("name")
-    .limit(50);
-  return (fallback ?? []) as Organizer[];
+  return rows;
 }
 
 export async function listAllOrganizers(): Promise<Organizer[]> {
@@ -106,7 +131,6 @@ export async function getOrganizerBySlug(slug: string): Promise<Organizer | null
   return (byName as Organizer) ?? null;
 }
 
-/** Notify platform super-admins / owners about organizer applications. */
 export async function notifyPlatformAdmins(opts: {
   title: string;
   body?: string;
@@ -147,6 +171,7 @@ export async function notifyPlatformAdmins(opts: {
 }
 
 export async function getFollowerCount(organizerId: string): Promise<number> {
+  if (!organizerId || organizerId.startsWith("default-") || organizerId.startsWith("seed-")) return 0;
   const { count, error } = await supabase
     .from("organizer_followers")
     .select("*", { count: "exact", head: true })
@@ -156,6 +181,9 @@ export async function getFollowerCount(organizerId: string): Promise<number> {
 }
 
 export async function followOrganizer(organizerId: string, userId: string) {
+  if (organizerId.startsWith("default-") || organizerId.startsWith("seed-")) {
+    return { ok: false as const, error: "Organizer profile is still syncing. Try again later." };
+  }
   const { error } = await supabase
     .from("organizer_followers")
     .upsert({ organizer_id: organizerId, user_id: userId }, { onConflict: "organizer_id,user_id" });
@@ -179,6 +207,7 @@ export async function listFollowedOrganizerIds(userId: string): Promise<string[]
 }
 
 export async function isFollowing(organizerId: string, userId: string): Promise<boolean> {
+  if (!organizerId || organizerId.startsWith("default-")) return false;
   const { data } = await supabase
     .from("organizer_followers")
     .select("organizer_id")
@@ -283,7 +312,7 @@ export async function setOrganizerStatus(organizerId: string, status: OrganizerS
 
 export async function ensureEfootballNepalAdmin(userId: string) {
   const org = await getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
-  if (!org) return;
+  if (!org || org.id.startsWith("default-")) return;
   await supabase.from("organizer_members").upsert(
     { organizer_id: org.id, user_id: userId, role: "admin" },
     { onConflict: "organizer_id,user_id" },
@@ -301,7 +330,7 @@ export async function acceptInvitation(params: { token: string; userId: string }
   const slug = (inv as any).slug as string;
   const name = (inv as any).name as string;
   let org = await getOrganizerBySlug(slug);
-  if (!org) {
+  if (!org || org.id.startsWith("default-")) {
     const { data, error } = await supabase
       .from("organizers")
       .insert({ name, slug, status: "active", is_verified: false, owner_id: params.userId })
@@ -322,6 +351,71 @@ export async function getDefaultOrganizer(): Promise<Organizer | null> {
   return getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
 }
 
+/** Never let flagship eFootball Nepal 404 — DB first, else site_settings. */
+export async function ensureDefaultOrganizerPublic(): Promise<Organizer | null> {
+  const existing = await getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
+  if (existing) {
+    if (!existing.logo_url) {
+      const { data: site } = await supabase
+        .from("site_settings")
+        .select("logo_url, hero_image_url")
+        .limit(1)
+        .maybeSingle();
+      const logo = (site as { logo_url?: string | null } | null)?.logo_url;
+      const cover = (site as { hero_image_url?: string | null } | null)?.hero_image_url;
+      if (logo || cover) {
+        return {
+          ...existing,
+          logo_url: existing.logo_url || logo || null,
+          cover_url: existing.cover_url || cover || null,
+        };
+      }
+    }
+    return existing;
+  }
+
+  const { data: site } = await supabase
+    .from("site_settings")
+    .select("site_name, tagline, logo_url, hero_image_url, about_short")
+    .limit(1)
+    .maybeSingle();
+
+  const s = site as {
+    site_name?: string | null;
+    tagline?: string | null;
+    logo_url?: string | null;
+    hero_image_url?: string | null;
+    about_short?: string | null;
+  } | null;
+
+  const { data: byName } = await supabase
+    .from("organizers")
+    .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
+    .ilike("name", "%efootball%nepal%")
+    .limit(1)
+    .maybeSingle();
+  if (byName) {
+    const o = byName as Organizer;
+    return {
+      ...o,
+      logo_url: o.logo_url || s?.logo_url || null,
+      cover_url: o.cover_url || s?.hero_image_url || null,
+    };
+  }
+
+  return {
+    id: "default-efootball-nepal",
+    name: s?.site_name?.trim() || "eFootball Nepal",
+    slug: DEFAULT_ORGANIZER_SLUG,
+    logo_url: s?.logo_url ?? null,
+    cover_url: s?.hero_image_url ?? null,
+    description: s?.about_short || s?.tagline || "Tournaments, standings, fixtures and community.",
+    is_verified: true,
+    status: "active",
+    created_at: new Date().toISOString(),
+  };
+}
+
 export async function listOrganizerMemberships(userId: string): Promise<(OrganizerMember & { organizer?: Organizer })[]> {
   const { data } = await supabase.from("organizer_members").select("organizer_id, user_id, role, created_at").eq("user_id", userId);
   const rows = (data ?? []) as OrganizerMember[];
@@ -333,6 +427,7 @@ export async function listOrganizerMemberships(userId: string): Promise<(Organiz
 }
 
 export async function listOrganizerTeam(organizerId: string): Promise<OrganizerTeamMember[]> {
+  if (!organizerId || organizerId.startsWith("default-")) return [];
   const { data: members } = await supabase
     .from("organizer_members")
     .select("user_id, role")
