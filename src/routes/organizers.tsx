@@ -88,20 +88,13 @@ function OrganizersPage() {
               id: "seed-efn",
               slug: DEFAULT_ORGANIZER_SLUG,
               name: "eFootball Nepal",
-              tagline: "Competitive eFootball community in Nepal",
               description:
                 "Tournaments, standings, fixtures and community — the first organizer on NepARENA.",
               logo_url: null,
-              banner_url: null,
+              cover_url: null,
               is_verified: true,
-              status: "active",
-              primary_color: null,
-              secondary_color: null,
-              owner_user_id: null,
-              website_url: null,
-              contact_email: null,
+              status: "active" as const,
               created_at: "",
-              updated_at: "",
             } as Organizer,
           ];
 
@@ -122,7 +115,7 @@ function OrganizersPage() {
       out = out.filter(
         (o) =>
           o.name.toLowerCase().includes(s) ||
-          (o.tagline ?? "").toLowerCase().includes(s) ||
+          (o.description ?? "").toLowerCase().includes(s) ||
           (o.slug ?? "").toLowerCase().includes(s),
       );
     }
