@@ -12,8 +12,6 @@ import {
   Newspaper,
   Info,
   Users,
-  MessageCircle,
-  Trophy,
   Swords,
   Gamepad2,
   Sparkles,
@@ -148,7 +146,7 @@ export function PlatformHomePage() {
             className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sky-500/15 to-transparent p-3.5 transition hover:border-sky-400/40"
           >
             <Swords className="h-5 w-5 text-sky-400" />
-            <p className="mt-2 text-sm font-bold text-white">Tournaments</p>
+            <p className="mt-2 text-sm font-bold text-white">Live Tournaments</p>
             <p className="text-[11px] text-neutral-400">Live & upcoming cups</p>
           </Link>
           <Link
@@ -230,14 +228,6 @@ export function PlatformHomePage() {
       >
         <div className="mx-auto flex max-w-3xl gap-1.5 overflow-x-auto px-3 py-2 scrollbar-none">
           <Link
-            to="/messages"
-            data-onboard="messages"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/20"
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-            Messages
-          </Link>
-          <Link
             to="/games"
             data-onboard="games-pill"
             className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
@@ -258,13 +248,6 @@ export function PlatformHomePage() {
           >
             <Info className="h-3.5 w-3.5 text-sky-400" />
             Organizers
-          </Link>
-          <Link
-            to="/hall-of-fame"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
-          >
-            <Trophy className="h-3.5 w-3.5 text-amber-400" />
-            Hall of Fame
           </Link>
         </div>
       </div>
