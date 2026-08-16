@@ -2,7 +2,7 @@
  * NepARENA platform homepage — guest-clear hero + discovery + feed.
  */
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { SocialFeed } from "@/components/SocialFeed";
@@ -10,13 +10,9 @@ import { StreakAssistant } from "@/components/StreakAssistant";
 import { CreatePostModal } from "@/components/CreatePostModal";
 import {
   Newspaper,
-  Info,
   Users,
-  Swords,
-  Gamepad2,
   Sparkles,
   ArrowRight,
-  BadgeCheck,
 } from "lucide-react";
 import { StoriesRow } from "@/components/StoriesRow";
 import { cn } from "@/lib/utils";
@@ -28,11 +24,9 @@ import { supabase } from "@/lib/supabase";
 
 export function PlatformHomePage() {
   const { user } = useAuth();
-  const [pillsVisible, setPillsVisible] = useState(true);
   const [postOpen, setPostOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
   const [feedMode, setFeedMode] = useState<"for_you" | "following">("for_you");
-  const lastY = useRef(0);
 
   const { data: organizers = [] } = useQuery({
     queryKey: ["home_organizers_preview"],
@@ -56,18 +50,6 @@ export function PlatformHomePage() {
     },
     staleTime: 60_000,
   });
-
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY || 0;
-      if (y < 40) setPillsVisible(true);
-      else if (y > lastY.current + 8) setPillsVisible(false);
-      else if (y < lastY.current - 8) setPillsVisible(true);
-      lastY.current = y;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   const topOrgs = organizers.slice(0, 4);
 
@@ -135,49 +117,6 @@ export function PlatformHomePage() {
         </div>
       )}
 
-      <div className="mx-auto max-w-md px-3 pt-3">
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500">
-          Explore
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Link
-            to="/tournaments"
-            data-onboard="tournaments"
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sky-500/15 to-transparent p-3.5 transition hover:border-sky-400/40"
-          >
-            <Swords className="h-5 w-5 text-sky-400" />
-            <p className="mt-2 text-sm font-bold text-white">Live Tournaments</p>
-            <p className="text-[11px] text-neutral-400">Live & upcoming cups</p>
-          </Link>
-          <Link
-            to="/organizers"
-            data-onboard="organizers"
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-violet-500/15 to-transparent p-3.5 transition hover:border-violet-400/40"
-          >
-            <Users className="h-5 w-5 text-violet-300" />
-            <p className="mt-2 text-sm font-bold text-white">Organizers</p>
-            <p className="text-[11px] text-neutral-400">Communities & brands</p>
-          </Link>
-          <Link
-            to="/games"
-            data-onboard="games"
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/15 to-transparent p-3.5 transition hover:border-emerald-400/40"
-          >
-            <Gamepad2 className="h-5 w-5 text-emerald-300" />
-            <p className="mt-2 text-sm font-bold text-white">Games</p>
-            <p className="text-[11px] text-neutral-400">Quiz, penalty & more</p>
-          </Link>
-          <Link
-            to="/members"
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-amber-500/15 to-transparent p-3.5 transition hover:border-amber-400/40"
-          >
-            <BadgeCheck className="h-5 w-5 text-amber-300" />
-            <p className="mt-2 text-sm font-bold text-white">Players</p>
-            <p className="text-[11px] text-neutral-400">Find & message</p>
-          </Link>
-        </div>
-      </div>
-
       {topOrgs.length > 0 && (
         <div className="mx-auto max-w-md px-3 pt-4" data-onboard="organizers">
           <div className="mb-2 flex items-center gap-2">
@@ -218,39 +157,6 @@ export function PlatformHomePage() {
           </div>
         </div>
       )}
-
-      <div
-        className={cn(
-          "sticky top-12 z-30 border-b border-white/5 bg-[#0a0a0a]/85 backdrop-blur-md transition-all duration-300",
-          pillsVisible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-full opacity-0",
-        )}
-        data-tour="about-members"
-      >
-        <div className="mx-auto flex max-w-3xl gap-1.5 overflow-x-auto px-3 py-2 scrollbar-none">
-          <Link
-            to="/games"
-            data-onboard="games-pill"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
-          >
-            <Gamepad2 className="h-3.5 w-3.5 text-emerald-400" />
-            Games
-          </Link>
-          <Link
-            to="/tournaments"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
-          >
-            <Swords className="h-3.5 w-3.5 text-sky-400" />
-            Cups
-          </Link>
-          <Link
-            to="/organizers"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
-          >
-            <Info className="h-3.5 w-3.5 text-sky-400" />
-            Organizers
-          </Link>
-        </div>
-      </div>
 
       <div className="mx-auto max-w-md px-3 pt-3" data-onboard="tournament-strip">
         <HomeTournamentStrip />
