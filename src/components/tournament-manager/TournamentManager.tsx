@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Tournament } from "@/lib/supabase";
 import { useTournamentData } from "./shared";
 import { OverviewTab } from "./OverviewTab";
@@ -9,10 +9,13 @@ import { StandingsTab } from "./StandingsTab";
 import { InvitationsTab } from "./InvitationsTab";
 import { SettingsTab } from "./SettingsTab";
 import { VerificationsTab } from "./VerificationsTab";
+import { BrRoundsTab } from "./BrRoundsTab";
+import { getGame, isBattleRoyale } from "@/lib/games";
+import { GameBadge } from "@/components/tournaments/games/GameBadge";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-const TABS = [
+const LEGACY_TABS = [
   { id: "overview", label: "Overview" },
   { id: "players", label: "Players" },
   { id: "fixtures", label: "Fixtures" },
@@ -20,6 +23,22 @@ const TABS = [
   { id: "verify", label: "Verify" },
   { id: "standings", label: "Standings" },
   { id: "invitations", label: "Invitations" },
+  { id: "settings", label: "Settings" },
+] as const;
+
+const BR_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "players", label: "Participants" },
+  { id: "rounds", label: "Rounds & Results" },
+  { id: "settings", label: "Settings" },
+] as const;
+
+const MLBB_EA_TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "players", label: "Participants" },
+  { id: "fixtures", label: "Fixtures / Series" },
+  { id: "results", label: "Results" },
+  { id: "standings", label: "Standings" },
   { id: "settings", label: "Settings" },
 ] as const;
 
@@ -33,18 +52,29 @@ export function TournamentManager({ tournament: initial }: Props) {
   const [tournament, setTournament] = useState(initial);
   const [tab, setTab] = useState<string>("overview");
   const data = useTournamentData(tournament.id, true);
+  const game = getGame(tournament.game);
+  const br = isBattleRoyale(tournament.game);
+
+  const tabs = useMemo(() => {
+    if (game.usesLegacyEngine) return LEGACY_TABS;
+    if (br) return BR_TABS;
+    return MLBB_EA_TABS;
+  }, [game.usesLegacyEngine, br]);
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">{tournament.name}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-bold">{tournament.name}</h1>
+          <GameBadge gameId={tournament.game} />
+        </div>
         <p className="text-sm text-muted-foreground capitalize">
-          Manage · {tournament.status.replace(/_/g, " ")}
+          Manage · {tournament.status.replace(/_/g, " ")} · {game.shortName}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2 glass rounded-2xl p-2">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -75,6 +105,7 @@ export function TournamentManager({ tournament: initial }: Props) {
           {tab === "players" && (
             <PlayersTab tournament={tournament} data={data} />
           )}
+          {tab === "rounds" && br && <BrRoundsTab tournament={tournament} />}
           {tab === "fixtures" && (
             <FixturesTab tournament={tournament} data={data} />
           )}
