@@ -7,25 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/ImageUpload";
 import { toast } from "sonner";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  buildCover,
-  getTheme,
-  THEME_PRESETS,
-  type ThemeId,
-} from "@/lib/themes";
 import { DEFAULT_ORGANIZER_SLUG } from "@/lib/organizers";
 import { saveOrganizerTheme } from "@/lib/save-organizer-theme";
-import { setOrganizerThemeContext } from "@/lib/organizer-context";
-import { cn } from "@/lib/utils";
 
 export function SiteSettingsPanel() {
   const [row, setRow] = useState<SiteSettings | null>(null);
-  const [themeId, setThemeId] = useState<ThemeId>("black-silver");
-  const [startColor, setStartColor] = useState("#0a0a0a");
-  const [endColor, setEndColor] = useState("#525252");
-  const [angle, setAngle] = useState(135);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const qc = useQueryClient();
@@ -34,20 +22,6 @@ export function SiteSettingsPanel() {
     void (async () => {
       const { data } = await supabase.from("site_settings").select("*").maybeSingle();
       setRow(data as SiteSettings | null);
-      const { data: org } = await supabase
-        .from("organizers")
-        .select("theme_id, primary_color, secondary_color")
-        .eq("slug", DEFAULT_ORGANIZER_SLUG)
-        .maybeSingle();
-      const fromOrg = (org as { theme_id?: string | null } | null)?.theme_id;
-      const fromSite = (data as SiteSettings & { theme_id?: string | null } | null)?.theme_id;
-      const id = (fromOrg || fromSite || "black-silver") as ThemeId;
-      const preset = THEME_PRESETS.find((t) => t.id === id) ?? THEME_PRESETS[0]!;
-      setThemeId(THEME_PRESETS.some((t) => t.id === id) ? id : "black-silver");
-      const pc = (org as { primary_color?: string | null } | null)?.primary_color;
-      const sc = (org as { secondary_color?: string | null } | null)?.secondary_color;
-      setStartColor(pc || preset.swatch[0]);
-      setEndColor(sc || preset.swatch[1]);
       setLoading(false);
     })();
   }, []);
@@ -66,22 +40,6 @@ export function SiteSettingsPanel() {
     );
 
   const patch = (p: Partial<SiteSettings>) => setRow({ ...row, ...p });
-
-  const theme = getTheme(themeId, {
-    start: startColor,
-    end: endColor,
-    accent: endColor,
-  });
-  const liveCover = buildCover(startColor, endColor, angle);
-
-  const pickPreset = (id: ThemeId) => {
-    const p = THEME_PRESETS.find((t) => t.id === id);
-    if (!p) return;
-    setThemeId(id);
-    setStartColor(p.swatch[0]);
-    setEndColor(p.swatch[1]);
-    setAngle(135);
-  };
 
   const save = async () => {
     setSaving(true);
@@ -107,26 +65,16 @@ export function SiteSettingsPanel() {
         description: row.about_short,
         logo_url: row.logo_url,
         banner_url: row.hero_image_url,
-        theme_id: themeId,
-        primary_color: startColor,
-        secondary_color: endColor,
+        theme_id: "black-silver",
+        primary_color: "#0a0a0a",
+        secondary_color: "#525252",
       });
 
-      await supabase
-        .from("site_settings")
-        .update({ theme_id: themeId } as Record<string, unknown>)
-        .eq("id", row.id);
-
-      setOrganizerThemeContext({
-        slug: DEFAULT_ORGANIZER_SLUG,
-        theme_id: themeId,
-        primary_color: startColor,
-        secondary_color: endColor,
-      });
-      toast.success(`Theme “${theme.label}” saved — applied across organizer pages`);
+      toast.success("Branding saved — logo applied to organizer card & public page");
       qc.invalidateQueries({ queryKey: ["site_settings"] });
       qc.invalidateQueries({ queryKey: ["organizer"] });
       qc.invalidateQueries({ queryKey: ["active_organizers_page"] });
+      qc.invalidateQueries({ queryKey: ["org_card"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -135,138 +83,22 @@ export function SiteSettingsPanel() {
   };
 
   return (
-    <div
-      className="rounded-2xl border border-white/10 p-1 transition-all duration-300"
-      style={{
-        backgroundImage: theme.pageBg,
-        backgroundColor: "rgba(10,10,10,0.92)",
-      }}
-    >
-      <div className="h-2 rounded-t-xl" style={{ background: liveCover }} />
-
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-1">
       <AdminSection
-        title="Site settings"
-        description={`Live theme: ${theme.label}. Templates + color graph. Save applies to public page.`}
+        title="Site branding"
+        description="Logo and cover sync to the public organizer card and /o page. Theme options will return later."
       >
-        <div className="mb-4">
-          <Label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
-            Templates
-          </Label>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-            {THEME_PRESETS.map((th) => {
-              const selected = themeId === th.id;
-              return (
-                <button
-                  key={th.id}
-                  type="button"
-                  title={th.label}
-                  onClick={() => pickPreset(th.id)}
-                  className={cn(
-                    "relative overflow-hidden rounded-lg border-2 transition",
-                    selected
-                      ? "border-white ring-2 ring-white/30"
-                      : "border-white/15 hover:border-white/40",
-                  )}
-                >
-                  <div className="h-8 w-full" style={{ background: th.cover }} />
-                  <p className="truncate bg-black/50 px-1 py-0.5 text-center text-[9px] text-white">
-                    {th.label}
-                  </p>
-                  {selected && (
-                    <span className="absolute right-0.5 top-0.5 rounded-full bg-black/50 p-0.5">
-                      <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+        <div className="mb-5 flex items-center gap-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-white/15">
+            {row.logo_url ? (
+              <img src={row.logo_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-xs text-neutral-500">Logo</span>
+            )}
           </div>
-        </div>
-
-        <div className="mb-5 rounded-xl border border-white/10 bg-black/30 p-3">
-          <Label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
-            Color graph
-          </Label>
-          <div
-            className="relative h-14 w-full overflow-hidden rounded-lg ring-1 ring-white/15"
-            style={{ background: liveCover }}
-          >
-            <div className="absolute inset-x-0 bottom-0 flex justify-between px-2 py-1 text-[10px] font-mono text-white/90 drop-shadow">
-              <span>{startColor}</span>
-              <span>{angle}°</span>
-              <span>{endColor}</span>
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div>
-              <p className="mb-1 text-[10px] text-muted-foreground">Start</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={startColor}
-                  onChange={(e) => {
-                    setStartColor(e.target.value);
-                    setThemeId("custom");
-                  }}
-                  className="h-9 w-12 cursor-pointer rounded border border-white/20 bg-transparent"
-                />
-                <Input
-                  value={startColor}
-                  onChange={(e) => {
-                    setStartColor(e.target.value);
-                    setThemeId("custom");
-                  }}
-                  className="h-9 font-mono text-xs"
-                />
-              </div>
-            </div>
-            <div>
-              <p className="mb-1 text-[10px] text-muted-foreground">End</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={endColor}
-                  onChange={(e) => {
-                    setEndColor(e.target.value);
-                    setThemeId("custom");
-                  }}
-                  className="h-9 w-12 cursor-pointer rounded border border-white/20 bg-transparent"
-                />
-                <Input
-                  value={endColor}
-                  onChange={(e) => {
-                    setEndColor(e.target.value);
-                    setThemeId("custom");
-                  }}
-                  className="h-9 font-mono text-xs"
-                />
-              </div>
-            </div>
-            <div className="col-span-2">
-              <p className="mb-1 text-[10px] text-muted-foreground">Angle {angle}°</p>
-              <input
-                type="range"
-                min={0}
-                max={360}
-                value={angle}
-                onChange={(e) => {
-                  setAngle(Number(e.target.value));
-                  setThemeId("custom");
-                }}
-                className="w-full"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-6 overflow-hidden rounded-xl border border-white/10">
-          <div className="h-16 w-full sm:h-20" style={{ background: liveCover }} />
-          <div className="bg-black/40 p-3">
-            <p className="text-base font-bold" style={{ color: endColor, textShadow: theme.nameShadow }}>
-              {row.site_name || "Organizer"}
-            </p>
-            <p className="text-xs text-neutral-400">{row.tagline || "Public page preview"}</p>
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-white">{row.site_name || "Organizer"}</p>
+            <p className="truncate text-xs text-neutral-400">{row.tagline || "Public card preview"}</p>
           </div>
         </div>
 
@@ -292,18 +124,19 @@ export function SiteSettingsPanel() {
             </Field>
           </div>
           <div className="space-y-4">
-            <Field label="Logo">
+            <Field label="Logo (organizer card)">
               <ImageUpload value={row.logo_url} onChange={(u) => patch({ logo_url: u })} folder="branding" aspect="square" />
+              <p className="mt-1 text-[11px] text-neutral-500">Shown on organizer cards and public profile.</p>
             </Field>
-            <Field label="Hero / cover image">
+            <Field label="Banner / cover image">
               <ImageUpload value={row.hero_image_url} onChange={(u) => patch({ hero_image_url: u })} folder="branding" aspect="wide" />
             </Field>
           </div>
         </div>
 
         <div className="mt-6 flex justify-end">
-          <Button onClick={() => void save()} disabled={saving} className="text-black" style={{ background: liveCover }}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
+          <Button onClick={() => void save()} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save branding"}
           </Button>
         </div>
       </AdminSection>
