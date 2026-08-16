@@ -1,9 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { getFollowerCount } from "@/lib/organizers";
 import { supabase } from "@/lib/supabase";
-import { Shield, Users, Trophy, CheckCircle2, ChevronRight } from "lucide-react";
+import { Users, Trophy, CheckCircle2, ChevronRight, Shield } from "lucide-react";
 
 export type OrganizerCardData = {
   id: string;
@@ -12,7 +11,6 @@ export type OrganizerCardData = {
   tagline?: string | null;
   description?: string | null;
   logo_url: string | null;
-  /** List cards are logo-first; cover/banner optional and not shown */
   banner_url?: string | null;
   cover_url?: string | null;
   is_verified: boolean;
@@ -47,21 +45,47 @@ export function OrganizerCard({
   });
 
   const slug = (organizer.slug || "").trim();
-  const canOpen = !!slug;
+  const logo =
+    organizer.logo_url ||
+    organizer.cover_url ||
+    organizer.banner_url ||
+    null;
+
+  if (!slug) {
+    return (
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 opacity-60">
+        <div className="flex items-center gap-3">
+          <div className="grid h-14 w-14 place-items-center rounded-xl bg-neutral-900">
+            <Shield className="h-6 w-6 text-neutral-500" />
+          </div>
+          <div>
+            <p className="font-semibold text-white">{organizer.name}</p>
+            <p className="text-xs text-neutral-500">Profile unavailable</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-sky-400/30 hover:bg-white/[0.05]">
+    <Link
+      to="/o/$slug"
+      params={{ slug }}
+      className="block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-sky-400/40 hover:bg-white/[0.06] active:scale-[0.99]"
+    >
       <div className="flex items-center gap-3 p-3.5">
         <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-neutral-900">
-          {organizer.logo_url ? (
+          {logo ? (
             <img
-              src={organizer.logo_url}
+              src={logo}
               alt={organizer.name}
               className="h-full w-full object-cover"
               loading="lazy"
             />
           ) : (
-            <Shield className="h-6 w-6 text-neutral-500" />
+            <span className="text-sm font-bold text-neutral-400">
+              {(organizer.name || "?").slice(0, 2).toUpperCase()}
+            </span>
           )}
         </div>
 
@@ -94,28 +118,9 @@ export function OrganizerCard({
             </span>
           </div>
         </div>
-      </div>
 
-      <div className="border-t border-white/5 px-3.5 pb-3.5 pt-2.5">
-        {canOpen ? (
-          <Button
-            asChild
-            className="h-9 w-full rounded-xl bg-sky-500 text-sm font-semibold text-white hover:bg-sky-400"
-          >
-            <Link to="/o/$slug" params={{ slug }}>
-              Open profile
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        ) : (
-          <Button
-            disabled
-            className="h-9 w-full rounded-xl bg-neutral-700 text-sm text-neutral-400"
-          >
-            Profile unavailable
-          </Button>
-        )}
+        <ChevronRight className="h-5 w-5 shrink-0 text-neutral-500" />
       </div>
-    </div>
+    </Link>
   );
 }
