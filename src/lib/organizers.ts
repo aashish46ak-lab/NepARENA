@@ -1,5 +1,6 @@
 /**
  * NepARENA multi-tenant helpers.
+ * Tournament manager / eFootball cores are independent of this module.
  */
 import { supabase } from "./supabase";
 
@@ -54,6 +55,9 @@ export function isSuperAdminEmail(email?: string | null): boolean {
 const ORG_SELECT =
   "id, name, slug, logo_url, banner_url, description, is_verified, status, created_at, owner_user_id";
 
+const ORG_SELECT_MIN =
+  "id, name, slug, logo_url, description, is_verified, status, created_at";
+
 function mapOrgRow(row: Record<string, unknown> | null | undefined): Organizer | null {
   if (!row || !row.id) return null;
   const banner = (row.banner_url as string | null) ?? (row.cover_url as string | null) ?? null;
@@ -72,6 +76,25 @@ function mapOrgRow(row: Record<string, unknown> | null | undefined): Organizer |
   };
 }
 
+async function fillDefaultBranding(mapped: Organizer): Promise<Organizer> {
+  if (
+    (mapped.logo_url && mapped.cover_url) ||
+    !(mapped.slug === DEFAULT_ORGANIZER_SLUG || /efootball/i.test(mapped.name))
+  ) {
+    return mapped;
+  }
+  const { data: site } = await supabase
+    .from("site_settings")
+    .select("logo_url, hero_image_url")
+    .limit(1)
+    .maybeSingle();
+  const logo = (site as { logo_url?: string | null } | null)?.logo_url;
+  const cover = (site as { hero_image_url?: string | null } | null)?.hero_image_url;
+  if (logo && !mapped.logo_url) mapped.logo_url = logo;
+  if (cover && !mapped.cover_url) mapped.cover_url = cover;
+  return mapped;
+}
+
 export async function listActiveOrganizers(): Promise<Organizer[]> {
   const { data, error } = await supabase
     .from("organizers")
@@ -87,7 +110,7 @@ export async function listActiveOrganizers(): Promise<Organizer[]> {
   if (!rows.length) {
     const { data: fallback } = await supabase
       .from("organizers")
-      .select(ORG_SELECT)
+      .select(ORG_SELECT_MIN)
       .order("name")
       .limit(50);
     rows = ((fallback ?? []) as Record<string, unknown>[])
@@ -102,34 +125,13 @@ export async function listActiveOrganizers(): Promise<Organizer[]> {
     const def = await ensureDefaultOrganizerPublic();
     if (def) rows = [def, ...rows];
   } else {
-    const { data: site } = await supabase
-      .from("site_settings")
-      .select("logo_url, hero_image_url")
-      .limit(1)
-      .maybeSingle();
-    const logo = (site as { logo_url?: string | null } | null)?.logo_url;
-    const cover = (site as { hero_image_url?: string | null } | null)?.hero_image_url;
-    if (logo || cover) {
-      rows = rows.map((o) => {
-        if (o.slug === DEFAULT_ORGANIZER_SLUG || /efootball\s*nepal/i.test(o.name)) {
-          return {
-            ...o,
-            logo_url: o.logo_url || logo || null,
-            cover_url: o.cover_url || cover || null,
-          };
-        }
-        return o;
-      });
-    }
+    rows = await Promise.all(rows.map((o) => fillDefaultBranding(o)));
   }
   return rows;
 }
 
 export async function listAllOrganizers(): Promise<Organizer[]> {
-  const { data, error } = await supabase
-    .from("organizers")
-    .select(ORG_SELECT)
-    .order("name");
+  const { data, error } = await supabase.from("organizers").select(ORG_SELECT).order("name");
   if (error) return [];
   return ((data ?? []) as Record<string, unknown>[])
     .map((r) => mapOrgRow(r))
@@ -142,36 +144,33 @@ export async function getOrganizerBySlug(slug: string): Promise<Organizer | null
   const candidates = Array.from(
     new Set([raw, raw.toLowerCase(), raw.replace(/\s+/g, "-").toLowerCase()].filter(Boolean)),
   );
-  for (const s of candidates) {
-    const { data, error } = await supabase
-      .from("organizers")
-      .select(ORG_SELECT)
-      .eq("slug", s)
-      .maybeSingle();
-    if (error) console.warn("getOrganizerBySlug", s, error.message);
-    const mapped = mapOrgRow(data as Record<string, unknown> | null);
-    if (mapped) {
-      if (!mapped.logo_url && (mapped.slug === DEFAULT_ORGANIZER_SLUG || /efootball/i.test(mapped.name))) {
-        const { data: site } = await supabase
-          .from("site_settings")
-          .select("logo_url, hero_image_url")
-          .limit(1)
-          .maybeSingle();
-        const logo = (site as { logo_url?: string | null } | null)?.logo_url;
-        const cover = (site as { hero_image_url?: string | null } | null)?.hero_image_url;
-        if (logo) mapped.logo_url = logo;
-        if (cover && !mapped.cover_url) mapped.cover_url = cover;
-      }
-      return mapped;
-    }
+
+  async function rowBySlug(s: string): Promise<Organizer | null> {
+    const full = await supabase.from("organizers").select(ORG_SELECT).eq("slug", s).maybeSingle();
+    if (!full.error && full.data) return mapOrgRow(full.data as Record<string, unknown>);
+    const min = await supabase.from("organizers").select(ORG_SELECT_MIN).eq("slug", s).maybeSingle();
+    if (min.error) console.warn("getOrganizerBySlug", s, min.error.message);
+    return mapOrgRow(min.data as Record<string, unknown> | null);
   }
+
+  for (const s of candidates) {
+    const mapped = await rowBySlug(s);
+    if (mapped) return fillDefaultBranding(mapped);
+  }
+
   const { data: byName } = await supabase
     .from("organizers")
-    .select(ORG_SELECT)
+    .select(ORG_SELECT_MIN)
     .ilike("name", `%${raw.replace(/-/g, " ")}%`)
     .limit(1)
     .maybeSingle();
-  return mapOrgRow(byName as Record<string, unknown> | null);
+  const named = mapOrgRow(byName as Record<string, unknown> | null);
+  if (named) return fillDefaultBranding(named);
+
+  if (/efootball/i.test(raw) || raw === DEFAULT_ORGANIZER_SLUG) {
+    return ensureDefaultOrganizerPublic();
+  }
+  return null;
 }
 
 export async function notifyPlatformAdmins(opts: {
@@ -188,7 +187,7 @@ export async function notifyPlatformAdmins(opts: {
       .in("email", [...SUPER_ADMIN_EMAILS]);
     for (const p of (profiles ?? []) as { id: string }[]) ids.add(p.id);
   } catch {
-    /* profiles.email may not exist */
+    /* ignore */
   }
   try {
     const { data: roles } = await supabase
@@ -262,16 +261,8 @@ export async function isFollowing(organizerId: string, userId: string): Promise<
 
 export async function getPlatformStats() {
   const [
-    orgsCount,
-    usersCount,
-    tournamentsCount,
-    liveCount,
-    doneCount,
-    orgsListRes,
-    recentUsersRes,
-    invitesRes,
-    messagesRes,
-    pendingAppsRes,
+    orgsCount, usersCount, tournamentsCount, liveCount, doneCount,
+    orgsListRes, recentUsersRes, invitesRes, messagesRes, pendingAppsRes,
   ] = await Promise.all([
     supabase.from("organizers").select("*", { count: "exact", head: true }),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
@@ -289,13 +280,6 @@ export async function getPlatformStats() {
     id: string; name: string; slug: string; logo_url: string | null; is_verified: boolean; status: string; created_at?: string;
   }[];
 
-  const byStatus = {
-    active: organizersList.filter((o) => o.status === "active").length,
-    pending: organizersList.filter((o) => o.status === "pending").length,
-    suspended: organizersList.filter((o) => o.status === "suspended").length,
-    verified: organizersList.filter((o) => o.is_verified).length,
-  };
-
   return {
     organizers: orgsCount.count ?? organizersList.length,
     players: usersCount.count ?? 0,
@@ -312,7 +296,12 @@ export async function getPlatformStats() {
     }[],
     messages: messagesRes.count ?? 0,
     pendingApplications: pendingAppsRes.count ?? 0,
-    byStatus,
+    byStatus: {
+      active: organizersList.filter((o) => o.status === "active").length,
+      pending: organizersList.filter((o) => o.status === "pending").length,
+      suspended: organizersList.filter((o) => o.status === "suspended").length,
+      verified: organizersList.filter((o) => o.is_verified).length,
+    },
   };
 }
 
@@ -326,10 +315,7 @@ export async function evaluateOrganizerVerification(organizerId: string) {
 }
 
 export async function inviteOrganizer(params: {
-  email: string;
-  name: string;
-  slug: string;
-  invitedBy: string;
+  email: string; name: string; slug: string; invitedBy: string;
 }) {
   const token = crypto.randomUUID();
   const { data, error } = await supabase
@@ -377,7 +363,7 @@ export async function acceptInvitation(params: { token: string; userId: string }
     const { data, error } = await supabase
       .from("organizers")
       .insert({ name, slug, status: "active", is_verified: false, owner_user_id: params.userId })
-      .select(ORG_SELECT)
+      .select(ORG_SELECT_MIN)
       .single();
     if (error) return { ok: false as const, error: error.message };
     org = mapOrgRow(data as Record<string, unknown>);
@@ -397,55 +383,27 @@ export async function getDefaultOrganizer(): Promise<Organizer | null> {
 
 export async function ensureDefaultOrganizerPublic(): Promise<Organizer | null> {
   const existing = await getOrganizerBySlug(DEFAULT_ORGANIZER_SLUG);
-  if (existing) {
-    if (!existing.logo_url) {
-      const { data: site } = await supabase
-        .from("site_settings")
-        .select("logo_url, hero_image_url")
-        .limit(1)
-        .maybeSingle();
-      const logo = (site as { logo_url?: string | null } | null)?.logo_url;
-      const cover = (site as { hero_image_url?: string | null } | null)?.hero_image_url;
-      if (logo || cover) {
-        return {
-          ...existing,
-          logo_url: existing.logo_url || logo || null,
-          cover_url: existing.cover_url || cover || null,
-        };
-      }
-    }
-    return existing;
-  }
+  if (existing) return fillDefaultBranding(existing);
 
   const { data: site } = await supabase
     .from("site_settings")
     .select("site_name, tagline, logo_url, hero_image_url, about_short")
     .limit(1)
     .maybeSingle();
-
   const s = site as {
-    site_name?: string | null;
-    tagline?: string | null;
-    logo_url?: string | null;
-    hero_image_url?: string | null;
-    about_short?: string | null;
+    site_name?: string | null; tagline?: string | null; logo_url?: string | null;
+    hero_image_url?: string | null; about_short?: string | null;
   } | null;
 
   const { data: byName } = await supabase
     .from("organizers")
-    .select(ORG_SELECT)
+    .select(ORG_SELECT_MIN)
     .ilike("name", "%efootball%nepal%")
     .limit(1)
     .maybeSingle();
   if (byName) {
     const o = mapOrgRow(byName as Record<string, unknown>);
-    if (o) {
-      return {
-        ...o,
-        logo_url: o.logo_url || s?.logo_url || null,
-        cover_url: o.cover_url || s?.hero_image_url || null,
-      };
-    }
+    if (o) return fillDefaultBranding(o);
   }
 
   const { data: inserted, error: insErr } = await supabase
@@ -462,7 +420,7 @@ export async function ensureDefaultOrganizerPublic(): Promise<Organizer | null> 
       },
       { onConflict: "slug" },
     )
-    .select(ORG_SELECT)
+    .select(ORG_SELECT_MIN)
     .maybeSingle();
   if (insErr) {
     console.warn("ensureDefaultOrganizerPublic insert", insErr.message);
@@ -476,7 +434,7 @@ export async function listOrganizerMemberships(userId: string): Promise<(Organiz
   const rows = (data ?? []) as OrganizerMember[];
   if (!rows.length) return [];
   const ids = rows.map((r) => r.organizer_id);
-  const { data: orgs } = await supabase.from("organizers").select(ORG_SELECT).in("id", ids);
+  const { data: orgs } = await supabase.from("organizers").select(ORG_SELECT_MIN).in("id", ids);
   const map = new Map(
     ((orgs ?? []) as Record<string, unknown>[])
       .map((r) => mapOrgRow(r))
@@ -526,9 +484,7 @@ export async function searchProfilesForTeam(q: string, limit = 12) {
 }
 
 export async function addOrganizerMember(params: {
-  organizerId: string;
-  userId: string;
-  role: MemberRole;
+  organizerId: string; userId: string; role: MemberRole;
 }) {
   const { data, error } = await supabase.rpc("add_organizer_member", {
     p_organizer_id: params.organizerId,
@@ -545,9 +501,7 @@ export async function addOrganizerMember(params: {
 }
 
 export async function updateOrganizerMemberRole(params: {
-  organizerId: string;
-  userId: string;
-  role: MemberRole;
+  organizerId: string; userId: string; role: MemberRole;
 }) {
   const { error } = await supabase
     .from("organizer_members")
