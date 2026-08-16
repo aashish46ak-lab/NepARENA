@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PageShell } from "@/components/PageShell";
 import {
   supabase,
@@ -54,6 +54,25 @@ function MemberProfilePage() {
   const qc = useQueryClient();
   const [followBusy, setFollowBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  const toggleMenu = () => {
+    if (!menuOpen && menuBtnRef.current) {
+      const r = menuBtnRef.current.getBoundingClientRect();
+      setMenuPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
+    }
+    setMenuOpen((v) => !v);
+  };
   const [editOpen, setEditOpen] = useState(false);
   const [postOpen, setPostOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
@@ -171,72 +190,92 @@ function MemberProfilePage() {
 
   return (
     <PageShell force="platform" hideChrome>
-      <div className="mx-auto max-w-lg px-3 pb-28 pt-3 sm:px-4">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#121214]/90 shadow-2xl ring-1 ring-white/5">
-          <div className="relative h-32 overflow-hidden bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-40">
+      <div className="mx-auto max-w-lg px-3 pb-28 pt-2 sm:px-4">
+        {menuOpen && (
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[1px]"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div
+              role="menu"
+              className="fixed z-[210] w-[min(288px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-white/12 bg-[#161618] py-1.5 shadow-2xl ring-1 ring-white/5"
+              style={{ top: menuPos.top, right: menuPos.right, maxHeight: "min(70vh, 420px)" }}
+            >
+              {isOwn ? (
+                <>
+                  <button type="button" role="menuitem" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-neutral-100 hover:bg-white/[0.07]" onClick={() => { setMenuOpen(false); setEditOpen(true); }}>
+                    <Pencil className="h-4 w-4 shrink-0 text-neutral-400" /> Edit profile
+                  </button>
+                  <Link to="/settings" role="menuitem" className="flex w-full items-center gap-3 px-4 py-3 text-sm text-neutral-100 hover:bg-white/[0.07]" onClick={() => setMenuOpen(false)}>
+                    <Settings className="h-4 w-4 shrink-0 text-neutral-400" /> Settings
+                  </Link>
+                  {(isAdmin || isSuperAdmin) && (
+                    <Link to="/dashboard" role="menuitem" className="flex w-full items-center gap-3 px-4 py-3 text-sm text-neutral-100 hover:bg-white/[0.07]" onClick={() => setMenuOpen(false)}>
+                      <LayoutDashboard className="h-4 w-4 shrink-0 text-emerald-400" /> Organizer dashboard
+                    </Link>
+                  )}
+                  {isSuperAdmin && (
+                    <Link to="/platform" role="menuitem" className="flex w-full items-center gap-3 px-4 py-3 text-sm text-neutral-100 hover:bg-white/[0.07]" onClick={() => setMenuOpen(false)}>
+                      <LayoutDashboard className="h-4 w-4 shrink-0 text-amber-400" /> Platform dashboard
+                    </Link>
+                  )}
+                  <div className="my-1 border-t border-white/10" />
+                  <button type="button" role="menuitem" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-300 hover:bg-white/[0.07]" onClick={() => { setMenuOpen(false); void signOut(); }}>
+                    <LogOut className="h-4 w-4 shrink-0" /> Log out
+                  </button>
+                </>
+              ) : (
+                <button type="button" role="menuitem" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-neutral-100 hover:bg-white/[0.07]" onClick={() => setMenuOpen(false)}>
+                  <HelpCircle className="h-4 w-4 shrink-0 text-neutral-400" /> Report
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#121214]/90 shadow-xl ring-1 ring-white/5">
+          <div className="relative h-20 overflow-hidden bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-24">
             {banner ? <img src={banner} alt="" className="absolute inset-0 h-full w-full object-cover" /> : null}
             <div className="absolute inset-0 bg-gradient-to-t from-[#121214] via-black/20 to-transparent" />
-            <div className="absolute right-3 top-3">
+            <div className="absolute right-2.5 top-2.5 z-10">
               <button
+                ref={menuBtnRef}
                 type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                className="grid h-9 w-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur-md ring-1 ring-white/10"
+                onClick={toggleMenu}
+                className="grid h-9 w-9 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md ring-1 ring-white/15"
                 aria-label="Menu"
+                aria-expanded={menuOpen}
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-11 z-20 min-w-[180px] overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1c] py-1 shadow-xl">
-                  {isOwn && (
-                    <>
-                      <button type="button" className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-neutral-200 hover:bg-white/5" onClick={() => { setMenuOpen(false); setEditOpen(true); }}>
-                        <Pencil className="h-4 w-4 text-neutral-400" /> Edit profile
-                      </button>
-                      <Link to="/settings" className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-neutral-200 hover:bg-white/5" onClick={() => setMenuOpen(false)}>
-                        <Settings className="h-4 w-4 text-neutral-400" /> Settings
-                      </Link>
-                      {isAdmin && (
-                        <Link to="/dashboard" className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-neutral-200 hover:bg-white/5" onClick={() => setMenuOpen(false)}>
-                          <LayoutDashboard className="h-4 w-4 text-neutral-400" /> Dashboard
-                        </Link>
-                      )}
-                      <button type="button" className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-rose-300 hover:bg-white/5" onClick={() => { setMenuOpen(false); void signOut(); }}>
-                        <LogOut className="h-4 w-4" /> Log out
-                      </button>
-                    </>
-                  )}
-                  {!isOwn && (
-                    <button type="button" className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-neutral-200 hover:bg-white/5" onClick={() => setMenuOpen(false)}>
-                      <HelpCircle className="h-4 w-4 text-neutral-400" /> Report
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="relative px-4 pb-5">
-            <div className="-mt-12 flex items-end gap-3">
-              <Avatar className="h-24 w-24 ring-4 ring-[#121214]">
+          <div className="relative px-3.5 pb-3.5">
+            <div className="-mt-8 flex items-end gap-2.5">
+              <Avatar className="h-16 w-16 ring-[3px] ring-[#121214] sm:h-[4.5rem] sm:w-[4.5rem]">
                 <AvatarImage src={profile.avatar_url ?? undefined} />
-                <AvatarFallback className="text-2xl">{primaryName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-lg">{primaryName.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div className="mb-1 min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <h1 className="truncate text-xl font-bold text-white">{primaryName}</h1>
+              <div className="mb-0.5 min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  <h1 className="truncate text-lg font-bold text-white sm:text-xl">{primaryName}</h1>
                   {(profile as Profile & { is_verified?: boolean }).is_verified && (
-                    <BadgeCheck className="h-5 w-5 shrink-0 text-sky-400" />
+                    <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" />
                   )}
                   {streak > 0 && <InlineStreak streak={streak} />}
                 </div>
                 {profile.username && (
-                  <p className="text-sm text-neutral-400">@{profile.username}</p>
+                  <p className="text-xs text-neutral-400 sm:text-sm">@{profile.username}</p>
                 )}
               </div>
             </div>
 
             {profile.bio && (
-              <p className="mt-3 text-sm leading-relaxed text-neutral-300">{profile.bio}</p>
+              <p className="mt-2 line-clamp-3 text-sm leading-snug text-neutral-300">{profile.bio}</p>
             )}
 
             <div className="mt-3 flex gap-4 text-sm">
