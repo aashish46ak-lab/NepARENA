@@ -54,16 +54,26 @@ export function isSuperAdminEmail(email?: string | null): boolean {
 }
 
 export async function listActiveOrganizers(): Promise<Organizer[]> {
+  // Prefer active/pending; fall back so existing organizers never disappear from lists.
   const { data, error } = await supabase
     .from("organizers")
     .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
-    .eq("status", "active")
+    .in("status", ["active", "pending"])
     .order("name");
   if (error) {
     console.warn("listActiveOrganizers", error.message);
     return [];
   }
-  return (data ?? []) as Organizer[];
+  const rows = (data ?? []) as Organizer[];
+  if (rows.length > 0) {
+    return rows.filter((o) => o.status === "active" || o.is_verified);
+  }
+  const { data: fallback } = await supabase
+    .from("organizers")
+    .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
+    .order("name")
+    .limit(50);
+  return (fallback ?? []) as Organizer[];
 }
 
 export async function listAllOrganizers(): Promise<Organizer[]> {
@@ -131,15 +141,58 @@ export async function isFollowing(organizerId: string, userId: string): Promise<
 }
 
 export async function getPlatformStats() {
-  const [orgs, users, tournaments] = await Promise.all([
-    supabase.from("organizers").select("*", { count: "exact", head: true }).eq("status", "active"),
+  const [
+    orgsCount,
+    usersCount,
+    tournamentsCount,
+    liveCount,
+    doneCount,
+    orgsListRes,
+    recentUsersRes,
+    invitesRes,
+    messagesRes,
+    pendingAppsRes,
+  ] = await Promise.all([
+    supabase.from("organizers").select("*", { count: "exact", head: true }),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
     supabase.from("tournaments").select("*", { count: "exact", head: true }),
+    supabase.from("tournaments").select("*", { count: "exact", head: true }).in("status", ["live", "ongoing"]),
+    supabase.from("tournaments").select("*", { count: "exact", head: true }).in("status", ["completed", "archived"]),
+    supabase.from("organizers").select("id, name, slug, logo_url, is_verified, status, created_at").order("created_at", { ascending: false }).limit(100),
+    supabase.from("profiles").select("id, username, full_name, avatar_url, created_at, is_verified").order("created_at", { ascending: false }).limit(50),
+    supabase.from("organizer_invitations").select("id, email, name, slug, status, created_at, token").eq("status", "pending").order("created_at", { ascending: false }).limit(30),
+    supabase.from("platform_messages").select("*", { count: "exact", head: true }).eq("read", false),
+    supabase.from("organizer_applications").select("*", { count: "exact", head: true }).eq("status", "pending"),
   ]);
+
+  const organizersList = (orgsListRes.data ?? []) as {
+    id: string; name: string; slug: string; logo_url: string | null; is_verified: boolean; status: string; created_at?: string;
+  }[];
+
+  const byStatus = {
+    active: organizersList.filter((o) => o.status === "active").length,
+    pending: organizersList.filter((o) => o.status === "pending").length,
+    suspended: organizersList.filter((o) => o.status === "suspended").length,
+    verified: organizersList.filter((o) => o.is_verified).length,
+  };
+
   return {
-    organizers: orgs.count ?? 0,
-    users: users.count ?? 0,
-    tournaments: tournaments.count ?? 0,
+    organizers: orgsCount.count ?? organizersList.length,
+    players: usersCount.count ?? 0,
+    users: usersCount.count ?? 0,
+    tournaments: tournamentsCount.count ?? 0,
+    liveTournaments: liveCount.count ?? 0,
+    completedTournaments: doneCount.count ?? 0,
+    organizersList,
+    recentUsers: (recentUsersRes.data ?? []) as {
+      id: string; username: string | null; full_name: string | null; avatar_url: string | null; created_at: string; is_verified?: boolean;
+    }[],
+    pendingInvites: (invitesRes.data ?? []) as {
+      id: string; email: string; name: string; slug: string; status: string; created_at: string; token: string;
+    }[],
+    messages: messagesRes.count ?? 0,
+    pendingApplications: pendingAppsRes.count ?? 0,
+    byStatus,
   };
 }
 
