@@ -220,7 +220,7 @@ function SettingsPage() {
         <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <h2 className="text-sm font-semibold text-white">Help</h2>
           <p className="mt-1 text-xs text-neutral-500">
-            Replay the first-time tour highlighting Feed, Organizers, Tournaments, and Messages.
+            Replay Arena Quest — tap glowing spots to collect stamps and rediscover Feed, Organizers, Cups, and Messages.
           </p>
           <button
             type="button"
@@ -228,12 +228,12 @@ function SettingsPage() {
             onClick={() => {
               resetOnboarding(user?.id);
               requestOnboardingReplay();
-              toast.success("Starting tour…");
+              toast.success("Starting Arena Quest…");
               window.location.href = "/";
             }}
           >
             <Sparkles className="h-3.5 w-3.5 text-sky-400" />
-            Replay app tour
+            Replay Arena Quest
           </button>
         </section>
       </div>
