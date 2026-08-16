@@ -197,7 +197,7 @@ function ProfilePage() {
   }
 
   return (
-    <PageShell>
+    <PageShell force="platform" hideChrome>
       <div className="mx-auto max-w-4xl px-4 py-10">
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-brand glow-brand">
