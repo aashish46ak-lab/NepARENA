@@ -109,20 +109,60 @@ export function OrganizerRequestsPanel() {
         .eq("id", id);
       if (error) throw error;
 
-      // On approve: create invite so they can claim org
       if (status === "approved" && user) {
         const req = list.find((x) => x.id === id);
         if (req) {
+          const baseSlug =
+            req.org_name
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "")
+              .slice(0, 48) || "organizer";
+          let slug = baseSlug;
+          for (let i = 0; i < 5; i++) {
+            const { data: exists } = await supabase
+              .from("organizers")
+              .select("id")
+              .eq("slug", slug)
+              .maybeSingle();
+            if (!exists) break;
+            slug = `${baseSlug}-${i + 2}`;
+          }
+          const { data: org, error: orgErr } = await supabase
+            .from("organizers")
+            .upsert(
+              {
+                name: req.org_name,
+                slug,
+                logo_url: req.logo_url,
+                cover_url: req.banner_url,
+                description: req.description,
+                status: "active",
+                is_verified: false,
+                owner_id: req.user_id,
+              },
+              { onConflict: "slug" },
+            )
+            .select("id, slug")
+            .maybeSingle();
+          if (orgErr) {
+            toast.message(`Approved but org create: ${orgErr.message}`);
+          } else if (org && req.user_id) {
+            await supabase.from("organizer_members").upsert(
+              { organizer_id: org.id, user_id: req.user_id, role: "owner" },
+              { onConflict: "organizer_id,user_id" },
+            );
+            toast.success(`Approved — organizer live at /o/${org.slug}`);
+          } else {
+            toast.success("Approved");
+          }
           const inv = await inviteOrganizer({
             email: req.contact_email,
             name: req.org_name,
+            slug,
             invitedBy: user.id,
           });
-          if (inv.ok) {
-            toast.success("Approved — invite link created (Invites tab)");
-          } else {
-            toast.message(`Approved (invite: ${inv.error})`);
-          }
+          if (!inv.ok) console.warn("invite", inv.error);
         }
       } else {
         toast.success(`Marked ${status}`);
@@ -230,11 +270,7 @@ export function OrganizerRequestsPanel() {
           ) : (
             <div className="space-y-4">
               {current.banner_url && (
-                <img
-                  src={current.banner_url}
-                  alt=""
-                  className="h-28 w-full rounded-xl object-cover"
-                />
+                <img src={current.banner_url} alt="" className="h-28 w-full rounded-xl object-cover" />
               )}
               <div>
                 <h3 className="text-lg font-semibold">{current.org_name}</h3>
@@ -245,9 +281,6 @@ export function OrganizerRequestsPanel() {
                 {current.description && (
                   <p className="mt-2 text-sm text-neutral-300">{current.description}</p>
                 )}
-                <p className="mt-1 text-xs text-neutral-500">
-                  Theme: {current.theme_id ?? "—"} · {new Date(current.created_at).toLocaleString()}
-                </p>
               </div>
 
               <Input
