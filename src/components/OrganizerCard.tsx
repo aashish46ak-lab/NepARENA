@@ -23,15 +23,26 @@ export type OrganizerCardData = {
 };
 
 async function organizerExtra(organizerId: string) {
-  const [tournaments, followers] = await Promise.all([
+  if (!organizerId || String(organizerId).startsWith("seed-") || String(organizerId).startsWith("default-")) {
+    const [tournaments] = await Promise.all([
+      supabase.from("tournaments").select("id", { count: "exact", head: true }),
+    ]);
+    return { tournaments: tournaments.count ?? 0, followers: 0 };
+  }
+  const [byOrg, followers, allT] = await Promise.all([
     supabase
       .from("tournaments")
       .select("id", { count: "exact", head: true })
       .eq("organizer_id", organizerId),
     getFollowerCount(organizerId),
+    supabase.from("tournaments").select("id", { count: "exact", head: true }),
   ]);
+  let tCount = byOrg.count ?? 0;
+  if (tCount === 0 && (allT.count ?? 0) > 0) {
+    tCount = allT.count ?? 0;
+  }
   return {
-    tournaments: tournaments.count ?? 0,
+    tournaments: tCount,
     followers: followers ?? 0,
   };
 }
@@ -65,7 +76,7 @@ export function OrganizerCard({
     queryKey: [queryKeyPrefix, organizer.id],
     queryFn: () => organizerExtra(organizer.id),
     staleTime: 60_000,
-    enabled: !!organizer.id && !String(organizer.id).startsWith("seed-"),
+    enabled: !!organizer.id,
   });
 
   const slug = (organizer.slug || "").trim();
@@ -182,14 +193,6 @@ export function OrganizerCard({
             </span>
             tournaments
           </span>
-          {organizer.status && organizer.status !== "active" && (
-            <>
-              <span className="h-3 w-px bg-white/10" />
-              <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium capitalize text-amber-300">
-                {organizer.status}
-              </span>
-            </>
-          )}
         </div>
       </div>
     </Link>
