@@ -7,7 +7,8 @@ import { PageShell } from "@/components/PageShell";
 import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { useAuth } from "@/hooks/useAuth";
 import { buildSeoHead } from "@/lib/seo";
-import { Moon, Sun, ArrowLeft, User, LogOut } from "lucide-react";
+import { Moon, Sun, ArrowLeft, User, LogOut, Sparkles } from "lucide-react";
+import { requestOnboardingReplay, resetOnboarding } from "@/components/OnboardingTour";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -62,7 +63,7 @@ function SettingsPage() {
   const pickTheme = (mode: ThemeMode) => {
     setTheme(mode);
     applyTheme(mode);
-    toast.success(mode === "dark" ? "Dark theme on" : "Light theme on");
+    toast.success(mode === "dark" ? "Black & Silver on" : "Creamy theme on");
   };
 
   return (
@@ -91,7 +92,7 @@ function SettingsPage() {
               )}
             >
               <Moon className="h-5 w-5" />
-              <span className="text-xs font-semibold">Dark</span>
+              <span className="text-xs font-semibold">Black & Silver</span>
             </button>
             <button
               type="button"
@@ -104,11 +105,11 @@ function SettingsPage() {
               )}
             >
               <Sun className="h-5 w-5" />
-              <span className="text-xs font-semibold">Light</span>
+              <span className="text-xs font-semibold">Creamy</span>
             </button>
           </div>
           <p className="mt-3 text-[11px] text-neutral-500">
-            Theme is saved on this device. Full light palette is still being refined.
+            Platform themes only. Organizer pages use their own brand theme and stay independent.
           </p>
         </section>
 
@@ -136,6 +137,26 @@ function SettingsPage() {
             </div>
           </section>
         )}
+
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <h2 className="text-sm font-semibold text-white">Help</h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            Replay the first-time tour highlighting Feed, Organizers, Tournaments, and Messages.
+          </p>
+          <button
+            type="button"
+            className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
+            onClick={() => {
+              resetOnboarding(user?.id);
+              requestOnboardingReplay();
+              toast.success("Starting tour…");
+              window.location.href = "/";
+            }}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+            Replay app tour
+          </button>
+        </section>
       </div>
     </PageShell>
   );
