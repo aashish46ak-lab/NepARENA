@@ -1,5 +1,5 @@
 /**
- * Become an Organizer — all games selectable; Facebook optional.
+ * Become an Organizer — writes to organizer_requests (platform admin panel).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -22,13 +22,10 @@ import {
   Clock,
   XCircle,
   AlertCircle,
-  Trophy,
-  Shield,
-  Gamepad2,
   ArrowLeft,
-  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { notifyPlatformAdmins } from "@/lib/organizers";
 
 export const Route = createFileRoute("/become-organizer")({
   head: () => ({
@@ -58,7 +55,6 @@ const STATUS_UI: Record<ReqStatus, { label: string; icon: typeof Clock; classNam
   changes_requested: { label: "Changes requested", icon: AlertCircle, className: "text-sky-300 bg-sky-500/15" },
 };
 
-/** All games are selectable — no "Coming Soon" lock */
 const GAMES = [
   { id: "efootball", label: "eFootball", icon: "⚽" },
   { id: "free_fire", label: "Free Fire", icon: "🔥" },
@@ -71,11 +67,10 @@ const GAMES = [
 function BecomeOrganizerPage() {
   const { user } = useAuth();
   const [mode, setMode] = useState<"info" | "form" | "status">("info");
-  const [busy, setBusy] = useState(false);
   const [myReq, setMyReq] = useState<RequestRow | null>(null);
-
+  const [busy, setBusy] = useState(false);
   const [orgName, setOrgName] = useState("");
-  const [email, setEmail] = useState(user?.email ?? "");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -88,7 +83,7 @@ function BecomeOrganizerPage() {
     if (!user?.id) return;
     void (async () => {
       const { data } = await supabase
-        .from("organizer_applications")
+        .from("organizer_requests")
         .select("id, org_name, contact_email, status, admin_note, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
@@ -97,6 +92,10 @@ function BecomeOrganizerPage() {
       if (data) setMyReq(data as RequestRow);
     })();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.email && !email) setEmail(user.email);
+  }, [user?.email, email]);
 
   const submit = async () => {
     if (!user) return toast.message("Sign in to apply");
@@ -108,24 +107,36 @@ function BecomeOrganizerPage() {
         user_id: user.id,
         org_name: orgName.trim(),
         contact_email: email.trim(),
-        phone: phone.trim() || null,
+        contact_phone: phone.trim() || null,
         description: description.trim() || null,
         logo_url: logoUrl,
         banner_url: bannerUrl,
-        facebook: facebook.trim() || null,
-        country: country.trim() || null,
-        game,
+        social_links: {
+          facebook: facebook.trim() || null,
+          country: country.trim() || null,
+          game,
+        },
         status: "pending",
       };
       const { data, error } = await supabase
-        .from("organizer_applications")
+        .from("organizer_requests")
         .insert(payload)
         .select("id, org_name, contact_email, status, admin_note, created_at")
         .maybeSingle();
       if (error) throw error;
       setMyReq(data as RequestRow);
       setMode("status");
-      toast.success("Application submitted");
+      try {
+        await notifyPlatformAdmins({
+          title: "New organizer application",
+          body: `${orgName.trim()} applied (${game})`,
+          link: "/platform",
+          actorId: user.id,
+        });
+      } catch {
+        /* non-blocking */
+      }
+      toast.success("Application submitted — platform admin notified");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Submit failed";
       toast.error(msg);
@@ -147,142 +158,104 @@ function BecomeOrganizerPage() {
           <ArrowLeft className="h-4 w-4" /> Organizers
         </Link>
 
-        <div className="mb-4 flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
-          {(
-            [
-              ["info", "About"],
-              ["form", "Apply"],
-              ["status", "Status"],
-            ] as const
-          ).map(([id, label]) => (
+        <div className="mb-4 flex gap-1 rounded-xl bg-white/[0.04] p-1">
+          {(["info", "form", "status"] as const).map((id) => (
             <button
               key={id}
               type="button"
               onClick={() => setMode(id)}
               className={cn(
-                "flex-1 rounded-full py-2 text-xs font-semibold transition",
+                "flex-1 rounded-lg py-2 text-xs font-semibold capitalize",
                 mode === id ? "bg-white/10 text-white" : "text-neutral-500",
               )}
             >
-              {label}
+              {id === "form" ? "Apply" : id}
             </button>
           ))}
         </div>
 
         {mode === "info" && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-amber-400" />
-                <h1 className="text-lg font-semibold text-white">Run your community on NepARENA</h1>
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/15">
+                <Building2 className="h-6 w-6 text-amber-400" />
               </div>
-              <p className="text-sm leading-relaxed text-neutral-400">
-                Verified organizers get their own branded space, tournaments, fixtures, standings,
-                and member tools — while players discover you from the main platform.
-              </p>
-            </div>
-            <div className="grid gap-3">
-              {[
-                { icon: Trophy, t: "Tournaments & fixtures", d: "Create cups, leagues, and matchdays." },
-                { icon: Shield, t: "Verification", d: "Platform review before you go live." },
-                { icon: Gamepad2, t: "Game focus", d: "eFootball, Free Fire, PUBG, MLBB, EA FC — pick your focus." },
-                { icon: Star, t: "Discoverability", d: "Appear in Organizers and the feed." },
-              ].map((x) => (
-                <div key={x.t} className="flex gap-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3">
-                  <x.icon className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" />
-                  <div>
-                    <p className="text-sm font-semibold text-white">{x.t}</p>
-                    <p className="text-xs text-neutral-500">{x.d}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">Games — tap to apply</p>
-              <div className="flex flex-wrap gap-2">
-                {GAMES.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => {
-                      setGame(g.id);
-                      setMode("form");
-                    }}
-                    className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/25 active:scale-[0.98]"
-                  >
-                    {g.icon} {g.label}
-                  </button>
-                ))}
+              <div>
+                <h1 className="text-lg font-bold text-white">Host on NepARENA</h1>
+                <p className="text-sm text-neutral-400">Run tournaments for your game community</p>
               </div>
             </div>
+            <ul className="space-y-2 text-sm text-neutral-300">
+              <li>• Pick your game (eFootball, Free Fire, PUBG, MLBB, EA FC…)</li>
+              <li>• Platform admin reviews your application</li>
+              <li>• After approval you get an organizer dashboard</li>
+            </ul>
             <Button className="w-full bg-amber-500 text-black hover:bg-amber-400" onClick={() => setMode("form")}>
               Start application
             </Button>
+            {myReq && (
+              <button type="button" className="w-full text-center text-sm text-sky-400" onClick={() => setMode("status")}>
+                View application status
+              </button>
+            )}
           </div>
         )}
 
         {mode === "form" && (
           <div className="space-y-4">
             <div>
-              <Label className="text-neutral-400">Tournament / Game *</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <Label className="text-neutral-400">Organization name</Label>
+              <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
+            </div>
+            <div>
+              <Label className="text-neutral-400">Contact email</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
+            </div>
+            <div>
+              <Label className="text-neutral-400">Phone (optional)</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
+            </div>
+            <div>
+              <Label className="mb-2 block text-neutral-400">Primary game</Label>
+              <div className="grid grid-cols-2 gap-2">
                 {GAMES.map((g) => (
                   <button
                     key={g.id}
                     type="button"
                     onClick={() => setGame(g.id)}
                     className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                      "rounded-xl border px-3 py-2.5 text-left text-sm transition",
                       game === g.id
-                        ? "border-sky-500/50 bg-sky-500/15 text-sky-200"
-                        : "border-white/10 bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08]",
+                        ? "border-amber-400/50 bg-amber-500/15 text-white"
+                        : "border-white/10 bg-white/[0.03] text-neutral-300",
                     )}
                   >
-                    {g.icon} {g.label}
+                    <span className="mr-1">{g.icon}</span> {g.label}
                   </button>
                 ))}
-              </div>
-              <p className="mt-1.5 text-[11px] text-neutral-500">
-                Selected: {GAMES.find((g) => g.id === game)?.label ?? game}
-              </p>
-            </div>
-            <div>
-              <Label className="text-neutral-400">Organizer Name *</Label>
-              <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label className="text-neutral-400">Logo</Label>
-                <div className="mt-1"><ImageUpload value={logoUrl} onChange={setLogoUrl} folder="organizers" /></div>
-              </div>
-              <div>
-                <Label className="text-neutral-400">Banner</Label>
-                <div className="mt-1"><ImageUpload value={bannerUrl} onChange={setBannerUrl} folder="organizers" /></div>
               </div>
             </div>
             <div>
               <Label className="text-neutral-400">Description</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 min-h-[100px] border-white/10 bg-white/[0.04]" />
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" rows={3} />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-neutral-400">Email *</Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
+                <Label className="text-neutral-400">Logo</Label>
+                <ImageUpload value={logoUrl} onChange={setLogoUrl} folder="organizer-apps" aspect="square" />
               </div>
               <div>
-                <Label className="text-neutral-400">Phone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
+                <Label className="text-neutral-400">Banner</Label>
+                <ImageUpload value={bannerUrl} onChange={setBannerUrl} folder="organizer-apps" aspect="wide" />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label className="text-neutral-400">Facebook <span className="text-neutral-600">(optional)</span></Label>
-                <Input value={facebook} onChange={(e) => setFacebook(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" placeholder="Page or profile URL" />
-              </div>
-              <div>
-                <Label className="text-neutral-400">Country</Label>
-                <Input value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
-              </div>
+            <div>
+              <Label className="text-neutral-400">Facebook (optional)</Label>
+              <Input value={facebook} onChange={(e) => setFacebook(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" placeholder="Page or profile URL" />
+            </div>
+            <div>
+              <Label className="text-neutral-400">Country</Label>
+              <Input value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 border-white/10 bg-white/[0.04]" />
             </div>
             <Button className="w-full bg-amber-500 text-black hover:bg-amber-400" disabled={busy} onClick={() => void submit()}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Application"}
@@ -310,17 +283,118 @@ function BecomeOrganizerPage() {
                     <p className="mt-3 rounded-xl bg-white/[0.04] p-3 text-sm text-neutral-300">{myReq.admin_note}</p>
                   )}
                 </div>
-                <Link
-                  to="/messages"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm font-semibold text-sky-100"
-                >
-                  <MessageCircle className="h-4 w-4" /> Chat with Platform Admin
-                </Link>
+                <RequestChatPanel requestId={myReq.id} />
               </>
             )}
           </div>
         )}
       </div>
     </PageShell>
+  );
+}
+
+function RequestChatPanel({ requestId }: { requestId: string }) {
+  const { user } = useAuth();
+  const [msgs, setMsgs] = useState<{ id: string; body: string; is_from_admin: boolean; created_at: string }[]>([]);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("organizer_request_messages")
+      .select("id, body, is_from_admin, created_at")
+      .eq("request_id", requestId)
+      .order("created_at", { ascending: true });
+    setMsgs((data as typeof msgs) ?? []);
+    setLoading(false);
+    await supabase
+      .from("organizer_request_messages")
+      .update({ read_by_applicant: true })
+      .eq("request_id", requestId)
+      .eq("is_from_admin", true)
+      .eq("read_by_applicant", false);
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
+
+  const send = async () => {
+    if (!user || !text.trim()) return;
+    setBusy(true);
+    try {
+      const body = text.trim();
+      const { error } = await supabase.from("organizer_request_messages").insert({
+        request_id: requestId,
+        sender_id: user.id,
+        is_from_admin: false,
+        body,
+        read_by_applicant: true,
+        read_by_admin: false,
+      });
+      if (error) throw error;
+      setText("");
+      await load();
+      try {
+        await notifyPlatformAdmins({
+          title: "Organizer applicant message",
+          body: body.slice(0, 120),
+          link: "/platform",
+          actorId: user.id,
+        });
+      } catch {
+        /* ignore */
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Send failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+        <MessageCircle className="h-4 w-4 text-sky-400" /> Chat with Platform Admin
+      </p>
+      <div className="mb-3 max-h-56 space-y-2 overflow-y-auto rounded-xl bg-black/30 p-2">
+        {loading && <Loader2 className="mx-auto h-5 w-5 animate-spin text-neutral-500" />}
+        {!loading && !msgs.length && (
+          <p className="py-4 text-center text-xs text-neutral-500">No messages yet. Ask anything about your application.</p>
+        )}
+        {msgs.map((m) => (
+          <div
+            key={m.id}
+            className={cn(
+              "max-w-[85%] rounded-xl px-3 py-2 text-sm",
+              m.is_from_admin ? "mr-auto bg-white/10 text-neutral-100" : "ml-auto bg-sky-500/20 text-sky-50",
+            )}
+          >
+            <p>{m.body}</p>
+            <p className="mt-1 text-[10px] text-neutral-500">{new Date(m.created_at).toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write a message…"
+          className="border-white/10 bg-white/[0.04]"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+        />
+        <Button size="sm" disabled={busy || !text.trim()} onClick={() => void send()} className="shrink-0">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+        </Button>
+      </div>
+    </div>
   );
 }
