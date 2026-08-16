@@ -46,14 +46,57 @@ function TournamentsLayout() {
 
 function TournamentsList() {
   const { data: all = [], isLoading } = useTournaments();
-  const list = all.filter((t) => t.status !== "completed");
+  const [filter, setFilter] = useState<"all" | "live" | "upcoming" | "completed">("all");
+
+  const liveStatuses = new Set(["live", "ongoing", "in_progress"]);
+  const upcomingStatuses = new Set([
+    "upcoming",
+    "registration_open",
+    "registration_closed",
+    "scheduled",
+    "draft",
+  ]);
+  const completedStatuses = new Set(["completed", "finished", "cancelled"]);
+
+  const list = all.filter((t) => {
+    const s = String(t.status).toLowerCase();
+    if (filter === "live") return liveStatuses.has(s);
+    if (filter === "upcoming")
+      return upcomingStatuses.has(s) || (!liveStatuses.has(s) && !completedStatuses.has(s));
+    if (filter === "completed") return completedStatuses.has(s);
+    return true;
+  });
 
   return (
     <PageShell force="organizer" hideChrome>
       <OrganizerSubnav title="Tournaments" />
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-2">
         <h1 className="text-2xl font-bold text-white">Tournaments</h1>
-        <p className="mt-1 text-sm text-neutral-400">Active and upcoming events.</p>
+        <p className="mt-1 text-sm text-neutral-400">Live, upcoming, and completed events.</p>
+
+        <div className="mt-4 flex gap-1.5 overflow-x-auto scrollbar-none">
+          {(
+            [
+              ["all", "All"],
+              ["live", "Live"],
+              ["upcoming", "Upcoming"],
+              ["completed", "Completed"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFilter(id)}
+              className={
+                filter === id
+                  ? "shrink-0 rounded-full bg-sky-500 px-3 py-1.5 text-xs font-semibold text-white"
+                  : "shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-neutral-400 hover:bg-white/[0.08]"
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {isLoading && (
           <div className="mt-10 flex justify-center">
@@ -62,12 +105,17 @@ function TournamentsList() {
         )}
 
         {!isLoading && list.length === 0 && (
-          <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-neutral-500">
-            No active tournaments — see{" "}
-            <Link to="/history" className="text-sky-400 hover:underline">
-              tournament history
+          <div className="mt-8 rounded-2xl border border-dashed border-white/12 bg-white/[0.03] p-8 text-center">
+            <p className="text-sm font-medium text-white">No tournaments here</p>
+            <p className="mt-1 text-xs text-neutral-500">
+              Explore organizers to find communities running events.
+            </p>
+            <Link
+              to="/organizers"
+              className="mt-4 inline-flex rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs font-semibold text-sky-200"
+            >
+              Explore organizers
             </Link>
-            .
           </div>
         )}
 
@@ -82,162 +130,113 @@ function TournamentsList() {
 }
 
 function TournamentCard({ tournament: t }: { tournament: Tournament }) {
-  const { user, profile } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [joined, setJoined] = useState<
-    "pending" | "approved" | "rejected" | null
-  >(null);
+    "none" | "pending" | "approved" | "rejected"
+  >("none");
 
   useEffect(() => {
     if (!user) {
-      setJoined(null);
+      setJoined("none");
       return;
     }
-    let cancelled = false;
-    (async () => {
+    void (async () => {
       const { data } = await supabase
         .from("tournament_participants")
         .select("status")
         .eq("tournament_id", t.id)
         .eq("user_id", user.id)
         .maybeSingle();
-      if (cancelled) return;
-      if (!data) setJoined(null);
+      if (!data) setJoined("none");
       else if (data.status === "approved") setJoined("approved");
       else if (data.status === "rejected") setJoined("rejected");
       else setJoined("pending");
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [user?.id, t.id]);
 
-  const requestJoin = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+  const requestJoin = async () => {
     if (!user) {
-      toast.message("Sign in to request joining a tournament");
-      navigate({ to: "/auth" });
+      toast.message("Sign in to join tournaments");
       return;
     }
-
-    if (!t.registration_open) {
-      toast.error("Registration is closed for this tournament");
-      return;
-    }
-
     setBusy(true);
-
-    const { data: existing } = await supabase
-      .from("tournament_participants")
-      .select("id, status")
-      .eq("tournament_id", t.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (existing) {
-      setBusy(false);
-      if (existing.status === "approved") {
-        setJoined("approved");
-        toast.message("You are already in this tournament");
-      } else if (existing.status === "rejected") {
-        setJoined("rejected");
-        toast.message("Your previous request was rejected");
-      } else {
-        setJoined("pending");
-        toast.message("Your join request is already pending");
-      }
-      return;
-    }
-
-    const { data: inserted, error } = await supabase
-      .from("tournament_participants")
-      .insert({
-        tournament_id: t.id,
-        user_id: user.id,
-        player_name:
-          profile?.full_name ||
-          profile?.username ||
-          user.email?.split("@")[0] ||
-          "Player",
-        club: profile?.favourite_club ?? null,
-        photo_url: profile?.avatar_url ?? null,
-        status: "pending",
-      })
-      .select("id, status")
-      .single();
-
-    if (error) {
-      setBusy(false);
-      toast.error(
-        error.message.includes("duplicate")
-          ? "You already requested to join"
-          : error.message,
-      );
-      return;
-    }
-
-    if (inserted && inserted.status !== "pending") {
-      await supabase
+    try {
+      const { data: existing } = await supabase
         .from("tournament_participants")
-        .update({ status: "pending" })
-        .eq("id", inserted.id);
+        .select("id, status")
+        .eq("tournament_id", t.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (existing) {
+        if (existing.status === "approved") {
+          setJoined("approved");
+          toast.message("You are already registered");
+        } else if (existing.status === "rejected") {
+          setJoined("rejected");
+          toast.error("Previous request was rejected");
+        } else {
+          setJoined("pending");
+          toast.message("Request already pending");
+        }
+        return;
+      }
+      const { data: inserted, error } = await supabase
+        .from("tournament_participants")
+        .insert({
+          tournament_id: t.id,
+          user_id: user.id,
+          player_name: user.email?.split("@")[0] ?? "Player",
+          status: "pending",
+        })
+        .select("id, status")
+        .single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (inserted && inserted.status !== "pending") {
+        await supabase
+          .from("tournament_participants")
+          .update({ status: "pending" })
+          .eq("id", inserted.id);
+      }
+      setJoined("pending");
+      toast.success("Join request sent");
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
-    setJoined("pending");
-    toast.success("Join request sent — waiting for admin approval");
   };
 
-  const thumb = t.logo_url || t.banner_url || t.image_url;
-
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/25 transition hover:border-white/20">
-      <Link
-        to="/tournaments/$id"
-        params={{ id: t.id }}
-        className="flex min-w-0 cursor-pointer gap-3 p-3 sm:p-4"
-      >
-        <div className="h-[100px] w-[100px] shrink-0 overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-white/10">
-          {thumb ? (
-            <img
-              src={thumb}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+      <Link to="/tournaments/$id" params={{ id: t.id }} className="flex gap-3 p-3 sm:gap-4 sm:p-4">
+        <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white/5 sm:h-16 sm:w-16">
+          {t.banner_url ? (
+            <img src={t.banner_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="grid h-full w-full place-items-center bg-gradient-to-br from-sky-900/40 to-violet-950/40">
-              <Trophy className="h-8 w-8 text-sky-400/70" />
-            </div>
+            <Trophy className="h-6 w-6 text-neutral-500" />
           )}
         </div>
-
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-0.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge className="bg-sky-500/20 text-sky-300 capitalize text-[10px] sm:text-xs">
-              {t.status.replace(/_/g, " ")}
+            <Badge className="border-white/10 bg-white/5 text-[10px] capitalize text-neutral-300 sm:text-xs">
+              {String(t.status).replace(/_/g, " ")}
             </Badge>
             {t.registration_open && (
-              <Badge className="bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-xs">
+              <Badge className="border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-300 sm:text-xs">
                 Registration open
               </Badge>
             )}
           </div>
-
           <h3 className="line-clamp-2 break-words text-base font-bold leading-snug text-white sm:text-lg">
             {t.name}
           </h3>
-
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400 sm:text-sm">
             {t.prize_pool && (
               <span className="inline-flex min-w-0 items-center gap-1">
                 <Award className="h-3.5 w-3.5 shrink-0" />
-                <span className="max-w-[120px] truncate sm:max-w-none">
-                  {t.prize_pool}
-                </span>
+                <span className="max-w-[120px] truncate sm:max-w-none">{t.prize_pool}</span>
               </span>
             )}
             <span className="inline-flex shrink-0 items-center gap-1">
@@ -253,7 +252,6 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
           </div>
         </div>
       </Link>
-
       <div className="border-t border-white/8 px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
         <div className="pt-3">
           {joined === "approved" ? (
