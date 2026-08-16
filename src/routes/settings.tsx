@@ -9,6 +9,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { buildSeoHead } from "@/lib/seo";
 import { Moon, Sun, ArrowLeft, User, LogOut, Sparkles } from "lucide-react";
 import { requestOnboardingReplay, resetOnboarding } from "@/components/OnboardingTour";
+import {
+  listSavedAccounts,
+  removeSavedAccount,
+  type SavedAccount,
+} from "@/lib/account-switcher";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -47,6 +52,11 @@ function applyTheme(mode: ThemeMode) {
 function SettingsPage() {
   const { user, signOut } = useAuth();
   const [theme, setTheme] = useState<ThemeMode>("dark");
+  const [accounts, setAccounts] = useState<SavedAccount[]>([]);
+
+  useEffect(() => {
+    setAccounts(listSavedAccounts());
+  }, [user?.id]);
 
   useEffect(() => {
     try {
@@ -137,6 +147,75 @@ function SettingsPage() {
             </div>
           </section>
         )}
+
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <h2 className="text-sm font-semibold text-white">Accounts</h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            Switch accounts by signing out and signing in. Recently used accounts are listed for quick access.
+          </p>
+          <div className="mt-3 space-y-1">
+            {accounts.length === 0 && (
+              <p className="text-xs text-neutral-500">No saved accounts yet. Sign in once to appear here.</p>
+            )}
+            {accounts.map((a) => {
+              const isCurrent = user?.id === a.id;
+              return (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+                >
+                  <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-white/10 text-xs font-bold">
+                    {a.avatar ? (
+                      <img src={a.avatar} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      (a.name || a.email || "?")[0]?.toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">{a.name}</p>
+                    <p className="truncate text-[11px] text-neutral-500">{a.email}</p>
+                  </div>
+                  {isCurrent ? (
+                    <span className="text-[10px] font-semibold text-sky-400">Active</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-full border border-white/12 px-2.5 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-white/10"
+                      onClick={async () => {
+                        await signOut();
+                        window.location.href = `/auth?email=${encodeURIComponent(a.email)}`;
+                      }}
+                    >
+                      Switch
+                    </button>
+                  )}
+                  {!isCurrent && (
+                    <button
+                      type="button"
+                      className="text-[11px] text-neutral-500 hover:text-rose-300"
+                      onClick={() => {
+                        removeSavedAccount(a.id);
+                        setAccounts(listSavedAccounts());
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              className="mt-2 w-full rounded-full border border-dashed border-white/15 py-2 text-xs font-semibold text-neutral-300 hover:border-sky-400/40 hover:bg-sky-500/10"
+              onClick={async () => {
+                await signOut();
+                window.location.href = "/auth";
+              }}
+            >
+              Add another account
+            </button>
+          </div>
+        </section>
 
         <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <h2 className="text-sm font-semibold text-white">Help</h2>
