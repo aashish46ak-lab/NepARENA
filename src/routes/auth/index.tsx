@@ -22,6 +22,9 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/auth/")({
   ssr: false,
+  validateSearch: (s: Record<string, unknown>): { email?: string } => ({
+    email: typeof s.email === "string" ? s.email : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — NepARENA" },
@@ -42,10 +45,11 @@ const emailSchema = z.string().trim().email().max(255);
 function AuthPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const search = Route.useSearch();
 
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(search.email ?? "");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,6 +59,10 @@ function AuthPage() {
       router.navigate({ to: "/", replace: true });
     }
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (search.email) setEmail(search.email);
+  }, [search.email]);
 
   const login = async () => {
     const parsed = emailSchema.safeParse(email);
@@ -81,21 +89,21 @@ function AuthPage() {
       return;
     }
     toast.success("Welcome back!");
+    router.navigate({ to: "/", replace: true });
   };
 
   const signup = async () => {
-    const trimmedName = name.trim();
-    const parsed = emailSchema.safeParse(email);
-    if (trimmedName.length < 2) {
-      toast.error("Please enter your full name.");
+    if (!name.trim()) {
+      toast.error("Enter your name.");
       return;
     }
+    const parsed = emailSchema.safeParse(email);
     if (!parsed.success) {
       toast.error("Please enter a valid email.");
       return;
     }
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters.");
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
       return;
     }
     setBusy(true);
@@ -103,7 +111,7 @@ function AuthPage() {
       email: parsed.data,
       password,
       options: {
-        data: { full_name: trimmedName },
+        data: { full_name: name.trim() },
         emailRedirectTo: window.location.origin,
       },
     });
@@ -112,14 +120,16 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
-    sessionStorage.setItem("neparena-email", parsed.data);
-    sessionStorage.setItem("neparena-fullname", trimmedName);
-    sessionStorage.setItem("neparena-otp-type", "signup");
+    try {
+      sessionStorage.setItem("neparena-email", parsed.data);
+    } catch {
+      /* ignore */
+    }
     toast.success("Verification code sent to your email.");
     router.navigate({ to: "/auth/verify" });
   };
 
-  const forgotPassword = async () => {
+  const forgot = async () => {
     const parsed = emailSchema.safeParse(email);
     if (!parsed.success) {
       toast.error("Enter your email address first.");
@@ -127,196 +137,135 @@ function AuthPage() {
     }
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/auth`,
     });
     setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    sessionStorage.setItem("neparena-email", parsed.data);
-    sessionStorage.setItem("neparena-otp-type", "recovery");
-    toast.success("Password reset code sent to your email.");
-    router.navigate({ to: "/auth/verify" });
+    if (error) toast.error(error.message);
+    else toast.success("Password reset link sent if the account exists.");
   };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    void (mode === "login" ? login() : signup());
-  };
-
-  if (loading) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-[#0a0a0a]">
-        <div className="flex flex-col items-center gap-3">
-          <img
-            src="/neparena-logo.png"
-            alt=""
-            className="h-16 w-16 rounded-2xl object-contain opacity-90"
-            onError={(e) => {
-              e.currentTarget.src = "/pwa-192x192.png";
-            }}
-          />
-          <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-gradient-hero px-4 py-10">
-      <div className="w-full max-w-md animate-enter">
-        <Link to="/" className="mb-6 flex flex-col items-center gap-3">
-          <img
-            src="/neparena-logo.png"
-            alt="NepARENA logo"
-            className="h-20 w-20 rounded-2xl object-contain bg-black p-1 shadow-lg ring-1 ring-white/15"
-            onError={(e) => {
-              e.currentTarget.src = "/pwa-192x192.png";
-            }}
-          />
-          <span className="text-2xl font-bold tracking-tight text-neutral-100">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#0a0a0a] px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <Link to="/" className="text-lg font-bold tracking-tight text-white">
             NepARENA
-          </span>
-        </Link>
+          </Link>
+          <p className="mt-1 text-sm text-neutral-500">
+            {mode === "login" ? "Sign in to continue" : "Create your account"}
+          </p>
+        </div>
 
-        <div className="glass rounded-2xl p-6 md:p-8">
-          <div className="mb-6 grid grid-cols-2 gap-1 rounded-xl bg-secondary/50 p-1">
-            {(
-              [
-                { id: "login", label: "Sign in", icon: LogIn },
-                { id: "signup", label: "Create account", icon: UserPlus },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setMode(t.id)}
-                className={cn(
-                  "flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
-                  mode === t.id
-                    ? "bg-gradient-brand text-primary-foreground shadow"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <t.icon className="h-4 w-4" />
-                {t.label}
-              </button>
-            ))}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-xl">
+          <div className="mb-4 flex gap-1 rounded-full border border-white/10 bg-black/30 p-1">
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition",
+                mode === "login" ? "bg-white/10 text-white" : "text-neutral-500",
+              )}
+            >
+              <LogIn className="h-3.5 w-3.5" /> Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition",
+                mode === "signup" ? "bg-white/10 text-white" : "text-neutral-500",
+              )}
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Sign up
+            </button>
           </div>
 
-          <h1 className="text-center text-2xl font-bold">
-            {mode === "login" ? "Welcome back" : "Join NepARENA"}
-          </h1>
-          <p className="mt-1.5 text-center text-sm text-muted-foreground">
-            {mode === "login"
-              ? "Sign in with your email and password."
-              : "Create your account — we'll email you a 6-digit code to verify it."}
-          </p>
-
-          <form onSubmit={submit} className="mt-6 space-y-4">
+          <div className="space-y-3">
             {mode === "signup" && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Full name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <div>
+                <Label className="text-xs text-neutral-400">Name</Label>
+                <div className="relative mt-1">
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                   <Input
-                    id="name"
-                    autoFocus
-                    required
-                    maxLength={100}
-                    placeholder="Your full name"
-                    className="pl-10"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    className="border-white/10 bg-black/40 pl-9"
+                    placeholder="Your name"
+                    autoComplete="name"
                   />
                 </div>
               </div>
             )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div>
+              <Label className="text-xs text-neutral-400">Email</Label>
+              <div className="relative mt-1">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                 <Input
-                  id="email"
-                  type="email"
-                  autoFocus={mode === "login"}
-                  required
-                  placeholder="you@example.com"
-                  className="pl-10"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="border-white/10 bg-black/40 pl-9"
+                  placeholder="you@email.com"
+                  type="email"
+                  autoComplete="email"
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                {mode === "login" && (
-                  <button
-                    type="button"
-                    onClick={forgotPassword}
-                    className="text-xs text-brand-glow hover:underline"
-                  >
-                    Forgot password?
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div>
+              <Label className="text-xs text-neutral-400">Password</Label>
+              <div className="relative mt-1">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
                 <Input
-                  id="password"
-                  type={showPw ? "text" : "password"}
-                  required
-                  minLength={8}
-                  placeholder={
-                    mode === "signup" ? "At least 8 characters" : "Your password"
-                  }
-                  className="px-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="border-white/10 bg-black/40 pl-9 pr-10"
+                  placeholder="••••••••"
+                  type={showPw ? "text" : "password"}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
                 />
                 <button
                   type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-neutral-500"
                   onClick={() => setShowPw((v) => !v)}
                   aria-label={showPw ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={() => void forgot()}
+                className="text-left text-[11px] text-sky-400 hover:underline"
+              >
+                Forgot password?
+              </button>
+            )}
+
             <Button
-              type="submit"
-              className="w-full bg-gradient-brand text-primary-foreground hover:opacity-90"
+              type="button"
               disabled={busy}
+              className="w-full bg-sky-500 text-white hover:bg-sky-400"
+              onClick={() => void (mode === "login" ? login() : signup())}
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : mode === "login" ? (
-                <>
-                  Sign in
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
               ) : (
                 <>
-                  Create account
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  {mode === "login" ? "Sign in" : "Create account"}
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
                 </>
               )}
             </Button>
-          </form>
-
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            {mode === "login"
-              ? "New here? Switch to Create account above."
-              : "After signing up you'll verify your email once — then log in with your password anytime."}
-          </p>
+          </div>
         </div>
+
+        <p className="mt-6 text-center text-xs text-neutral-600">
+          <Link to="/" className="text-neutral-400 hover:text-white">
+            Back to home
+          </Link>
+        </p>
       </div>
     </div>
   );
