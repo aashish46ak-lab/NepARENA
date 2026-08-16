@@ -15,6 +15,7 @@ import { ZoomableImage } from "@/components/PhotoLightbox";
 import { InlineStreak } from "@/components/StreakBadge";
 import { listDmThreads, sendDmMessage, type DmThread } from "@/lib/dm";
 import { encodeSharedPost } from "@/lib/shared-post";
+import { FeedEmptySuggestions } from "@/components/FeedEmptySuggestions";
 
 export type FeedPost = {
   id: string; author_id: string; body: string | null; image_url: string | null;
@@ -87,7 +88,7 @@ export function SocialFeed({
       orgIds.length ? supabase.from("organizers").select("id, name, logo_url, slug, is_verified").in("id", orgIds) : Promise.resolve({ data: [] as any[] }),
     ]);
     const origAuthorIds = [...new Set(((originals.data ?? []) as any[]).map((o) => o.author_id as string))];
-    const { data: origProfs } = origAuthorIds.length ? await supabase.from("profiles").select("id, username, full_name, avatar_url, is_verified").in("id", origAuthorIds) : { data: [] as any[] };
+    const { data: origProfs } = origAuthorIds.length ? await supabase.from("profiles").select("id, username, full_name, is_verified, avatar_url").in("id", origAuthorIds) : { data: [] as any[] };
     if (user) {
       const targets = [...new Set([...ids, ...repostIds])];
       if (targets.length) {
@@ -281,15 +282,7 @@ export function SocialFeed({
       })}
       {loading && <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-neutral-500" /></div>}
       {!loading && filteredPosts.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/12 bg-white/[0.03] px-6 py-12 text-center">
-          <div className="grid h-14 w-14 place-items-center rounded-full bg-white/[0.06]"><Newspaper className="h-6 w-6 text-neutral-500" /></div>
-          <p className="text-base font-semibold text-white">No posts yet</p>
-          <p className="max-w-xs text-sm text-neutral-500">{mode === "following" ? "Follow users or organizers to see their posts here." : "Follow users or organizers to see posts. Be the first to share something!"}</p>
-          <div className="mt-1 flex flex-wrap justify-center gap-2">
-            <Link to="/organizers" className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-neutral-200 hover:border-sky-400/40 hover:bg-sky-500/10">Find organizers</Link>
-            <Link to="/members" className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-neutral-200 hover:border-sky-400/40 hover:bg-sky-500/10">Find members</Link>
-          </div>
-        </div>
+        <FeedEmptySuggestions mode={mode} />
       )}
       {more && !loading && <div className="flex justify-center"><Button variant="outline" size="sm" className="border-white/15" onClick={() => void load(false)}>Load more</Button></div>}
       <Dialog open={!!shareTarget} onOpenChange={(o) => !o && setShareTarget(null)}>
