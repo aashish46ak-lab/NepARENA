@@ -4,6 +4,7 @@ import { supabase, OWNER_EMAIL, type Profile, type Role } from "@/lib/supabase";
 import { analytics } from "@/lib/analytics";
 import { recordLoginStreak } from "@/lib/streaks";
 import { subscribeWebPush } from "@/lib/web-push";
+import { rememberAccount } from "@/lib/account-switcher";
 
 interface AuthContextValue {
   session: Session | null;
@@ -28,12 +29,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const streakOnce = useRef<string | null>(null);
 
   const loadProfileAndRoles = async (userId: string) => {
-    const [{ data: profileData }, { data: roleData }] = await Promise.all([
+    const [{ data: profileData }, { data: roleData }, { data: authData }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.auth.getUser(),
     ]);
-    setProfile((profileData as Profile) ?? null);
+    const prof = (profileData as Profile) ?? null;
+    setProfile(prof);
     setRoles((roleData ?? []).map((r: { role: Role }) => r.role));
+    const email = authData.user?.email ?? null;
+    rememberAccount({
+      id: userId,
+      email,
+      name: prof?.full_name || prof?.username || null,
+      avatar: prof?.avatar_url ?? null,
+    });
   };
 
   const bumpStreak = (userId: string) => {
@@ -42,7 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void recordLoginStreak().then(() => {
       void loadProfileAndRoles(userId);
     });
-    // Register for phone push (PWA / browser) after login
     void subscribeWebPush(userId).catch(() => {});
   };
 
