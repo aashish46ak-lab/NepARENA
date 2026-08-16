@@ -1,5 +1,5 @@
 /**
- * NepARENA platform homepage — FEED FIRST with For You / Following tabs.
+ * NepARENA platform homepage — FEED FIRST with ecosystem discovery.
  */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +11,7 @@ import { CreatePostModal } from "@/components/CreatePostModal";
 import { Newspaper, Info, Users, MessageCircle, Trophy, Swords } from "lucide-react";
 import { StoriesRow } from "@/components/StoriesRow";
 import { cn } from "@/lib/utils";
+import { HomeTournamentStrip } from "@/components/HomeTournamentStrip";
 
 export function PlatformHomePage() {
   const [pillsVisible, setPillsVisible] = useState(true);
@@ -50,6 +51,7 @@ export function PlatformHomePage() {
         <div className="mx-auto flex max-w-3xl gap-1.5 overflow-x-auto px-3 py-2 scrollbar-none">
           <Link
             to="/messages"
+            data-onboard="messages-pill"
             className="flex shrink-0 items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/20"
           >
             <MessageCircle className="h-3.5 w-3.5" />
@@ -64,13 +66,15 @@ export function PlatformHomePage() {
           </Link>
           <Link
             to="/tournaments"
+            data-onboard="tournaments"
             className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
           >
             <Swords className="h-3.5 w-3.5 text-sky-400" />
             Tournaments
           </Link>
           <Link
-            to="/about"
+            to="/organizers"
+            data-onboard="organizers"
             className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
           >
             <Info className="h-3.5 w-3.5 text-sky-400" />
@@ -86,7 +90,11 @@ export function PlatformHomePage() {
         </div>
       </div>
 
-      <section className="border-b border-white/5">
+      <div className="mx-auto max-w-md px-3 pt-3" data-onboard="tournament-strip">
+        <HomeTournamentStrip />
+      </div>
+
+      <section className="border-b border-white/5" data-onboard="feed">
         <div className="mx-auto max-w-md px-3 pb-8 pt-4">
           <div className="mb-3 flex items-center gap-2">
             <Newspaper className="h-4 w-4 text-sky-400" />
