@@ -1,5 +1,5 @@
 /**
- * Become an Organizer — reduced fields: Facebook optional; no insta/discord/website/city.
+ * Become an Organizer — all games selectable; Facebook optional.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -58,14 +58,14 @@ const STATUS_UI: Record<ReqStatus, { label: string; icon: typeof Clock; classNam
   changes_requested: { label: "Changes requested", icon: AlertCircle, className: "text-sky-300 bg-sky-500/15" },
 };
 
+/** All games are selectable — no "Coming Soon" lock */
 const GAMES = [
-  { id: "efootball", label: "eFootball", available: true },
-  { id: "pubg", label: "PUBG Mobile", available: false },
-  { id: "freefire", label: "Free Fire", available: false },
-  { id: "valorant", label: "Valorant", available: false },
-  { id: "eafc", label: "EA FC", available: false },
-  { id: "mlbb", label: "Mobile Legends", available: false },
-  { id: "other", label: "Other esports", available: false },
+  { id: "efootball", label: "eFootball", icon: "⚽" },
+  { id: "free_fire", label: "Free Fire", icon: "🔥" },
+  { id: "pubg", label: "PUBG Mobile", icon: "🎯" },
+  { id: "mlbb", label: "Mobile Legends", icon: "⚔️" },
+  { id: "ea_fc", label: "EA SPORTS FC", icon: "🏆" },
+  { id: "other", label: "Other esports", icon: "🎮" },
 ];
 
 function BecomeOrganizerPage() {
@@ -101,7 +101,7 @@ function BecomeOrganizerPage() {
   const submit = async () => {
     if (!user) return toast.message("Sign in to apply");
     if (!orgName.trim() || !email.trim()) return toast.error("Name and email required");
-    if (game !== "efootball") return toast.error("Only eFootball applications are open right now");
+    if (!game) return toast.error("Select a game");
     setBusy(true);
     try {
       const payload = {
@@ -185,7 +185,7 @@ function BecomeOrganizerPage() {
               {[
                 { icon: Trophy, t: "Tournaments & fixtures", d: "Create cups, leagues, and matchdays." },
                 { icon: Shield, t: "Verification", d: "Platform review before you go live." },
-                { icon: Gamepad2, t: "Game focus", d: "eFootball is live; more titles soon." },
+                { icon: Gamepad2, t: "Game focus", d: "eFootball, Free Fire, PUBG, MLBB, EA FC — pick your focus." },
                 { icon: Star, t: "Discoverability", d: "Appear in Organizers and the feed." },
               ].map((x) => (
                 <div key={x.t} className="flex gap-3 rounded-2xl border border-white/8 bg-white/[0.02] p-3">
@@ -198,20 +198,20 @@ function BecomeOrganizerPage() {
               ))}
             </div>
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">Games</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">Games — tap to apply</p>
               <div className="flex flex-wrap gap-2">
                 {GAMES.map((g) => (
-                  <span
+                  <button
                     key={g.id}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium",
-                      g.available
-                        ? "bg-emerald-500/15 text-emerald-300"
-                        : "bg-white/5 text-neutral-500",
-                    )}
+                    type="button"
+                    onClick={() => {
+                      setGame(g.id);
+                      setMode("form");
+                    }}
+                    className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/25 active:scale-[0.98]"
                   >
-                    {g.available ? "✅ " : "Soon · "}{g.label}
-                  </span>
+                    {g.icon} {g.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -224,27 +224,27 @@ function BecomeOrganizerPage() {
         {mode === "form" && (
           <div className="space-y-4">
             <div>
-              <Label className="text-neutral-400">Tournament / Game</Label>
+              <Label className="text-neutral-400">Tournament / Game *</Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {GAMES.map((g) => (
                   <button
                     key={g.id}
                     type="button"
-                    disabled={!g.available}
-                    onClick={() => g.available && setGame(g.id)}
+                    onClick={() => setGame(g.id)}
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                       game === g.id
-                        ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
-                        : g.available
-                          ? "border-white/12 text-neutral-300"
-                          : "cursor-not-allowed border-white/5 text-neutral-600",
+                        ? "border-sky-500/50 bg-sky-500/15 text-sky-200"
+                        : "border-white/10 bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08]",
                     )}
                   >
-                    {g.label}{!g.available && " (soon)"}
+                    {g.icon} {g.label}
                   </button>
                 ))}
               </div>
+              <p className="mt-1.5 text-[11px] text-neutral-500">
+                Selected: {GAMES.find((g) => g.id === game)?.label ?? game}
+              </p>
             </div>
             <div>
               <Label className="text-neutral-400">Organizer Name *</Label>
