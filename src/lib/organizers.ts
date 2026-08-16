@@ -54,7 +54,6 @@ export function isSuperAdminEmail(email?: string | null): boolean {
 }
 
 export async function listActiveOrganizers(): Promise<Organizer[]> {
-  // Prefer active/pending; fall back so existing organizers never disappear from lists.
   const { data, error } = await supabase
     .from("organizers")
     .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
@@ -86,16 +85,65 @@ export async function listAllOrganizers(): Promise<Organizer[]> {
 }
 
 export async function getOrganizerBySlug(slug: string): Promise<Organizer | null> {
-  const { data, error } = await supabase
+  const raw = decodeURIComponent((slug || "").trim());
+  const candidates = Array.from(
+    new Set([raw, raw.toLowerCase(), raw.replace(/\s+/g, "-").toLowerCase()].filter(Boolean)),
+  );
+  for (const s of candidates) {
+    const { data, error } = await supabase
+      .from("organizers")
+      .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
+      .eq("slug", s)
+      .maybeSingle();
+    if (!error && data) return data as Organizer;
+  }
+  const { data: byName } = await supabase
     .from("organizers")
     .select("id, name, slug, logo_url, cover_url, description, is_verified, status, created_at, theme, owner_id")
-    .eq("slug", slug)
+    .ilike("name", raw.replace(/-/g, " "))
+    .limit(1)
     .maybeSingle();
-  if (error) {
-    console.warn("getOrganizerBySlug", error.message);
-    return null;
+  return (byName as Organizer) ?? null;
+}
+
+/** Notify platform super-admins / owners about organizer applications. */
+export async function notifyPlatformAdmins(opts: {
+  title: string;
+  body?: string;
+  link?: string;
+  actorId?: string | null;
+}) {
+  const ids = new Set<string>();
+  try {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .in("email", [...SUPER_ADMIN_EMAILS]);
+    for (const p of (profiles ?? []) as { id: string }[]) ids.add(p.id);
+  } catch {
+    /* profiles.email may not exist */
   }
-  return (data as Organizer) ?? null;
+  try {
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("role", ["owner", "admin"]);
+    for (const r of (roles ?? []) as { user_id: string }[]) ids.add(r.user_id);
+  } catch {
+    /* ignore */
+  }
+  const { notify } = await import("./notifications");
+  for (const uid of ids) {
+    await notify({
+      userId: uid,
+      title: opts.title,
+      body: opts.body ?? null,
+      type: "info",
+      link: opts.link ?? "/platform",
+      actorId: opts.actorId ?? null,
+    });
+  }
+  return ids.size;
 }
 
 export async function getFollowerCount(organizerId: string): Promise<number> {
@@ -162,7 +210,7 @@ export async function getPlatformStats() {
     supabase.from("profiles").select("id, username, full_name, avatar_url, created_at, is_verified").order("created_at", { ascending: false }).limit(50),
     supabase.from("organizer_invitations").select("id, email, name, slug, status, created_at, token").eq("status", "pending").order("created_at", { ascending: false }).limit(30),
     supabase.from("platform_messages").select("*", { count: "exact", head: true }).eq("read", false),
-    supabase.from("organizer_applications").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("organizer_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
   ]);
 
   const organizersList = (orgsListRes.data ?? []) as {
