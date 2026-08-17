@@ -23,12 +23,10 @@ export const Route = createFileRoute("/o/$slug/history")({
 
 function OrgHistoryPage() {
   const { slug } = Route.useParams();
-
   const { data: organizer, isLoading: orgLoading } = useQuery({
     queryKey: ["organizer", slug],
     queryFn: () => getOrganizerBySlug(slug),
   });
-
   const isDefault =
     !!organizer &&
     (organizer.slug === DEFAULT_ORGANIZER_SLUG || /efootball/i.test(organizer.name));
@@ -37,32 +35,25 @@ function OrgHistoryPage() {
     queryKey: ["org_history_page", organizer?.id, isDefault],
     enabled: !!organizer?.id,
     queryFn: async () => {
-      const cols = "id, name, status, starts_at, ends_at, game, banner_url, participants_count";
-      if (!isDefault) {
-        const { data } = await supabase
-          .from("tournaments")
-          .select(cols)
-          .eq("organizer_id", organizer!.id)
-          .in("status", ["completed", "archived"])
-          .order("ends_at", { ascending: false })
-          .limit(80);
-        return data ?? [];
-      }
-      const { data: linked } = await supabase
+      let q = supabase
         .from("tournaments")
-        .select(cols)
+        .select("id, name, status, starts_at, ends_at, game, participants_count")
         .eq("organizer_id", organizer!.id)
         .in("status", ["completed", "archived"])
         .order("ends_at", { ascending: false })
         .limit(80);
-      if (linked?.length) return linked;
-      const { data } = await supabase
-        .from("tournaments")
-        .select(cols)
-        .in("status", ["completed", "archived"])
-        .order("ends_at", { ascending: false })
-        .limit(80);
-      return data ?? [];
+      const { data } = await q;
+      let list = data ?? [];
+      if (!list.length && isDefault) {
+        const { data: all } = await supabase
+          .from("tournaments")
+          .select("id, name, status, starts_at, ends_at, game, participants_count")
+          .in("status", ["completed", "archived"])
+          .order("ends_at", { ascending: false })
+          .limit(80);
+        list = all ?? [];
+      }
+      return list;
     },
   });
 
@@ -79,14 +70,14 @@ function OrgHistoryPage() {
   return (
     <PageShell force="platform" hideChrome>
       <div className="mx-auto max-w-lg px-3 py-4 pb-20">
-        <div className="mb-4 flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost" className="rounded-full">
+        <div className="mb-5 flex items-center gap-2">
+          <Button asChild size="sm" variant="ghost" className="-ml-2 rounded-full">
             <Link to="/o/$slug" params={{ slug }}>
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Link>
           </Button>
         </div>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-white">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white">
           <History className="h-5 w-5 text-neutral-400" />
           Tournament history
         </h1>
@@ -95,7 +86,7 @@ function OrgHistoryPage() {
         <div className="mt-5 space-y-2">
           {rows.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm text-neutral-500">
-              No completed tournaments yet.
+              This organizer is yet to complete a tournament.
             </p>
           ) : (
             rows.map((t: any) => (
