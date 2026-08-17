@@ -17,6 +17,7 @@ import {
 import { StoriesRow } from "@/components/StoriesRow";
 import { cn } from "@/lib/utils";
 import { HomeTournamentStrip } from "@/components/HomeTournamentStrip";
+import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -117,6 +118,8 @@ export function PlatformHomePage() {
       <div className="mx-auto max-w-md px-3 pt-3" data-onboard="tournament-strip">
         <HomeTournamentStrip />
       </div>
+
+      {user && <PendingMatchesPanel />}
 
       <section className="border-b border-white/5" data-onboard="feed">
         <div className="mx-auto max-w-md px-3 pb-8 pt-4">
