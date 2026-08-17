@@ -1,6 +1,6 @@
 /**
  * Provides current organizer scope for the reusable organizer dashboard.
- * Does NOT redesign the dashboard — panels can read organizerId and filter queries.
+ * Does NOT force eFootball onto other organizers.
  */
 import {
   createContext,
@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  DEFAULT_ORGANIZER_SLUG,
   getDefaultOrganizer,
   getOrganizerBySlug,
   listOrganizerMemberships,
@@ -40,29 +39,42 @@ export function OrganizerProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async (slug?: string) => {
     setLoading(true);
     try {
+      // Prefer: explicit slug → stored slug → first membership → guest default only
       const preferred =
         slug ||
         (typeof window !== "undefined"
           ? localStorage.getItem(STORAGE_KEY) || undefined
-          : undefined) ||
-        DEFAULT_ORGANIZER_SLUG;
+          : undefined);
 
-      let org = await getOrganizerBySlug(preferred);
-      if (!org) org = await getDefaultOrganizer();
+      let org: Organizer | null = null;
+      if (preferred) org = await getOrganizerBySlug(preferred);
 
-      // If user is an organizer member of something else and no default, pick first membership
-      if (!org && user) {
+      if (user) {
         const memberships = await listOrganizerMemberships(user.id);
-        if (memberships[0]) {
-          const { data } = await import("@/lib/supabase").then((m) =>
-            m.supabase
-              .from("organizers")
-              .select("*")
-              .eq("id", memberships[0].organizer_id)
-              .maybeSingle(),
-          );
-          org = (data as Organizer) ?? null;
+        const memberIds = new Set(memberships.map((m) => m.organizer_id));
+        // If stored org is not one of the user's workspaces, switch to first membership
+        if (org && memberIds.size && !memberIds.has(org.id) && !slug) {
+          org = memberships[0]?.organizer ?? null;
+          if (!org && memberships[0]) {
+            const { data } = await import("@/lib/supabase").then((m) =>
+              m.supabase.from("organizers").select("*").eq("id", memberships[0].organizer_id).maybeSingle(),
+            );
+            org = (data as Organizer) ?? null;
+          }
         }
+        if (!org && memberships[0]) {
+          org = memberships[0].organizer ?? null;
+          if (!org) {
+            const { data } = await import("@/lib/supabase").then((m) =>
+              m.supabase.from("organizers").select("*").eq("id", memberships[0].organizer_id).maybeSingle(),
+            );
+            org = (data as Organizer) ?? null;
+          }
+        }
+      }
+
+      if (!org && !user) {
+        org = await getDefaultOrganizer();
       }
 
       setOrganizer(org);
