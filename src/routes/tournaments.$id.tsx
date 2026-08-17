@@ -64,11 +64,7 @@ function TournamentDetailPage() {
       let organizer: { id: string; name: string; slug: string; logo_url: string | null } | null = null;
       const orgId = tour?.organizer_id as string | null | undefined;
       if (orgId) {
-        const { data: o } = await supabase
-          .from("organizers")
-          .select("id, name, slug, logo_url")
-          .eq("id", orgId)
-          .maybeSingle();
+        const { data: o } = await supabase.from("organizers").select("id, name, slug, logo_url").eq("id", orgId).maybeSingle();
         if (o) organizer = o as typeof organizer;
       }
       return {
@@ -94,10 +90,7 @@ function TournamentDetailPage() {
       const pms = await loadPendingMatches(user!.id);
       const mine = pms.filter((p) => p.tournamentId === id);
       const subs = await loadMySubmissions(user!.id, mine.map((p) => p.match.id));
-      return mine.map((pm) => ({
-        pm,
-        submission: subs.get(pm.match.id) ?? null,
-      })) as { pm: PendingMatch; submission: MatchSubmission | null }[];
+      return mine.map((pm) => ({ pm, submission: subs.get(pm.match.id) ?? null })) as { pm: PendingMatch; submission: MatchSubmission | null }[];
     },
   });
 
@@ -109,9 +102,7 @@ function TournamentDetailPage() {
         void qc.invalidateQueries({ queryKey: ["tournament", id] });
         void refetchPending();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "match_submissions" }, () => {
-        void refetchPending();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "match_submissions" }, () => { void refetchPending(); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [id, qc, refetchPending]);
@@ -130,9 +121,7 @@ function TournamentDetailPage() {
   if (isLoading) {
     return (
       <PageShell force="platform" hideChrome>
-        <div className="grid min-h-[50vh] place-items-center">
-          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-        </div>
+        <div className="grid min-h-[50vh] place-items-center"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>
       </PageShell>
     );
   }
@@ -190,8 +179,7 @@ function TournamentDetailPage() {
       if (navigator.share) await navigator.share({ title: name, url });
       else { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
     } catch {
-      try { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
-      catch { toast.message(url); }
+      try { await navigator.clipboard.writeText(url); toast.success("Link copied"); } catch { toast.message(url); }
     }
     setMenuOpen(false);
   };
@@ -200,12 +188,7 @@ function TournamentDetailPage() {
     setMenuOpen(false);
     if (!user) { toast.message("Sign in to message"); void navigate({ to: "/auth" }); return; }
     if (!organizer) { toast.message("Organizer contact unavailable"); return; }
-    const { data: members } = await supabase
-      .from("organizer_members")
-      .select("user_id, role")
-      .eq("organizer_id", organizer.id)
-      .in("role", ["owner", "admin"])
-      .limit(1);
+    const { data: members } = await supabase.from("organizer_members").select("user_id, role").eq("organizer_id", organizer.id).in("role", ["owner", "admin"]).limit(1);
     const contactId = (members?.[0] as { user_id?: string } | undefined)?.user_id;
     if (!contactId) { toast.message("Organizer contact unavailable"); return; }
     try {
@@ -229,19 +212,19 @@ function TournamentDetailPage() {
       <div className="min-h-[100dvh] bg-[#0a0a0a] pb-24">
         <div className="sticky top-0 z-40 border-b border-white/8 bg-[#0a0a0a]/95 backdrop-blur-md">
           <div className="mx-auto flex max-w-lg items-center gap-2 px-3 py-2.5 sm:max-w-2xl">
-            <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else void navigate({ to: "/" }); }} className="rounded-full border border-white/10 p-2 text-neutral-300 hover:bg-white/[0.06]" aria-label="Back">
+            <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else void navigate({ to: "/" }); }} className="rounded-full border border-white/10 p-2.5 text-neutral-300 hover:bg-white/[0.06]" aria-label="Back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             {organizer?.logo_url ? (
               <Link to="/o/$slug" params={{ slug: organizer.slug }} className="shrink-0">
-                <Avatar className="h-9 w-9 rounded-xl">
+                <Avatar className="h-10 w-10 rounded-xl">
                   <AvatarImage src={organizer.logo_url} className="rounded-xl object-cover" />
                   <AvatarFallback className="rounded-xl text-xs">{name.slice(0, 2)}</AvatarFallback>
                 </Avatar>
               </Link>
             ) : (
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10">
-                <Trophy className="h-4 w-4 text-amber-400" />
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
+                <Trophy className="h-5 w-5 text-amber-400" />
               </div>
             )}
             <div className="min-w-0 flex-1">
@@ -251,17 +234,17 @@ function TournamentDetailPage() {
               </div>
               {organizer && <p className="truncate text-[11px] text-neutral-500">{organizer.name}</p>}
             </div>
-            <button ref={menuBtnRef} type="button" onClick={openMenu} className="rounded-full border border-white/12 p-2 text-neutral-300 hover:bg-white/[0.06]" aria-label="More">
+            <button ref={menuBtnRef} type="button" onClick={openMenu} className="rounded-full border border-white/12 p-2.5 text-neutral-300 hover:bg-white/[0.06]" aria-label="More">
               <MoreHorizontal className="h-5 w-5" />
             </button>
           </div>
-          <div ref={tabRef} className="mx-auto flex max-w-lg gap-1 overflow-x-auto px-2 pb-2 sm:max-w-2xl" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+          <div ref={tabRef} className="mx-auto flex max-w-lg gap-1.5 overflow-x-auto px-2 pb-2.5 sm:max-w-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
             {tabs.map((t) => {
               const Icon = t.icon;
               const active = tab === t.id;
               return (
-                <button key={t.id} type="button" data-tab={t.id} onClick={() => selectTab(t.id)} className={cn("flex min-w-[4.5rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-3.5 py-2 text-[11px] font-semibold transition", active ? "bg-white/10 text-white" : "text-neutral-400 hover:bg-white/[0.04] hover:text-neutral-200")}>
-                  <Icon className={cn("h-[22px] w-[22px]", active && "text-sky-400")} />
+                <button key={t.id} type="button" data-tab={t.id} onClick={() => selectTab(t.id)} className={cn("flex min-w-[5rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-4 py-2.5 text-[11px] font-semibold transition", active ? "bg-white/12 text-white" : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200")}>
+                  <Icon className={cn("h-6 w-6", active && "text-sky-400")} strokeWidth={2} />
                   <span className="whitespace-nowrap">{t.label}</span>
                 </button>
               );
@@ -314,14 +297,8 @@ function TournamentDetailPage() {
             <MyMatchesPanel userId={user?.id} tournamentId={id} myPart={myPart} registrationOpen={registrationOpen} registrationClosed={registrationClosed && !myPart} pendingItems={pendingItems} matches={data.matches} participants={data.participants} onDone={() => void refetchPending()} />
           )}
 
-          {tab === "fixtures" && (
-            <FixturesByMatchday matches={data.matches} matchdays={data.matchdays} participants={data.participants} />
-          )}
-
-          {tab === "standings" && (
-            <StandingsTable standings={data.standings} participants={data.participants} />
-          )}
-
+          {tab === "fixtures" && <FixturesByMatchday matches={data.matches} matchdays={data.matchdays} participants={data.participants} />}
+          {tab === "standings" && <StandingsTable standings={data.standings} participants={data.participants} />}
           {tab === "players" && <PlayersList participants={data.participants} />}
 
           {tab === "rules" && (
@@ -472,14 +449,14 @@ function FixturesByMatchday({ matches, matchdays, participants }: { matches: Rec
     const map = new Map<string, G>();
     for (const m of matches) {
       const md = matchdays.find((d) => d.id === m.matchday_id);
-      const name = String(md?.name ?? `Round ${m.round ?? "?"}`);
-      const existing = map.get(name);
+      const gname = String(md?.name ?? `Round ${m.round ?? "?"}`);
+      const existing = map.get(gname);
       if (existing) existing.matches.push(m);
-      else map.set(name, { id: (md?.id as string) ?? (m.matchday_id as string) ?? null, name, published: md ? !!md.is_published : true, matches: [m] });
+      else map.set(gname, { id: (md?.id as string) ?? (m.matchday_id as string) ?? null, name: gname, published: md ? !!md.is_published : true, matches: [m] });
     }
     for (const md of matchdays) {
-      const name = String(md.name);
-      if (!map.has(name)) map.set(name, { id: md.id as string, name, published: !!md.is_published, matches: [] });
+      const gname = String(md.name);
+      if (!map.has(gname)) map.set(gname, { id: md.id as string, name: gname, published: !!md.is_published, matches: [] });
     }
     return [...map.values()].sort((a, b) => {
       const oa = Number(matchdays.find((d) => d.id === a.id)?.sort_order ?? 999);
@@ -609,13 +586,13 @@ function PlayersList({ participants }: { participants: Record<string, unknown>[]
     <ul className="space-y-2">
       {participants.map((p) => {
         const uid = p.user_id as string | null;
-        const name = String(p.player_name || p.club || "Player");
+        const pname = String(p.player_name || p.club || "Player");
         const photo = (p.photo_url as string | null) ?? null;
         const inner = (
           <div className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2.5 text-sm">
             <span className="flex min-w-0 items-center gap-2">
-              <Avatar className="h-8 w-8"><AvatarImage src={photo ?? undefined} /><AvatarFallback className="text-[10px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-              <span className="truncate font-semibold text-white">{name}</span>
+              <Avatar className="h-8 w-8"><AvatarImage src={photo ?? undefined} /><AvatarFallback className="text-[10px]">{pname.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+              <span className="truncate font-semibold text-white">{pname}</span>
             </span>
             <Badge variant="outline" className="capitalize">{String(p.status ?? "")}</Badge>
           </div>
