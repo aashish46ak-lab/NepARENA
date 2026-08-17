@@ -4,9 +4,7 @@ import { useTournamentData } from "./shared";
 import { OverviewTab } from "./OverviewTab";
 import { PlayersTab } from "./PlayersTab";
 import { FixturesTab } from "./FixturesTab";
-import { ResultsTab } from "./ResultsTab";
 import { StandingsTab } from "./StandingsTab";
-import { InvitationsTab } from "./InvitationsTab";
 import { SettingsTab } from "./SettingsTab";
 import { VerificationsTab } from "./VerificationsTab";
 import { BrRoundsTab } from "./BrRoundsTab";
@@ -19,10 +17,8 @@ const LEGACY_TABS = [
   { id: "overview", label: "Overview" },
   { id: "players", label: "Players" },
   { id: "fixtures", label: "Fixtures" },
-  { id: "results", label: "Results" },
   { id: "verify", label: "Verify" },
   { id: "standings", label: "Standings" },
-  { id: "invitations", label: "Invitations" },
   { id: "settings", label: "Settings" },
 ] as const;
 
@@ -37,7 +33,6 @@ const MLBB_EA_TABS = [
   { id: "overview", label: "Overview" },
   { id: "players", label: "Participants" },
   { id: "fixtures", label: "Fixtures / Series" },
-  { id: "results", label: "Results" },
   { id: "standings", label: "Standings" },
   { id: "settings", label: "Settings" },
 ] as const;
@@ -73,22 +68,24 @@ export function TournamentManager({ tournament: initial }: Props) {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 glass rounded-2xl p-2">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-sm transition",
-              tab === t.id
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-accent text-muted-foreground",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="glass overflow-x-auto rounded-2xl p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-max gap-2">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "shrink-0 rounded-lg px-3 py-1.5 text-sm transition",
+                tab === t.id
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-accent text-muted-foreground",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {data.loading &&
@@ -109,17 +106,11 @@ export function TournamentManager({ tournament: initial }: Props) {
           {tab === "fixtures" && (
             <FixturesTab tournament={tournament} data={data} />
           )}
-          {tab === "results" && (
-            <ResultsTab tournament={tournament} data={data} />
-          )}
           {tab === "verify" && (
             <VerificationsTab tournament={tournament} data={data} />
           )}
           {tab === "standings" && (
             <StandingsTab tournament={tournament} data={data} />
-          )}
-          {tab === "invitations" && (
-            <InvitationsTab tournament={tournament} data={data} />
           )}
           {tab === "settings" && (
             <SettingsTab tournament={tournament} onPatched={setTournament} />
