@@ -1,19 +1,13 @@
 /**
  * Tournament-first organizer public page (all organizers).
- * Live → Upcoming → History button → Posts preview → About → Community
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import {
-  getOrganizerBySlug,
-  getFollowerCount,
-  followOrganizer,
-  unfollowOrganizer,
-  isFollowing,
-  listOrganizerTeam,
-  DEFAULT_ORGANIZER_SLUG,
+  getOrganizerBySlug, getFollowerCount, followOrganizer, unfollowOrganizer,
+  isFollowing, listOrganizerTeam, DEFAULT_ORGANIZER_SLUG,
 } from "@/lib/organizers";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,18 +35,10 @@ export const Route = createFileRoute("/o/$slug")({
 });
 
 type Tourney = {
-  id: string;
-  name: string;
-  status: string;
-  starts_at: string | null;
-  ends_at: string | null;
-  game?: string | null;
-  banner_url?: string | null;
-  is_published?: boolean;
-  participants_count?: number | null;
-  max_players?: number | null;
+  id: string; name: string; status: string; starts_at: string | null; ends_at: string | null;
+  game?: string | null; banner_url?: string | null; is_published?: boolean;
+  participants_count?: number | null; max_players?: number | null;
 };
-
 type CommunityLink = { id: string; platform: string; label: string | null; url: string };
 type PostPreview = { id: string; body: string | null; image_url: string | null; created_at: string };
 
@@ -100,28 +86,11 @@ function OrganizerPublicPage() {
     queryFn: async () => {
       const cols =
         "id, name, status, starts_at, ends_at, game, banner_url, is_published, participants_count, max_players, organizer_id";
-      const { data: linked } = await supabase
-        .from("tournaments")
-        .select(cols)
-        .eq("organizer_id", organizer!.id)
-        .order("starts_at", { ascending: false })
-        .limit(50);
+      const { data: linked } = await supabase.from("tournaments").select(cols).eq("organizer_id", organizer!.id).order("starts_at", { ascending: false }).limit(50);
       let rows = (linked ?? []) as Tourney[];
       if (!rows.length && isDefault) {
-        const { data: all } = await supabase
-          .from("tournaments")
-          .select(cols)
-          .order("starts_at", { ascending: false })
-          .limit(50);
+        const { data: all } = await supabase.from("tournaments").select(cols).order("starts_at", { ascending: false }).limit(50);
         rows = (all ?? []) as Tourney[];
-      }
-      if (!rows.length) {
-        const { data: anyT } = await supabase
-          .from("tournaments")
-          .select(cols)
-          .eq("organizer_id", organizer!.id)
-          .limit(50);
-        rows = (anyT ?? []) as Tourney[];
       }
       return rows;
     },
@@ -131,20 +100,13 @@ function OrganizerPublicPage() {
   const upcoming = tournaments.filter((t) =>
     ["upcoming", "registration_open", "registration_closed", "draft"].includes(String(t.status)),
   );
-  const completedCount = tournaments.filter((t) =>
-    ["completed", "archived"].includes(String(t.status)),
-  ).length;
+  const completedCount = tournaments.filter((t) => ["completed", "archived"].includes(String(t.status))).length;
 
   const { data: postsPreview = [] } = useQuery({
     queryKey: ["org_posts_preview", organizer?.id],
     enabled: !!organizer?.id,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("posts")
-        .select("id, body, image_url, created_at")
-        .eq("organizer_id", organizer!.id)
-        .order("created_at", { ascending: false })
-        .limit(2);
+      const { data } = await supabase.from("posts").select("id, body, image_url, created_at").eq("organizer_id", organizer!.id).order("created_at", { ascending: false }).limit(2);
       return (data ?? []) as PostPreview[];
     },
   });
@@ -153,11 +115,7 @@ function OrganizerPublicPage() {
     queryKey: ["org_community_links", organizer?.id],
     enabled: !!organizer?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("community_links")
-        .select("id, platform, label, url")
-        .order("sort_order", { ascending: true })
-        .limit(12);
+      const { data, error } = await supabase.from("community_links").select("id, platform, label, url").order("sort_order", { ascending: true }).limit(12);
       if (error) return [] as CommunityLink[];
       return (data ?? []) as CommunityLink[];
     },
@@ -173,13 +131,8 @@ function OrganizerPublicPage() {
     if (!user || !organizer || followBusy) return;
     setFollowBusy(true);
     try {
-      if (iFollow) {
-        await unfollowOrganizer(organizer.id, user.id);
-        toast.success("Unfollowed");
-      } else {
-        await followOrganizer(organizer.id, user.id);
-        toast.success("Following");
-      }
+      if (iFollow) { await unfollowOrganizer(organizer.id, user.id); toast.success("Unfollowed"); }
+      else { await followOrganizer(organizer.id, user.id); toast.success("Following"); }
       await qc.invalidateQueries({ queryKey: ["org_following", organizer.id, user.id] });
       await qc.invalidateQueries({ queryKey: ["org_followers", organizer.id] });
     } catch (e) {
@@ -190,19 +143,9 @@ function OrganizerPublicPage() {
   };
 
   const messageOrganizer = async () => {
-    if (!user) {
-      toast.message("Sign in to message the organizer");
-      void navigate({ to: "/auth" });
-      return;
-    }
-    if (!ownerId) {
-      toast.error("Organizer contact unavailable");
-      return;
-    }
-    if (ownerId === user.id) {
-      toast.message("This is your organizer page");
-      return;
-    }
+    if (!user) { toast.message("Sign in to message the organizer"); void navigate({ to: "/auth" }); return; }
+    if (!ownerId) { toast.error("Organizer contact unavailable"); return; }
+    if (ownerId === user.id) { toast.message("This is your organizer page"); return; }
     setMsgBusy(true);
     try {
       const convId = await getOrCreateDm(ownerId);
@@ -218,9 +161,7 @@ function OrganizerPublicPage() {
   if (isLoading) {
     return (
       <PageShell force="platform" hideChrome>
-        <div className="grid min-h-[50vh] place-items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
-        </div>
+        <div className="grid min-h-[50vh] place-items-center"><Loader2 className="h-8 w-8 animate-spin text-sky-500" /></div>
       </PageShell>
     );
   }
@@ -254,29 +195,18 @@ function OrganizerPublicPage() {
 
         <div className="mx-auto max-w-lg px-3 sm:px-4">
           <div className="-mt-12">
-            <button
-              type="button"
-              onClick={() => organizer.logo_url && setLogoOpen(true)}
-              className="rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-lg"
-              aria-label="View logo"
-            >
+            <button type="button" onClick={() => organizer.logo_url && setLogoOpen(true)} className="rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-lg" aria-label="View logo">
               <Avatar className="h-20 w-20 rounded-2xl sm:h-[5.25rem] sm:w-[5.25rem]">
                 <AvatarImage src={organizer.logo_url ?? undefined} className="rounded-2xl object-cover" />
-                <AvatarFallback className="rounded-2xl text-xl">
-                  {organizer.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
+                <AvatarFallback className="rounded-2xl text-xl">{organizer.name.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
             </button>
           </div>
 
           <div className="mt-3 min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-white sm:text-2xl">
-                {organizer.name}
-              </h1>
-              {organizer.is_verified && (
-                <BadgeCheck className="h-5 w-5 shrink-0 text-sky-400" aria-label="Verified" />
-              )}
+              <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-white sm:text-2xl">{organizer.name}</h1>
+              {organizer.is_verified && <BadgeCheck className="h-5 w-5 shrink-0 text-sky-400" aria-label="Verified" />}
             </div>
             <p className="mt-0.5 break-all text-sm text-neutral-500">@{organizer.slug}</p>
           </div>
@@ -333,12 +263,9 @@ function OrganizerPublicPage() {
           )}
 
           <Section title="Tournament history" icon={History} accent="text-neutral-400">
-            <a
-              href={`/o/${organizer.slug}/history`}
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.assign(`/o/${organizer.slug}/history`);
-              }}
+            <Link
+              to="/o/$slug/history"
+              params={{ slug: organizer.slug }}
               className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-sky-400/30 hover:bg-white/[0.05]"
             >
               <div>
@@ -348,12 +275,12 @@ function OrganizerPublicPage() {
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" />
-            </a>
+            </Link>
           </Section>
 
           <Section title="Posts" icon={null} accent="text-sky-400">
             {postsPreview.length === 0 ? (
-              <Empty text="No posts yet — check back after the organizer publishes." />
+              <Empty text={`${organizer.name} is yet to post`} />
             ) : (
               <div className="space-y-2">{postsPreview.map((p) => (
                 <div key={p.id} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
@@ -363,25 +290,19 @@ function OrganizerPublicPage() {
                 </div>
               ))}</div>
             )}
-            <a
-              href={`/o/${organizer.slug}/posts`}
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.assign(`/o/${organizer.slug}/posts`);
-              }}
+            <Link
+              to="/o/$slug/posts"
+              params={{ slug: organizer.slug }}
               className="mt-2 flex items-center justify-center gap-1 rounded-full border border-white/10 py-2 text-xs font-semibold text-sky-300 transition hover:bg-white/[0.04]"
             >
               View all posts <ChevronRight className="h-3.5 w-3.5" />
-            </a>
+            </Link>
           </Section>
 
           <Section title="About" icon={Info} accent="text-violet-300">
-            <a
-              href={`/o/${organizer.slug}/about`}
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.assign(`/o/${organizer.slug}/about`);
-              }}
+            <Link
+              to="/o/$slug/about"
+              params={{ slug: organizer.slug }}
               className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-violet-400/30 hover:bg-white/[0.05]"
             >
               <div>
@@ -389,7 +310,7 @@ function OrganizerPublicPage() {
                 <p className="text-[11px] text-neutral-500">Created date, who manages</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" />
-            </a>
+            </Link>
           </Section>
 
           {communityLinks.length > 0 && (
@@ -455,25 +376,34 @@ function TourneyRow({ t, badge, badgeClass }: { t: Tourney; badge: string; badge
 
 function LiveTourneyCard({ t }: { t: Tourney }) {
   return (
-    <Link to="/tournaments/$id" params={{ id: t.id }}
-      className="block overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-500/10 via-white/[0.03] to-transparent transition hover:border-rose-400/40">
-      {t.banner_url && <div className="h-24 w-full bg-cover bg-center" style={{ backgroundImage: `url(${t.banner_url})` }} />}
-      <div className="px-3.5 py-3">
+    <Link
+      to="/tournaments/$id"
+      params={{ id: t.id }}
+      className="flex overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-500/10 via-white/[0.03] to-transparent transition hover:border-rose-400/40"
+    >
+      <div
+        className="h-[5.5rem] w-[5.5rem] shrink-0 bg-cover bg-center sm:h-24 sm:w-28"
+        style={{
+          backgroundImage: t.banner_url
+            ? `url(${t.banner_url})`
+            : "linear-gradient(135deg,#be123c55,#0a0a0a)",
+        }}
+      />
+      <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2.5">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">{t.name}</p>
-            <p className="mt-0.5 text-[11px] text-neutral-400">
-              {t.game ? `${t.game} · ` : ""}{t.starts_at ? new Date(t.starts_at).toLocaleString() : "Live now"}
-            </p>
-          </div>
+          <p className="line-clamp-2 text-sm font-semibold leading-snug text-white">{t.name}</p>
           <span className="shrink-0 rounded-full bg-rose-500/25 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-200">LIVE</span>
         </div>
+        <p className="mt-0.5 truncate text-[11px] text-neutral-400">
+          {t.game ? `${t.game} · ` : ""}
+          {t.starts_at ? new Date(t.starts_at).toLocaleString() : "Live now"}
+        </p>
         {(t.participants_count != null || t.max_players != null) && (
-          <p className="mt-2 text-[11px] text-neutral-500">
+          <p className="mt-1 text-[11px] text-neutral-500">
             {t.participants_count ?? 0}{t.max_players != null ? ` / ${t.max_players}` : ""} players
           </p>
         )}
-        <p className="mt-2 text-[11px] font-medium text-sky-300">Open tournament →</p>
+        <p className="mt-1 text-[11px] font-medium text-sky-300">Open →</p>
       </div>
     </Link>
   );
