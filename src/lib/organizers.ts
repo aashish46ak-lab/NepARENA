@@ -29,6 +29,7 @@ export type Organizer = {
   created_at?: string;
   theme?: Record<string, unknown> | null;
   owner_id?: string | null;
+  primary_game?: string | null;
 };
 
 export type OrganizerMember = {
@@ -53,10 +54,10 @@ export function isSuperAdminEmail(email?: string | null): boolean {
 }
 
 const ORG_SELECT =
-  "id, name, slug, logo_url, banner_url, description, is_verified, status, created_at, owner_user_id";
+  "id, name, slug, logo_url, banner_url, description, is_verified, status, created_at, owner_user_id, primary_game";
 
 const ORG_SELECT_MIN =
-  "id, name, slug, logo_url, description, is_verified, status, created_at";
+  "id, name, slug, logo_url, description, is_verified, status, created_at, primary_game";
 
 function mapOrgRow(row: Record<string, unknown> | null | undefined): Organizer | null {
   if (!row || !row.id) return null;
@@ -73,6 +74,7 @@ function mapOrgRow(row: Record<string, unknown> | null | undefined): Organizer |
     created_at: row.created_at as string | undefined,
     theme: (row.theme as Record<string, unknown> | null) ?? null,
     owner_id: (row.owner_user_id as string | null) ?? (row.owner_id as string | null) ?? null,
+    primary_game: (row.primary_game as string | null) ?? null,
   };
 }
 
@@ -431,7 +433,34 @@ export async function ensureDefaultOrganizerPublic(): Promise<Organizer | null> 
 
 export async function listOrganizerMemberships(userId: string): Promise<(OrganizerMember & { organizer?: Organizer })[]> {
   const { data } = await supabase.from("organizer_members").select("organizer_id, user_id, role, created_at").eq("user_id", userId);
-  const rows = (data ?? []) as OrganizerMember[];
+  let rows = (data ?? []) as OrganizerMember[];
+  const memberIds = new Set(rows.map((r) => r.organizer_id));
+
+  // Include orgs where user is owner_user_id even if membership row is missing
+  const { data: owned } = await supabase
+    .from("organizers")
+    .select(ORG_SELECT_MIN + ", owner_user_id")
+    .eq("owner_user_id", userId);
+  for (const o of owned ?? []) {
+    const id = o.id as string;
+    if (!memberIds.has(id)) {
+      rows = [
+        ...rows,
+        {
+          organizer_id: id,
+          user_id: userId,
+          role: "owner" as MemberRole,
+          created_at: (o as { created_at?: string }).created_at ?? new Date().toISOString(),
+        },
+      ];
+      memberIds.add(id);
+      await supabase.from("organizer_members").upsert(
+        { organizer_id: id, user_id: userId, role: "owner" },
+        { onConflict: "organizer_id,user_id" },
+      );
+    }
+  }
+
   if (!rows.length) return [];
   const ids = rows.map((r) => r.organizer_id);
   const { data: orgs } = await supabase.from("organizers").select(ORG_SELECT_MIN).in("id", ids);
