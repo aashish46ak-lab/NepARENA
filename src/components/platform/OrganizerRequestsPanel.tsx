@@ -128,40 +128,67 @@ export function OrganizerRequestsPanel() {
             if (!exists) break;
             slug = `${baseSlug}-${i + 2}`;
           }
-          // Create/activate organizer with schema columns (owner_user_id, banner_url)
-          const payload: Record<string, unknown> = {
+          // Schema: owner_user_id + banner_url only (never owner_id / cover_url)
+          const payload = {
             name: req.org_name,
             slug,
             logo_url: req.logo_url,
             banner_url: req.banner_url,
             description: req.description,
-            status: "active",
+            status: "active" as const,
             is_verified: true,
             owner_user_id: req.user_id,
           };
           let org: { id: string; slug: string } | null = null;
           let orgErrMsg: string | null = null;
-          {
+
+          try {
+            const { data: rpcId, error: rpcErr } = await supabase.rpc("approve_organizer_request", {
+              p_request_id: id,
+              p_slug: slug,
+            });
+            if (!rpcErr && rpcId) {
+              org = { id: String(rpcId), slug };
+            } else if (rpcErr) {
+              console.warn("approve_organizer_request:", rpcErr.message);
+            }
+          } catch {
+            /* RPC optional until migration applied */
+          }
+
+          if (!org) {
             const { data, error: orgErr } = await supabase
               .from("organizers")
               .upsert(payload, { onConflict: "slug" })
               .select("id, slug")
               .maybeSingle();
             if (orgErr) {
-              const alt = { ...payload, owner_id: req.user_id, cover_url: req.banner_url };
-              delete (alt as any).owner_user_id;
-              delete (alt as any).banner_url;
-              const retry = await supabase
-                .from("organizers")
-                .upsert(alt, { onConflict: "slug" })
-                .select("id, slug")
-                .maybeSingle();
-              if (retry.error) orgErrMsg = retry.error.message;
-              else org = retry.data as { id: string; slug: string } | null;
+              const ins = await supabase.from("organizers").insert(payload).select("id, slug").maybeSingle();
+              if (ins.error) {
+                const upd = await supabase
+                  .from("organizers")
+                  .update({
+                    name: payload.name,
+                    logo_url: payload.logo_url,
+                    banner_url: payload.banner_url,
+                    description: payload.description,
+                    status: "active",
+                    is_verified: true,
+                    owner_user_id: payload.owner_user_id,
+                  })
+                  .eq("slug", slug)
+                  .select("id, slug")
+                  .maybeSingle();
+                if (upd.error) orgErrMsg = upd.error.message;
+                else org = upd.data as { id: string; slug: string } | null;
+              } else {
+                org = ins.data as { id: string; slug: string } | null;
+              }
             } else {
               org = data as { id: string; slug: string } | null;
             }
           }
+
           if (orgErrMsg) {
             toast.error(`Approved request but org create failed: ${orgErrMsg}`);
           } else if (org) {
@@ -170,15 +197,13 @@ export function OrganizerRequestsPanel() {
                 { organizer_id: org.id, user_id: req.user_id, role: "owner" },
                 { onConflict: "organizer_id,user_id" },
               );
-              if (memErr) {
-                toast.message(`Org live but membership: ${memErr.message}`);
-              }
+              if (memErr) toast.message(`Org live but membership: ${memErr.message}`);
               try {
                 const { notify } = await import("@/lib/notifications");
                 await notify({
                   userId: req.user_id,
                   title: "Organizer approved",
-                  body: `${req.org_name} is live. Open Dashboard to host tournaments.`,
+                  body: `${req.org_name} is live at /o/${org.slug}. Open Dashboard to host tournaments.`,
                   type: "success",
                   link: "/dashboard",
                 });
@@ -186,7 +211,7 @@ export function OrganizerRequestsPanel() {
                 /* optional */
               }
             }
-            toast.success(`Approved — live at /o/${org.slug}. Applicant can open Dashboard.`);
+            toast.success(`Approved — live at /o/${org.slug}`);
           } else {
             toast.success("Request approved");
           }
