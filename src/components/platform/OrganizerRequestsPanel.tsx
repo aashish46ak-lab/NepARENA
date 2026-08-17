@@ -128,33 +128,67 @@ export function OrganizerRequestsPanel() {
             if (!exists) break;
             slug = `${baseSlug}-${i + 2}`;
           }
-          const { data: org, error: orgErr } = await supabase
-            .from("organizers")
-            .upsert(
-              {
-                name: req.org_name,
-                slug,
-                logo_url: req.logo_url,
-                cover_url: req.banner_url,
-                description: req.description,
-                status: "active",
-                is_verified: false,
-                owner_id: req.user_id,
-              },
-              { onConflict: "slug" },
-            )
-            .select("id, slug")
-            .maybeSingle();
-          if (orgErr) {
-            toast.message(`Approved but org create: ${orgErr.message}`);
-          } else if (org && req.user_id) {
-            await supabase.from("organizer_members").upsert(
-              { organizer_id: org.id, user_id: req.user_id, role: "owner" },
-              { onConflict: "organizer_id,user_id" },
-            );
-            toast.success(`Approved — organizer live at /o/${org.slug}`);
+          // Create/activate organizer with schema columns (owner_user_id, banner_url)
+          const payload: Record<string, unknown> = {
+            name: req.org_name,
+            slug,
+            logo_url: req.logo_url,
+            banner_url: req.banner_url,
+            description: req.description,
+            status: "active",
+            is_verified: true,
+            owner_user_id: req.user_id,
+          };
+          let org: { id: string; slug: string } | null = null;
+          let orgErrMsg: string | null = null;
+          {
+            const { data, error: orgErr } = await supabase
+              .from("organizers")
+              .upsert(payload, { onConflict: "slug" })
+              .select("id, slug")
+              .maybeSingle();
+            if (orgErr) {
+              const alt = { ...payload, owner_id: req.user_id, cover_url: req.banner_url };
+              delete (alt as any).owner_user_id;
+              delete (alt as any).banner_url;
+              const retry = await supabase
+                .from("organizers")
+                .upsert(alt, { onConflict: "slug" })
+                .select("id, slug")
+                .maybeSingle();
+              if (retry.error) orgErrMsg = retry.error.message;
+              else org = retry.data as { id: string; slug: string } | null;
+            } else {
+              org = data as { id: string; slug: string } | null;
+            }
+          }
+          if (orgErrMsg) {
+            toast.error(`Approved request but org create failed: ${orgErrMsg}`);
+          } else if (org) {
+            if (req.user_id) {
+              const { error: memErr } = await supabase.from("organizer_members").upsert(
+                { organizer_id: org.id, user_id: req.user_id, role: "owner" },
+                { onConflict: "organizer_id,user_id" },
+              );
+              if (memErr) {
+                toast.message(`Org live but membership: ${memErr.message}`);
+              }
+              try {
+                const { notify } = await import("@/lib/notifications");
+                await notify({
+                  userId: req.user_id,
+                  title: "Organizer approved",
+                  body: `${req.org_name} is live. Open Dashboard to host tournaments.`,
+                  type: "success",
+                  link: "/dashboard",
+                });
+              } catch {
+                /* optional */
+              }
+            }
+            toast.success(`Approved — live at /o/${org.slug}. Applicant can open Dashboard.`);
           } else {
-            toast.success("Approved");
+            toast.success("Request approved");
           }
           const inv = await inviteOrganizer({
             email: req.contact_email,
