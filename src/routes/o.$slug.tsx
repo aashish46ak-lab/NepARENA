@@ -1,6 +1,7 @@
 /**
- * Tournament organizer public homepage — tournament-first hub.
- * Layout: sticky horizontal nav → compact hero (Home only) → section content → footer.
+ * Organizer public hub.
+ * Nav: Home → Posts → Live → History → Message → Gallery
+ * Home = identity + bio + community links (not posts).
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  Loader2, BadgeCheck, Trophy, MessageCircle, Share2, ExternalLink, History, Radio, Info, Home, Link2, MoreHorizontal, LayoutDashboard, Flag, Newspaper,
+  Loader2, BadgeCheck, Trophy, MessageCircle, Share2, ExternalLink, History, Radio, Home, MoreHorizontal, LayoutDashboard, Flag, Newspaper, Images,
 } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,17 +30,17 @@ export const Route = createFileRoute("/o/$slug")({
   component: OrganizerPublicPage,
 });
 
-type TabId = "home" | "live" | "history" | "about" | "community";
+type TabId = "home" | "posts" | "live" | "history" | "gallery";
 type Tourney = { id: string; name: string; status: string; starts_at: string | null; ends_at: string | null; game?: string | null; banner_url?: string | null; is_published?: boolean; participants_count?: number | null; max_players?: number | null };
 type CommunityLink = { id: string; platform: string; label: string | null; url: string };
 
 const NAV: { id: TabId | "message"; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
+  { id: "posts", label: "Posts", icon: Newspaper },
   { id: "live", label: "Live", icon: Radio },
   { id: "history", label: "History", icon: History },
   { id: "message", label: "Message", icon: MessageCircle },
-  { id: "about", label: "About", icon: Info },
-  { id: "community", label: "Links", icon: Link2 },
+  { id: "gallery", label: "Gallery", icon: Images },
 ];
 
 function OrganizerPublicPage() {
@@ -162,8 +163,7 @@ function OrganizerPublicPage() {
     if (id === "message") { void messageOrganizer(); return; }
     setTab(id);
     requestAnimationFrame(() => {
-      const active = navRef.current?.querySelector<HTMLElement>(`[data-tab="${id}"]`);
-      active?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      navRef.current?.querySelector<HTMLElement>(`[data-tab="${id}"]`)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     });
   };
 
@@ -184,67 +184,115 @@ function OrganizerPublicPage() {
     <PageShell force="platform" hideChrome>
       <div className="min-h-[100dvh] bg-[#0a0a0a] pb-24">
         <div className="sticky top-0 z-40 border-b border-white/8 bg-[#0a0a0a]/95 backdrop-blur-md">
-          <div ref={navRef} className="mx-auto flex max-w-lg gap-1.5 overflow-x-auto px-2 py-2.5 sm:max-w-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div ref={navRef} className="mx-auto flex max-w-lg gap-1 overflow-x-auto px-2 py-2 sm:max-w-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = item.id !== "message" && tab === item.id;
               return (
-                <button key={item.id} type="button" data-tab={item.id} onClick={() => onNav(item.id)} disabled={item.id === "message" && msgBusy} className={cn("flex min-w-[4.75rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-3.5 py-2.5 text-[11px] font-semibold transition", active ? "bg-white/12 text-white" : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200")}>
-                  <Icon className={cn("h-6 w-6", active && "text-sky-400")} strokeWidth={2} />
-                  <span className="whitespace-nowrap">{item.label}</span>
+                <button key={item.id} type="button" data-tab={item.id} onClick={() => onNav(item.id)} disabled={item.id === "message" && msgBusy} className={cn("flex h-[3.25rem] w-[3.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition sm:h-[3.4rem] sm:w-[3.75rem]", active ? "bg-white/12 text-white" : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200")}>
+                  <Icon className={cn("h-[18px] w-[18px]", active && "text-sky-400")} strokeWidth={2} />
+                  <span className="max-w-full truncate px-0.5">{item.label}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {tab === "home" && (
-          <div className="relative">
-            <div className="relative h-24 w-full sm:h-28" style={{ background: banner ? `url(${banner}) center/cover` : "linear-gradient(135deg, rgba(14,165,233,0.28), #0a0a0a 72%)" }}>
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
-              <button type="button" disabled={followBusy} onClick={() => void toggleFollow()} className={cn("absolute right-3 top-3 z-10 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg transition", iFollow ? "border border-white/25 bg-black/50 text-white backdrop-blur" : "bg-sky-500 text-white hover:bg-sky-400")}>
-                {followBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : iFollow ? "Following" : "Follow"}
+        <div className="relative">
+          <div className="relative h-32 w-full sm:h-36" style={{ background: banner ? `url(${banner}) center/cover` : "linear-gradient(135deg, rgba(14,165,233,0.28), #0a0a0a 72%)" }}>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
+            <button type="button" disabled={followBusy} onClick={() => void toggleFollow()} className={cn("absolute right-3 top-3 z-10 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg transition", iFollow ? "border border-white/25 bg-black/50 text-white backdrop-blur" : "bg-sky-500 text-white hover:bg-sky-400")}>
+              {followBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : iFollow ? "Following" : "Follow"}
+            </button>
+          </div>
+          <div className="mx-auto max-w-lg px-3 sm:max-w-2xl sm:px-4">
+            <div className="relative -mt-11 flex items-start gap-3 pl-3 sm:pl-4">
+              <button type="button" onClick={() => organizer.logo_url && setLogoOpen(true)} className="shrink-0 rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-xl" aria-label="View logo">
+                <Avatar className="h-[4.25rem] w-[4.25rem] rounded-2xl sm:h-[4.75rem] sm:w-[4.75rem]">
+                  <AvatarImage src={organizer.logo_url ?? undefined} className="rounded-2xl object-cover" />
+                  <AvatarFallback className="rounded-2xl text-lg">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
               </button>
-            </div>
-            <div className="mx-auto max-w-lg px-3 sm:max-w-2xl sm:px-4">
-              <div className="relative -mt-9 flex items-end gap-3">
-                <button type="button" onClick={() => organizer.logo_url && setLogoOpen(true)} className="shrink-0 rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-xl" aria-label="View logo">
-                  <Avatar className="h-[4.25rem] w-[4.25rem] rounded-2xl sm:h-[4.75rem] sm:w-[4.75rem]">
-                    <AvatarImage src={organizer.logo_url ?? undefined} className="rounded-2xl object-cover" />
-                    <AvatarFallback className="rounded-2xl text-lg">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                </button>
-                <div className="mb-0.5 min-w-0 flex-1 pb-0.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-1">
-                        <h1 className="truncate text-lg font-bold leading-tight text-white sm:text-xl">{displayName}</h1>
-                        {organizer.is_verified && <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" aria-label="Verified" />}
-                      </div>
-                      <p className="truncate text-xs text-neutral-500">@{specialName}</p>
-                      {primaryGame && <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-400/90">{String(primaryGame).replace(/_/g, " ")}</p>}
+              <div className="min-w-0 flex-1 pt-12">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <h1 className="truncate text-lg font-bold leading-tight text-white sm:text-xl">{displayName}</h1>
+                      {organizer.is_verified && <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" aria-label="Verified" />}
                     </div>
-                    <button ref={menuBtnRef} type="button" onClick={openMenu} className="shrink-0 rounded-full border border-white/12 bg-white/[0.04] p-2 text-neutral-300 hover:bg-white/[0.08]" aria-label="More options">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
+                    <p className="truncate text-xs text-neutral-500">@{specialName}</p>
+                    {primaryGame && <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-400/90">{String(primaryGame).replace(/_/g, " ")}</p>}
                   </div>
+                  <button ref={menuBtnRef} type="button" onClick={openMenu} className="mt-1 shrink-0 rounded-full border border-white/12 bg-white/[0.04] p-2 text-neutral-300 hover:bg-white/[0.08]" aria-label="More options">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-              <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-400">
-                <span><strong className="tabular-nums text-white">{followerCount}</strong> followers</span>
-                <span><strong className="tabular-nums text-white">{postCount}</strong> posts</span>
-                {tournaments.length > 0 && (
-                  <span className="inline-flex items-center gap-1"><Trophy className="h-3 w-3 text-amber-400" /><strong className="tabular-nums text-white">{tournaments.length}</strong> tournaments</span>
-                )}
-              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 pl-3 text-xs text-neutral-400 sm:pl-4">
+              <span><strong className="tabular-nums text-white">{followerCount}</strong> followers</span>
+              <span><strong className="tabular-nums text-white">{postCount}</strong> posts</span>
+              {tournaments.length > 0 && (
+                <span className="inline-flex items-center gap-1"><Trophy className="h-3 w-3 text-amber-400" /><strong className="tabular-nums text-white">{tournaments.length}</strong> tournaments</span>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
-        <div className={cn("mx-auto max-w-lg px-3 sm:max-w-2xl sm:px-4", tab === "home" ? "mt-4" : "mt-3")}>
+        <div className="mx-auto mt-4 max-w-lg px-3 sm:max-w-2xl sm:px-4">
           {tab === "home" && (
+            <section className="space-y-4">
+              {organizer.description ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <p className="text-sm leading-relaxed text-neutral-300">{organizer.description}</p>
+                </div>
+              ) : (
+                <Empty text="No bio yet" />
+              )}
+              {primaryGame && (
+                <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5 text-sm">
+                  <span className="text-neutral-500">Game · </span>
+                  <span className="font-semibold uppercase text-sky-300">{String(primaryGame).replace(/_/g, " ")}</span>
+                </div>
+              )}
+              {team.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Team</p>
+                  <div className="space-y-2">
+                    {team.map((m) => (
+                      <Link key={m.user_id} to="/members/$id" params={{ id: m.user_id }} className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.05]">
+                        <Avatar className="h-8 w-8"><AvatarImage src={m.avatar_url ?? undefined} /><AvatarFallback>{(m.full_name || m.username || "?").slice(0, 1)}</AvatarFallback></Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm text-white">{m.full_name || m.username || "Member"}</p>
+                          <p className="text-[10px] uppercase text-neutral-500">{m.role}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {communityLinks.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Community links</p>
+                  <div className="grid gap-2">
+                    {communityLinks.map((l) => (
+                      <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-violet-400/30 hover:bg-white/[0.06]">
+                        <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/[0.06]"><PlatformIcon platform={l.platform} className="h-4 w-4" /></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-white">{l.label || l.platform}</span>
+                          <span className="block truncate text-[11px] text-neutral-500">{l.url.replace(/^https?:\/\//, "")}</span>
+                        </span>
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {tab === "posts" && (
             <section>
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white"><Newspaper className="h-3.5 w-3.5 text-sky-400" /> Posts</h2>
               <SocialFeed organizerId={organizer.id} organizerMeta={{ name: organizer.name, logo_url: organizer.logo_url, slug: organizer.slug }} hideComposer={!isStaff} emptyLabel={`${organizer.name} is yet to post`} />
             </section>
           )}
@@ -275,56 +323,10 @@ function OrganizerPublicPage() {
             </section>
           )}
 
-          {tab === "about" && (
-            <section className="space-y-4">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Info className="h-3.5 w-3.5 text-violet-300" /> About {organizer.name}</h2>
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <Avatar className="h-14 w-14 rounded-xl"><AvatarImage src={organizer.logo_url ?? undefined} className="rounded-xl object-cover" /><AvatarFallback className="rounded-xl">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-                <div className="min-w-0">
-                  <p className="font-semibold text-white">{displayName}</p>
-                  <p className="text-xs text-neutral-500">@{specialName}</p>
-                  {primaryGame && <p className="mt-0.5 text-[10px] font-semibold uppercase text-sky-400">{String(primaryGame).replace(/_/g, " ")}</p>}
-                </div>
-              </div>
-              {organizer.description ? <p className="text-sm leading-relaxed text-neutral-300">{organizer.description}</p> : <Empty text="No bio yet" />}
-              {team.length > 0 && (
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Team</p>
-                  <div className="space-y-2">
-                    {team.map((m) => (
-                      <Link key={m.user_id} to="/members/$id" params={{ id: m.user_id }} className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.05]">
-                        <Avatar className="h-8 w-8"><AvatarImage src={m.avatar_url ?? undefined} /><AvatarFallback>{(m.full_name || m.username || "?").slice(0, 1)}</AvatarFallback></Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm text-white">{m.full_name || m.username || "Member"}</p>
-                          <p className="text-[10px] uppercase text-neutral-500">{m.role}</p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {tab === "community" && (
+          {tab === "gallery" && (
             <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><ExternalLink className="h-3.5 w-3.5 text-violet-400" /> Community links</h2>
-              {communityLinks.length === 0 ? (
-                <Empty text="No community links configured yet" />
-              ) : (
-                <div className="grid gap-2">
-                  {communityLinks.map((l) => (
-                    <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-violet-400/30 hover:bg-white/[0.06]">
-                      <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/[0.06]"><PlatformIcon platform={l.platform} className="h-4 w-4" /></span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-white">{l.label || l.platform}</span>
-                        <span className="block truncate text-[11px] text-neutral-500">{l.url.replace(/^https?:\/\//, "")}</span>
-                      </span>
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
-                    </a>
-                  ))}
-                </div>
-              )}
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Images className="h-3.5 w-3.5 text-violet-300" /> Gallery</h2>
+              <Empty text="Gallery posts coming soon — community images will appear here" />
             </section>
           )}
 
@@ -379,6 +381,20 @@ function TourneyRow({ t, badge, badgeClass }: { t: Tourney; badge: string; badge
 }
 
 function LiveTourneyCard({ t }: { t: Tourney }) {
+  const published = t.is_published !== false;
+  if (!published) {
+    return (
+      <div className="relative overflow-hidden rounded-2xl border border-white/10">
+        <div className="flex h-[5.5rem] opacity-30 blur-[2px]">
+          <div className="w-[5.5rem] bg-neutral-800" />
+          <div className="flex-1 p-3"><p className="text-sm text-white">{t.name}</p></div>
+        </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55">
+          <span className="text-xs font-semibold text-neutral-200">Locked · Not published</span>
+        </div>
+      </div>
+    );
+  }
   return (
     <Link to="/tournaments/$id" params={{ id: t.id }} className="flex overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-500/10 via-white/[0.03] to-transparent transition hover:border-rose-400/40">
       <div className="h-[5.5rem] w-[5.5rem] shrink-0 bg-cover bg-center sm:h-24 sm:w-28" style={{ backgroundImage: t.banner_url ? `url(${t.banner_url})` : "linear-gradient(135deg,#be123c55,#0a0a0a)" }} />
@@ -388,9 +404,6 @@ function LiveTourneyCard({ t }: { t: Tourney }) {
           <span className="shrink-0 rounded-full bg-rose-500/25 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-200">LIVE</span>
         </div>
         <p className="mt-0.5 truncate text-[11px] text-neutral-400">{t.game ? `${t.game} · ` : ""}{t.starts_at ? new Date(t.starts_at).toLocaleString() : "Live now"}</p>
-        {(t.participants_count != null || t.max_players != null) && (
-          <p className="mt-1 text-[11px] text-neutral-500">{t.participants_count ?? 0}{t.max_players != null ? ` / ${t.max_players}` : ""} players</p>
-        )}
         <p className="mt-1 text-[11px] font-medium text-sky-300">View tournament →</p>
       </div>
     </Link>
