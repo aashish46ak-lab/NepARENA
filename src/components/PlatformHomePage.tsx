@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { PlatformTopBar } from "@/components/PlatformTopBar";
+import { GlobalSearchBar } from "@/components/GlobalSearch";
 import { SocialFeed } from "@/components/SocialFeed";
 import { StreakAssistant } from "@/components/StreakAssistant";
 import { CreatePostModal } from "@/components/CreatePostModal";
@@ -47,6 +48,12 @@ export function PlatformHomePage() {
     <PageShell force="platform" hideChrome>
       <PlatformTopBar showLogo onCreatePost={user ? () => setPostOpen(true) : undefined} />
       {user && <StreakAssistant />}
+
+      <div className="sticky top-0 z-30 border-b border-white/8 bg-[#0a0a0a]/90 px-3 py-2.5 backdrop-blur-xl">
+        <div className="mx-auto max-w-md">
+          <GlobalSearchBar />
+        </div>
+      </div>
 
       {!user && (
         <section className="relative overflow-hidden border-b border-white/8">
