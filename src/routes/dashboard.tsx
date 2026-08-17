@@ -362,13 +362,19 @@ function DashboardPage() {
           </div>
           <main className="min-w-0 flex-1">
             {active === "dashboard" && <DashboardOverview />}
-            {active === "feed" && <SocialFeed />}
+            {active === "feed" && (
+              <SocialFeed
+                organizerId={orgId ?? undefined}
+                hideComposer={false}
+                organizerMeta={orgMeta ? { name: orgMeta.name, logo_url: orgMeta.logo_url, slug: orgMeta.slug || "" } : undefined}
+              />
+            )}
             {active === "messages" && <MessagesInbox />}
             {active === "tournaments" && <TournamentsPanel />}
             {active === "players" && isOrgOwner && <UsersPanel />}
             {active === "reports" && <ReportsPanel />}
             {active === "history" && <HistoryPanel />}
-            {active === "community" && <CommunityLinksPanel />}
+            {active === "community" && <CommunityLinksPanel organizerId={orgId} />}
             {active === "team" && <OwnerModeratorsPanel />}
             {active === "settings" && <SiteSettingsPanel />}
           </main>
