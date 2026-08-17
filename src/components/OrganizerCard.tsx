@@ -90,7 +90,7 @@ export function OrganizerCard({
     return (
       <div
         className={cn(
-          "overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 opacity-60",
+          "aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 opacity-60",
           className,
         )}
       >
@@ -112,13 +112,13 @@ export function OrganizerCard({
       to="/o/$slug"
       params={{ slug }}
       className={cn(
-        "group relative block overflow-hidden rounded-2xl border border-white/10 bg-[#121214]",
+        "group relative block aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-[#121214]",
         "shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition duration-300",
         "hover:border-sky-400/35 hover:shadow-[0_12px_40px_-16px_rgba(56,189,248,0.4)] active:scale-[0.99]",
         className,
       )}
     >
-      <div className="relative h-16 overflow-hidden sm:h-[4.5rem]">
+      <div className="relative h-[38%] min-h-[3.5rem] overflow-hidden">
         {banner ? (
           <img
             src={banner}
@@ -138,10 +138,10 @@ export function OrganizerCard({
         )}
       </div>
 
-      <div className="relative px-3.5 pb-3.5 pt-0">
-        <div className="-mt-8 flex items-end gap-3">
+      <div className="relative flex h-[62%] flex-col px-3.5 pb-3 pt-0">
+        <div className="-mt-7 flex items-end gap-3">
           <div className="relative shrink-0">
-            <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-2xl bg-neutral-950 ring-[3px] ring-[#121214] shadow-lg sm:h-16 sm:w-16">
+            <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-2xl bg-neutral-950 ring-[3px] ring-[#121214] shadow-lg sm:h-14 sm:w-14">
               {logo ? (
                 <img
                   src={logo}
@@ -177,7 +177,7 @@ export function OrganizerCard({
           <ChevronRight className="mb-1 h-5 w-5 shrink-0 text-neutral-600 transition group-hover:translate-x-0.5 group-hover:text-sky-400" />
         </div>
 
-        <div className="mt-3 flex items-center gap-3 border-t border-white/[0.06] pt-2.5 text-[11px] text-neutral-500">
+        <div className="mt-auto flex items-center gap-3 border-t border-white/[0.06] pt-2 text-[11px] text-neutral-500">
           <span className="inline-flex items-center gap-1">
             <Users className="h-3 w-3 text-sky-400/90" />
             <span className="font-semibold tabular-nums text-neutral-200">
