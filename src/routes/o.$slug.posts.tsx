@@ -69,6 +69,7 @@ function OrgPostsPage() {
               slug: organizer.slug,
             }}
             hideComposer
+            emptyLabel={`${organizer.name} is yet to post`}
           />
         </div>
       </div>
