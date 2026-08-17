@@ -128,7 +128,6 @@ export function OrganizerRequestsPanel() {
             if (!exists) break;
             slug = `${baseSlug}-${i + 2}`;
           }
-          // Schema: owner_user_id + banner_url only (never owner_id / cover_url)
           const payload = {
             name: req.org_name,
             slug,
@@ -153,7 +152,7 @@ export function OrganizerRequestsPanel() {
               console.warn("approve_organizer_request:", rpcErr.message);
             }
           } catch {
-            /* RPC optional until migration applied */
+            /* RPC optional */
           }
 
           if (!org) {
@@ -193,25 +192,38 @@ export function OrganizerRequestsPanel() {
             toast.error(`Approved request but org create failed: ${orgErrMsg}`);
           } else if (org) {
             if (req.user_id) {
-              const { error: memErr } = await supabase.from("organizer_members").upsert(
-                { organizer_id: org.id, user_id: req.user_id, role: "owner" },
-                { onConflict: "organizer_id,user_id" },
-              );
-              if (memErr) toast.message(`Org live but membership: ${memErr.message}`);
+              let memErrMsg: string | null = null;
+              {
+                const { error: memErr } = await supabase.from("organizer_members").upsert(
+                  { organizer_id: org.id, user_id: req.user_id, role: "owner" },
+                  { onConflict: "organizer_id,user_id" },
+                );
+                if (memErr) {
+                  const ins = await supabase.from("organizer_members").insert({
+                    organizer_id: org.id,
+                    user_id: req.user_id,
+                    role: "owner",
+                  });
+                  if (ins.error) memErrMsg = ins.error.message;
+                }
+              }
+              if (memErrMsg) toast.message(`Org live but membership: ${memErrMsg}`);
               try {
                 const { notify } = await import("@/lib/notifications");
                 await notify({
                   userId: req.user_id,
-                  title: "Organizer approved",
-                  body: `${req.org_name} is live at /o/${org.slug}. Open Dashboard to host tournaments.`,
+                  title: "Your organizer page is live",
+                  body: `${req.org_name} is live. Open Dashboard to host tournaments, or view /o/${org.slug}.`,
                   type: "success",
                   link: "/dashboard",
                 });
+                toast.success(`${req.org_name} is live — requester notified`);
               } catch {
-                /* optional */
+                toast.success(`Approved — live at /o/${org.slug}`);
               }
+            } else {
+              toast.success(`Approved — live at /o/${org.slug}`);
             }
-            toast.success(`Approved — live at /o/${org.slug}`);
           } else {
             toast.success("Request approved");
           }
