@@ -253,24 +253,37 @@ function OrganizerPublicPage() {
         </div>
 
         <div className="mx-auto max-w-lg px-3 sm:px-4">
-          <div className="-mt-10 flex items-start gap-3">
-            <button type="button" onClick={() => organizer.logo_url && setLogoOpen(true)} className="mt-1 shrink-0 rounded-2xl ring-[3px] ring-[#0a0a0a]" aria-label="View logo">
-              <Avatar className="h-[4.5rem] w-[4.5rem] rounded-2xl">
+          {/* Logo overlaps banner; name fully below so never clipped */}
+          <div className="-mt-12">
+            <button
+              type="button"
+              onClick={() => organizer.logo_url && setLogoOpen(true)}
+              className="rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-lg"
+              aria-label="View logo"
+            >
+              <Avatar className="h-20 w-20 rounded-2xl sm:h-[5.25rem] sm:w-[5.25rem]">
                 <AvatarImage src={organizer.logo_url ?? undefined} className="rounded-2xl object-cover" />
-                <AvatarFallback className="rounded-2xl text-lg">{organizer.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="rounded-2xl text-xl">
+                  {organizer.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
             </button>
-            <div className="min-w-0 flex-1 pt-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <h1 className="text-lg font-bold leading-snug tracking-tight text-white sm:text-xl">{organizer.name}</h1>
-                {organizer.is_verified && <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" aria-label="Verified" />}
-              </div>
-              <p className="mt-0.5 text-xs text-neutral-500">@{organizer.slug}</p>
+          </div>
+
+          <div className="mt-3 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-white sm:text-2xl">
+                {organizer.name}
+              </h1>
+              {organizer.is_verified && (
+                <BadgeCheck className="h-5 w-5 shrink-0 text-sky-400" aria-label="Verified" />
+              )}
             </div>
+            <p className="mt-0.5 break-all text-sm text-neutral-500">@{organizer.slug}</p>
           </div>
 
           {organizer.description && (
-            <p className="mt-2 text-sm leading-snug text-neutral-300">{organizer.description}</p>
+            <p className="mt-2.5 text-sm leading-relaxed text-neutral-300">{organizer.description}</p>
           )}
 
           <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
@@ -356,7 +369,7 @@ function OrganizerPublicPage() {
               className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-violet-400/30 hover:bg-white/[0.05]">
               <div>
                 <p className="text-sm font-medium text-white">About & team</p>
-                <p className="text-[11px] text-neutral-500">Logo, details, roles</p>
+                <p className="text-[11px] text-neutral-500">Created date, who manages</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" />
             </Link>
