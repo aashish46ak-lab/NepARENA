@@ -1,5 +1,5 @@
 /**
- * User profile — compact card + 3-dot menu + posts.
+ * User profile — banner, stats, social icons, full 3-dot menu.
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Loader2, MessageCircle, BadgeCheck, Settings, Plus, MoreHorizontal,
-  Share2, Copy, UserPlus, UserMinus,
+  Share2, Copy, UserPlus, UserMinus, LayoutDashboard, LogOut, Shield,
 } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,8 @@ import { getOrCreateDm } from "@/lib/dm";
 import { SocialFeed } from "@/components/SocialFeed";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { CreatePostModal } from "@/components/CreatePostModal";
+import { PlatformIcon } from "@/lib/platforms";
+import { isSuperAdminEmail } from "@/lib/organizers";
 
 export const Route = createFileRoute("/members/$id")({
   head: ({ params }) => ({
@@ -31,9 +33,20 @@ export const Route = createFileRoute("/members/$id")({
   component: MemberProfilePage,
 });
 
+const SOCIAL_KEYS = ["facebook", "instagram", "whatsapp", "twitter", "tiktok", "youtube"] as const;
+
+function normalizeUrl(v: string) {
+  if (!v) return v;
+  const t = v.trim();
+  if (/^https?:\/\//i.test(t)) return t;
+  if (t.startsWith("wa.me/") || t.startsWith("api.whatsapp.com")) return `https://${t}`;
+  if (/^\+?\d{8,15}$/.test(t.replace(/\s/g, ""))) return `https://wa.me/${t.replace(/\D/g, "")}`;
+  return `https://${t}`;
+}
+
 function MemberProfilePage() {
   const { id } = Route.useParams();
-  const { user } = useAuth();
+  const { user, signOut, isAdmin, isOwner } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
@@ -45,6 +58,7 @@ function MemberProfilePage() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isOwn = !!user && user.id === id;
+  const isPlatformAdmin = isSuperAdminEmail(user?.email) || isOwner;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -68,10 +82,7 @@ function MemberProfilePage() {
   const { data: followerCount = 0 } = useQuery({
     queryKey: ["member_followers", id],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("user_follows")
-        .select("id", { count: "exact", head: true })
-        .eq("following_id", id);
+      const { count } = await supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("following_id", id);
       return count ?? 0;
     },
     enabled: !!id,
@@ -80,10 +91,7 @@ function MemberProfilePage() {
   const { data: followingCount = 0 } = useQuery({
     queryKey: ["member_following", id],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("user_follows")
-        .select("id", { count: "exact", head: true })
-        .eq("follower_id", id);
+      const { count } = await supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("follower_id", id);
       return count ?? 0;
     },
     enabled: !!id,
@@ -93,27 +101,30 @@ function MemberProfilePage() {
     queryKey: ["member_i_follow", id, user?.id],
     queryFn: async () => {
       if (!user) return false;
-      const { data } = await supabase
-        .from("user_follows")
-        .select("id")
-        .eq("follower_id", user.id)
-        .eq("following_id", id)
-        .maybeSingle();
+      const { data } = await supabase.from("user_follows").select("id").eq("follower_id", user.id).eq("following_id", id).maybeSingle();
       return !!data;
     },
     enabled: !!id && !!user && user.id !== id,
   });
 
-  const displayName =
-    profile?.full_name?.trim() || profile?.username?.trim() || "Player";
+  const { data: hasOrgMembership = false } = useQuery({
+    queryKey: ["member_has_org", id],
+    queryFn: async () => {
+      const { data } = await supabase.from("organizer_members").select("id").eq("user_id", id).limit(1);
+      return (data?.length ?? 0) > 0;
+    },
+    enabled: !!id && isOwn,
+  });
+
+  const displayName = profile?.full_name?.trim() || profile?.username?.trim() || "Player";
   const handleName = profile?.username?.trim() || displayName;
+  const links = ((profile as any)?.social_links && typeof (profile as any).social_links === "object"
+    ? ((profile as any).social_links as Record<string, string>) : {}) as Record<string, string>;
+  const bannerUrl = links.banner_url || (profile as any)?.banner_url || null;
+  const socialEntries = SOCIAL_KEYS.filter((k) => links[k]?.trim()).map((k) => [k, links[k].trim()] as const);
 
   const messageUser = async () => {
-    if (!user) {
-      toast.message("Sign in to message");
-      void navigate({ to: "/auth" });
-      return;
-    }
+    if (!user) { toast.message("Sign in to message"); void navigate({ to: "/auth" }); return; }
     if (user.id === id) return;
     setMsgBusy(true);
     try {
@@ -122,9 +133,7 @@ function MemberProfilePage() {
       else void navigate({ to: "/messages", search: { with: id } });
     } catch {
       void navigate({ to: "/messages", search: { with: id } });
-    } finally {
-      setMsgBusy(false);
-    }
+    } finally { setMsgBusy(false); }
   };
 
   const toggleFollow = async () => {
@@ -142,40 +151,15 @@ function MemberProfilePage() {
       await qc.invalidateQueries({ queryKey: ["member_followers", id] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setFollowBusy(false);
-    }
+    } finally { setFollowBusy(false); }
   };
 
-  const copyProfileLink = async () => {
-    const url = `${window.location.origin}/members/${id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied");
-    } catch {
-      toast.message(url);
-    }
-    setMenuOpen(false);
-  };
-
-  const shareProfile = async () => {
-    const url = `${window.location.origin}/members/${id}`;
-    try {
-      if (navigator.share) await navigator.share({ title: displayName, url });
-      else await navigator.clipboard.writeText(url);
-      toast.success("Shared");
-    } catch {
-      /* cancelled */
-    }
-    setMenuOpen(false);
-  };
+  const closeMenu = () => setMenuOpen(false);
 
   if (isLoading) {
     return (
       <PageShell force="platform" hideChrome>
-        <div className="grid min-h-[50vh] place-items-center">
-          <Loader2 className="h-7 w-7 animate-spin text-neutral-500" />
-        </div>
+        <div className="grid min-h-[50vh] place-items-center"><Loader2 className="h-7 w-7 animate-spin text-neutral-500" /></div>
       </PageShell>
     );
   }
@@ -193,51 +177,73 @@ function MemberProfilePage() {
       <div className="mx-auto max-w-lg px-3 pb-24 pt-3">
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#121214]/90 shadow-2xl ring-1 ring-white/5">
           <div
-            className="relative h-28 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-32"
-            style={
-              (profile as any).banner_url
-                ? { background: `url(${(profile as any).banner_url}) center/cover` }
-                : undefined
-            }
+            className="relative h-32 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-40"
+            style={bannerUrl ? { background: `url(${bannerUrl}) center/cover` } : undefined}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-[#121214] via-black/30 to-transparent" />
             <div className="absolute right-3 top-3 z-20" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
-                aria-label="More options"
-              >
+              <button type="button" onClick={() => setMenuOpen((v) => !v)}
+                className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/75"
+                aria-label="More options">
                 <MoreHorizontal className="h-5 w-5" />
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-11 z-50 min-w-[11.5rem] overflow-hidden rounded-xl border border-white/15 bg-[#161618] py-1.5 shadow-2xl shadow-black/60">
+                <div className="absolute right-0 top-11 z-50 min-w-[13rem] overflow-hidden rounded-xl border border-white/15 bg-[#161618] py-1.5 shadow-2xl shadow-black/70">
                   {isOwn && (
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/8"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setEditOpen(true);
-                      }}
-                    >
-                      <Settings className="h-4 w-4 text-neutral-400" /> Edit profile
-                    </button>
+                    <>
+                      <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                        onClick={() => { closeMenu(); setEditOpen(true); }}>
+                        <Settings className="h-4 w-4 text-neutral-400" /> Edit profile
+                      </button>
+                      {(hasOrgMembership || isAdmin) && (
+                        <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                          onClick={() => { closeMenu(); void navigate({ to: "/dashboard" }); }}>
+                          <LayoutDashboard className="h-4 w-4 text-neutral-400" /> Organizer dashboard
+                        </button>
+                      )}
+                      {isPlatformAdmin && (
+                        <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                          onClick={() => { closeMenu(); void navigate({ to: "/platform" }); }}>
+                          <Shield className="h-4 w-4 text-neutral-400" /> Platform control
+                        </button>
+                      )}
+                      <div className="my-1 border-t border-white/10" />
+                    </>
                   )}
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/8"
-                    onClick={() => void shareProfile()}
-                  >
+                  <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                    onClick={async () => {
+                      closeMenu();
+                      const url = `${window.location.origin}/members/${id}`;
+                      try {
+                        if (navigator.share) await navigator.share({ title: displayName, url });
+                        else { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
+                      } catch { /* cancel */ }
+                    }}>
                     <Share2 className="h-4 w-4 text-neutral-400" /> Share profile
                   </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/8"
-                    onClick={() => void copyProfileLink()}
-                  >
+                  <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                    onClick={async () => {
+                      closeMenu();
+                      const url = `${window.location.origin}/members/${id}`;
+                      try { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
+                      catch { toast.message(url); }
+                    }}>
                     <Copy className="h-4 w-4 text-neutral-400" /> Copy link
                   </button>
+                  {isOwn && (
+                    <>
+                      <div className="my-1 border-t border-white/10" />
+                      <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-rose-300 hover:bg-white/[0.08]"
+                        onClick={async () => {
+                          closeMenu();
+                          await signOut();
+                          void navigate({ to: "/" });
+                          toast.success("Signed out");
+                        }}>
+                        <LogOut className="h-4 w-4" /> Log out
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -251,9 +257,7 @@ function MemberProfilePage() {
               </Avatar>
               <div className="mb-1 flex flex-wrap gap-2">
                 {isOwn ? (
-                  <Button size="sm" variant="outline" className="rounded-full border-white/15" onClick={() => setEditOpen(true)}>
-                    Edit profile
-                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-full border-white/15" onClick={() => setEditOpen(true)}>Edit profile</Button>
                 ) : (
                   <>
                     <Button size="sm" variant={iFollow ? "secondary" : "default"} className="rounded-full" disabled={followBusy} onClick={() => void toggleFollow()}>
@@ -280,6 +284,18 @@ function MemberProfilePage() {
               <span><strong className="tabular-nums text-white">{followerCount}</strong> followers</span>
               <span><strong className="tabular-nums text-white">{followingCount}</strong> following</span>
             </div>
+
+            {socialEntries.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {socialEntries.map(([k, v]) => (
+                  <a key={k} href={normalizeUrl(v)} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium capitalize text-neutral-200 transition hover:bg-white/[0.08]">
+                    <PlatformIcon platform={k} className="h-3.5 w-3.5" />
+                    {k === "twitter" ? "X" : k}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -287,21 +303,13 @@ function MemberProfilePage() {
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Posts</h2>
             {isOwn && (
-              <button
-                type="button"
-                onClick={() => setPostOpen(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-medium text-neutral-400 transition hover:border-sky-400/30 hover:text-sky-300"
-              >
+              <button type="button" onClick={() => setPostOpen(true)}
+                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-medium text-neutral-400 transition hover:border-sky-400/30 hover:text-sky-300">
                 <Plus className="h-3 w-3" /> New post
               </button>
             )}
           </div>
-          <SocialFeed
-            key={feedKey}
-            authorId={id}
-            hideComposer
-            emptyLabel={`${handleName} is yet to post`}
-          />
+          <SocialFeed key={feedKey} authorId={id} hideComposer emptyLabel={`${handleName} is yet to post`} />
         </section>
       </div>
 
