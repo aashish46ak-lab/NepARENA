@@ -115,14 +115,24 @@ function OrganizerPublicPage() {
     queryKey: ["org_community_links", organizer?.id],
     enabled: !!organizer?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("community_links").select("id, platform, label, url").order("sort_order", { ascending: true }).limit(12);
-      if (error) return [] as CommunityLink[];
+      // Only THIS organizer — never global/shared seed links
+      const { data, error } = await supabase
+        .from("community_links")
+        .select("id, platform, label, url, organizer_id")
+        .eq("organizer_id", organizer!.id)
+        .order("sort_order", { ascending: true })
+        .limit(12);
+      if (error) {
+        console.warn("community_links", error.message);
+        return [] as CommunityLink[];
+      }
       return (data ?? []) as CommunityLink[];
     },
   });
 
   const ownerId =
     (organizer as any)?.owner_id ||
+    (organizer as any)?.owner_user_id ||
     team.find((m) => m.role === "owner")?.user_id ||
     team.find((m) => m.role === "admin")?.user_id ||
     null;
@@ -178,6 +188,7 @@ function OrganizerPublicPage() {
   }
 
   const year = new Date().getFullYear();
+  const primaryGame = (organizer as any).primary_game as string | null | undefined;
 
   return (
     <PageShell force="platform" hideChrome>
@@ -209,6 +220,11 @@ function OrganizerPublicPage() {
               {organizer.is_verified && <BadgeCheck className="h-5 w-5 shrink-0 text-sky-400" aria-label="Verified" />}
             </div>
             <p className="mt-0.5 break-all text-sm text-neutral-500">@{organizer.slug}</p>
+            {primaryGame && (
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-sky-400/90">
+                {String(primaryGame).replace(/_/g, " ")}
+              </p>
+            )}
           </div>
 
           {organizer.description && (
