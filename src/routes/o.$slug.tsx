@@ -334,8 +334,10 @@ function OrganizerPublicPage() {
           )}
 
           <Section title="Tournament history" icon={History} accent="text-neutral-400">
-            <Link to="/o/$slug/history" params={{ slug: organizer.slug }}
-              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-sky-400/30 hover:bg-white/[0.05]">
+            <a
+              href={`/o/${organizer.slug}/history`}
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-sky-400/30 hover:bg-white/[0.05]"
+            >
               <div>
                 <p className="text-sm font-medium text-white">View full history</p>
                 <p className="text-[11px] text-neutral-500">
@@ -343,7 +345,7 @@ function OrganizerPublicPage() {
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" />
-            </Link>
+            </a>
           </Section>
 
           <Section title="Posts" icon={null} accent="text-sky-400">
@@ -358,21 +360,25 @@ function OrganizerPublicPage() {
                 </div>
               ))}</div>
             )}
-            <Link to="/o/$slug/posts" params={{ slug: organizer.slug }}
-              className="mt-2 flex items-center justify-center gap-1 rounded-full border border-white/10 py-2 text-xs font-semibold text-sky-300 transition hover:bg-white/[0.04]">
+            <a
+              href={`/o/${organizer.slug}/posts`}
+              className="mt-2 flex items-center justify-center gap-1 rounded-full border border-white/10 py-2 text-xs font-semibold text-sky-300 transition hover:bg-white/[0.04]"
+            >
               View all posts <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
+            </a>
           </Section>
 
           <Section title="About" icon={Info} accent="text-violet-300">
-            <Link to="/o/$slug/about" params={{ slug: organizer.slug }}
-              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-violet-400/30 hover:bg-white/[0.05]">
+            <a
+              href={`/o/${organizer.slug}/about`}
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-violet-400/30 hover:bg-white/[0.05]"
+            >
               <div>
                 <p className="text-sm font-medium text-white">About & team</p>
                 <p className="text-[11px] text-neutral-500">Created date, who manages</p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" />
-            </Link>
+            </a>
           </Section>
 
           {communityLinks.length > 0 && (
