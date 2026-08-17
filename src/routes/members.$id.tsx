@@ -1,19 +1,16 @@
+/**
+ * User profile — compact card + 3-dot menu + posts.
+ */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { PageShell } from "@/components/PageShell";
-import {
-  supabase,
-  type HallOfFameEntry,
-  type Profile,
-  type TournamentParticipant,
-} from "@/lib/supabase";
+import { supabase, type Profile } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Loader2, MessageCircle, BadgeCheck, MapPin, Calendar, ChevronRight,
-  Settings, Plus, Trophy, Users,
+  Loader2, MessageCircle, BadgeCheck, Settings, Plus, MoreHorizontal,
+  Share2, Copy, UserPlus, UserMinus,
 } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,8 +19,6 @@ import { getOrCreateDm } from "@/lib/dm";
 import { SocialFeed } from "@/components/SocialFeed";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { CreatePostModal } from "@/components/CreatePostModal";
-import { PlatformIcon } from "@/lib/platforms";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/members/$id")({
   head: ({ params }) => ({
@@ -36,12 +31,6 @@ export const Route = createFileRoute("/members/$id")({
   component: MemberProfilePage,
 });
 
-function normalizeUrl(v: string) {
-  if (!v) return v;
-  if (/^https?:\/\//i.test(v)) return v;
-  return `https://${v}`;
-}
-
 function MemberProfilePage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
@@ -51,17 +40,25 @@ function MemberProfilePage() {
   const [postOpen, setPostOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
   const [msgBusy, setMsgBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const isOwn = !!user && user.id === id;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["member_profile", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
       if (error) throw error;
       return data as Profile | null;
     },
@@ -92,31 +89,24 @@ function MemberProfilePage() {
     enabled: !!id,
   });
 
-  const { data: orgs = [] } = useQuery({
-    queryKey: ["member_orgs", id],
+  const { data: iFollow = false } = useQuery({
+    queryKey: ["member_i_follow", id, user?.id],
     queryFn: async () => {
+      if (!user) return false;
       const { data } = await supabase
-        .from("organizer_members")
-        .select("role, organizers(id, name, slug, logo_url, is_verified)")
-        .eq("user_id", id);
-      return (data ?? []).map((r: any) => ({
-        role: r.role as string,
-        ...(r.organizers ?? {}),
-      }));
+        .from("user_follows")
+        .select("id")
+        .eq("follower_id", user.id)
+        .eq("following_id", id)
+        .maybeSingle();
+      return !!data;
     },
-    enabled: !!id,
+    enabled: !!id && !!user && user.id !== id,
   });
 
   const displayName =
-    profile?.full_name?.trim() ||
-    profile?.username?.trim() ||
-    "Player";
-
-  const socialEntries = Object.entries(
-    (profile as any)?.social_links && typeof (profile as any).social_links === "object"
-      ? ((profile as any).social_links as Record<string, string>)
-      : {},
-  ).filter(([, v]) => typeof v === "string" && v.trim());
+    profile?.full_name?.trim() || profile?.username?.trim() || "Player";
+  const handleName = profile?.username?.trim() || displayName;
 
   const messageUser = async () => {
     if (!user) {
@@ -135,6 +125,49 @@ function MemberProfilePage() {
     } finally {
       setMsgBusy(false);
     }
+  };
+
+  const toggleFollow = async () => {
+    if (!user || followBusy || user.id === id) return;
+    setFollowBusy(true);
+    try {
+      if (iFollow) {
+        await supabase.from("user_follows").delete().eq("follower_id", user.id).eq("following_id", id);
+        toast.success("Unfollowed");
+      } else {
+        await supabase.from("user_follows").insert({ follower_id: user.id, following_id: id });
+        toast.success("Following");
+      }
+      await qc.invalidateQueries({ queryKey: ["member_i_follow", id, user.id] });
+      await qc.invalidateQueries({ queryKey: ["member_followers", id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
+  const copyProfileLink = async () => {
+    const url = `${window.location.origin}/members/${id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {
+      toast.message(url);
+    }
+    setMenuOpen(false);
+  };
+
+  const shareProfile = async () => {
+    const url = `${window.location.origin}/members/${id}`;
+    try {
+      if (navigator.share) await navigator.share({ title: displayName, url });
+      else await navigator.clipboard.writeText(url);
+      toast.success("Shared");
+    } catch {
+      /* cancelled */
+    }
+    setMenuOpen(false);
   };
 
   if (isLoading) {
@@ -160,7 +193,7 @@ function MemberProfilePage() {
       <div className="mx-auto max-w-lg px-3 pb-24 pt-3">
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#121214]/90 shadow-2xl ring-1 ring-white/5">
           <div
-            className="relative h-28 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-36"
+            className="relative h-28 bg-gradient-to-br from-neutral-800 via-neutral-900 to-black sm:h-32"
             style={
               (profile as any).banner_url
                 ? { background: `url(${(profile as any).banner_url}) center/cover` }
@@ -168,8 +201,49 @@ function MemberProfilePage() {
             }
           >
             <div className="absolute inset-0 bg-gradient-to-t from-[#121214] via-black/30 to-transparent" />
+            <div className="absolute right-3 top-3 z-20" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                aria-label="More options"
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-11 z-50 min-w-[11.5rem] overflow-hidden rounded-xl border border-white/15 bg-[#161618] py-1.5 shadow-2xl shadow-black/60">
+                  {isOwn && (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/8"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setEditOpen(true);
+                      }}
+                    >
+                      <Settings className="h-4 w-4 text-neutral-400" /> Edit profile
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/8"
+                    onClick={() => void shareProfile()}
+                  >
+                    <Share2 className="h-4 w-4 text-neutral-400" /> Share profile
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/8"
+                    onClick={() => void copyProfileLink()}
+                  >
+                    <Copy className="h-4 w-4 text-neutral-400" /> Copy link
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="relative px-4 pb-6">
+
+          <div className="relative px-4 pb-5">
             <div className="-mt-12 flex items-end justify-between gap-3">
               <Avatar className="h-24 w-24 ring-4 ring-[#121214]">
                 <AvatarImage src={profile.avatar_url ?? undefined} />
@@ -178,58 +252,34 @@ function MemberProfilePage() {
               <div className="mb-1 flex flex-wrap gap-2">
                 {isOwn ? (
                   <Button size="sm" variant="outline" className="rounded-full border-white/15" onClick={() => setEditOpen(true)}>
-                    <Settings className="mr-1 h-3.5 w-3.5" /> Edit
+                    Edit profile
                   </Button>
                 ) : (
-                  <Button size="sm" className="rounded-full bg-sky-500 text-white hover:bg-sky-400" disabled={msgBusy} onClick={() => void messageUser()}>
-                    {msgBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="mr-1 h-3.5 w-3.5" />}
-                    Message
-                  </Button>
+                  <>
+                    <Button size="sm" variant={iFollow ? "secondary" : "default"} className="rounded-full" disabled={followBusy} onClick={() => void toggleFollow()}>
+                      {followBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : iFollow ? <UserMinus className="mr-1 h-3.5 w-3.5" /> : <UserPlus className="mr-1 h-3.5 w-3.5" />}
+                      {iFollow ? "Following" : "Follow"}
+                    </Button>
+                    <Button size="sm" className="rounded-full bg-sky-500 text-white hover:bg-sky-400" disabled={msgBusy} onClick={() => void messageUser()}>
+                      {msgBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="mr-1 h-3.5 w-3.5" />}
+                      Message
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
+
             <h1 className="mt-3 flex flex-wrap items-center gap-1.5 text-xl font-bold text-white">
               {displayName}
               {profile.is_verified && <BadgeCheck className="h-5 w-5 text-sky-400" />}
             </h1>
             {profile.username && <p className="text-sm text-neutral-500">@{profile.username}</p>}
-            {profile.bio && <p className="mt-2 text-sm text-neutral-300">{profile.bio}</p>}
+            {profile.bio && <p className="mt-2 text-sm leading-relaxed text-neutral-300">{profile.bio}</p>}
+
             <div className="mt-3 flex flex-wrap gap-4 text-sm text-neutral-400">
-              <span><strong className="text-white">{followerCount}</strong> followers</span>
-              <span><strong className="text-white">{followingCount}</strong> following</span>
+              <span><strong className="tabular-nums text-white">{followerCount}</strong> followers</span>
+              <span><strong className="tabular-nums text-white">{followingCount}</strong> following</span>
             </div>
-            {orgs.length > 0 && (
-              <div className="mt-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">Organizations</p>
-                <div className="space-y-1.5">
-                  {orgs.map((o: any) => (
-                    <Link
-                      key={o.id || o.slug}
-                      to="/o/$slug"
-                      params={{ slug: o.slug }}
-                      className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 transition hover:border-sky-400/30"
-                    >
-                      <div className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-white/10 text-[10px] font-bold">
-                        {o.logo_url ? <img src={o.logo_url} alt="" className="h-full w-full object-cover" /> : (o.name || "?").slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{o.name}</span>
-                      {o.is_verified && <BadgeCheck className="h-3.5 w-3.5 text-sky-400" />}
-                      <ChevronRight className="h-4 w-4 text-neutral-500" />
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-            {socialEntries.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {socialEntries.map(([k, v]) => (
-                  <a key={k} href={normalizeUrl(v)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/[0.08]">
-                    <PlatformIcon platform={k} className="h-3.5 w-3.5" />
-                    {k}
-                  </a>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
@@ -246,7 +296,12 @@ function MemberProfilePage() {
               </button>
             )}
           </div>
-          <SocialFeed key={feedKey} authorId={id} hideComposer />
+          <SocialFeed
+            key={feedKey}
+            authorId={id}
+            hideComposer
+            emptyLabel={`${handleName} is yet to post`}
+          />
         </section>
       </div>
 
