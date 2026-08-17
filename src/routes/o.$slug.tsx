@@ -1,6 +1,7 @@
 /**
  * Tournament organizer public homepage — tournament-first hub.
  * Layout: sticky horizontal nav → compact hero → section content → footer.
+ * Structure: Home / Live / History / Message / About / Community.
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -81,9 +82,9 @@ const NAV: { id: TabId | "message"; label: string; icon: typeof Home }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "live", label: "Live", icon: Radio },
   { id: "history", label: "History", icon: History },
-  { id: "message", label: "Msg.Org.", icon: MessageCircle },
+  { id: "message", label: "Message", icon: MessageCircle },
   { id: "about", label: "About", icon: Info },
-  { id: "community", label: "Comn. links", icon: Link2 },
+  { id: "community", label: "Links", icon: Link2 },
 ];
 
 function OrganizerPublicPage() {
@@ -249,7 +250,12 @@ function OrganizerPublicPage() {
   };
 
   const toggleFollow = async () => {
-    if (!user || !organizer || followBusy) return;
+    if (!user) {
+      toast.message("Sign in to follow");
+      void navigate({ to: "/auth" });
+      return;
+    }
+    if (!organizer || followBusy) return;
     setFollowBusy(true);
     try {
       if (iFollow) {
@@ -367,7 +373,7 @@ function OrganizerPublicPage() {
         <div className="sticky top-0 z-40 border-b border-white/8 bg-[#0a0a0a]/95 backdrop-blur-md">
           <div
             ref={navRef}
-            className="mx-auto flex max-w-lg gap-1 overflow-x-auto px-2 py-2"
+            className="mx-auto flex max-w-lg gap-0.5 overflow-x-auto px-1.5 py-1.5 sm:max-w-2xl"
             style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
           >
             {NAV.map((item) => {
@@ -381,7 +387,7 @@ function OrganizerPublicPage() {
                   onClick={() => onNav(item.id)}
                   disabled={item.id === "message" && msgBusy}
                   className={cn(
-                    "flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-[10px] font-medium transition",
+                    "flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3.5 py-1.5 text-[10px] font-medium transition",
                     active
                       ? "bg-white/10 text-white"
                       : "text-neutral-400 hover:bg-white/[0.04] hover:text-neutral-200",
@@ -397,46 +403,44 @@ function OrganizerPublicPage() {
 
         <div className="relative">
           <div
-            className="relative h-28 w-full sm:h-32"
+            className="relative h-24 w-full sm:h-28"
             style={{
               background: banner
                 ? `url(${banner}) center/cover`
                 : "linear-gradient(135deg, rgba(14,165,233,0.28), #0a0a0a 72%)",
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/35 to-transparent" />
-            {user && (
-              <button
-                type="button"
-                disabled={followBusy}
-                onClick={() => void toggleFollow()}
-                className={cn(
-                  "absolute right-3 top-3 z-10 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg transition",
-                  iFollow
-                    ? "border border-white/25 bg-black/50 text-white backdrop-blur"
-                    : "bg-sky-500 text-white hover:bg-sky-400",
-                )}
-              >
-                {followBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : iFollow ? (
-                  "Following"
-                ) : (
-                  "Follow"
-                )}
-              </button>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent" />
+            <button
+              type="button"
+              disabled={followBusy}
+              onClick={() => void toggleFollow()}
+              className={cn(
+                "absolute right-3 top-3 z-10 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg transition",
+                iFollow
+                  ? "border border-white/25 bg-black/50 text-white backdrop-blur"
+                  : "bg-sky-500 text-white hover:bg-sky-400",
+              )}
+            >
+              {followBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : iFollow ? (
+                "Following"
+              ) : (
+                "Follow"
+              )}
+            </button>
           </div>
 
-          <div className="mx-auto max-w-lg px-3 sm:px-4">
-            <div className="relative -mt-10 flex items-end gap-3">
+          <div className="mx-auto max-w-lg px-3 sm:max-w-2xl sm:px-4">
+            <div className="relative -mt-9 flex items-end gap-3">
               <button
                 type="button"
                 onClick={() => organizer.logo_url && setLogoOpen(true)}
                 className="shrink-0 rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-xl"
                 aria-label="View logo"
               >
-                <Avatar className="h-[4.5rem] w-[4.5rem] rounded-2xl sm:h-20 sm:w-20">
+                <Avatar className="h-[4.25rem] w-[4.25rem] rounded-2xl sm:h-[4.75rem] sm:w-[4.75rem]">
                   <AvatarImage
                     src={organizer.logo_url ?? undefined}
                     className="rounded-2xl object-cover"
@@ -447,7 +451,7 @@ function OrganizerPublicPage() {
                 </Avatar>
               </button>
 
-              <div className="mb-1 min-w-0 flex-1">
+              <div className="mb-0.5 min-w-0 flex-1 pb-0.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-1">
@@ -478,7 +482,7 @@ function OrganizerPublicPage() {
               </div>
             </div>
 
-            <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-400">
               <span>
                 <strong className="tabular-nums text-white">{followerCount}</strong> followers
               </span>
@@ -495,7 +499,7 @@ function OrganizerPublicPage() {
           </div>
         </div>
 
-        <div className="mx-auto mt-4 max-w-lg px-3 sm:px-4">
+        <div className="mx-auto mt-4 max-w-lg px-3 sm:max-w-2xl sm:px-4">
           {tab === "home" && (
             <section>
               <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
@@ -559,7 +563,9 @@ function OrganizerPublicPage() {
                 Tournament history
               </h2>
               {completed.length === 0 ? (
-                <Empty text={`${organizer.name} is new to the platform — no completed tournaments yet`} />
+                <Empty
+                  text={`${organizer.name} is new to the platform — no completed tournaments yet`}
+                />
               ) : (
                 <div className="space-y-2">
                   {completed.map((t) => (
@@ -572,16 +578,6 @@ function OrganizerPublicPage() {
                   ))}
                 </div>
               )}
-              <a
-                href={`/o/${organizer.slug}/history`}
-                className="flex items-center justify-center gap-1 rounded-full border border-white/10 py-2 text-xs font-semibold text-sky-300 transition hover:bg-white/[0.04]"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = `/o/${organizer.slug}/history`;
-                }}
-              >
-                Open full history page
-              </a>
             </section>
           )}
 
@@ -593,7 +589,10 @@ function OrganizerPublicPage() {
               </h2>
               <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                 <Avatar className="h-14 w-14 rounded-xl">
-                  <AvatarImage src={organizer.logo_url ?? undefined} className="rounded-xl object-cover" />
+                  <AvatarImage
+                    src={organizer.logo_url ?? undefined}
+                    className="rounded-xl object-cover"
+                  />
                   <AvatarFallback className="rounded-xl">
                     {displayName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
@@ -643,16 +642,6 @@ function OrganizerPublicPage() {
                   </div>
                 </div>
               )}
-              <a
-                href={`/o/${organizer.slug}/about`}
-                className="flex items-center justify-center gap-1 rounded-full border border-white/10 py-2 text-xs font-semibold text-sky-300 transition hover:bg-white/[0.04]"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = `/o/${organizer.slug}/about`;
-                }}
-              >
-                More about {organizer.name}
-              </a>
             </section>
           )}
 
@@ -730,7 +719,7 @@ function OrganizerPublicPage() {
                 aria-hidden
               />
               <div
-                className="fixed z-[350] w-52 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl"
+                className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl"
                 style={{ top: menuPos.top, right: menuPos.right }}
               >
                 {isStaff && (
