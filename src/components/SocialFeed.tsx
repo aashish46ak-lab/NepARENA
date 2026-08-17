@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Heart, MessageCircle, Loader2, Newspaper, BadgeCheck } from "lucide-react";
+import { Heart, Loader2, Newspaper, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FeedEmptySuggestions } from "@/components/FeedEmptySuggestions";
@@ -35,6 +34,7 @@ export function SocialFeed({
   organizerId,
   organizerMeta,
   filterQuery,
+  emptyLabel,
 }: {
   authorId?: string;
   mode?: "for_you" | "following";
@@ -45,6 +45,7 @@ export function SocialFeed({
   organizerId?: string | null;
   organizerMeta?: { name: string; logo_url?: string | null; slug?: string | null } | null;
   filterQuery?: string;
+  emptyLabel?: string;
 }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<FeedPost[]>([]);
@@ -89,8 +90,8 @@ export function SocialFeed({
         : { data: [] as any[] };
       const pmap = new Map(((profiles ?? []) as any[]).map((p) => [p.id, p]));
       const ids = rows.map((r) => r.id as string);
-      let likeCounts: Record<string, number> = {};
-      let myLikes = new Set<string>();
+      const likeCounts: Record<string, number> = {};
+      const myLikes = new Set<string>();
       if (ids.length) {
         const { data: likes } = await supabase.from("post_likes").select("post_id, user_id").in("post_id", ids);
         for (const l of likes ?? []) {
@@ -152,14 +153,13 @@ export function SocialFeed({
   const filteredPosts = !q
     ? posts
     : posts.filter(
-        (p) =>
-          (p.body ?? "").toLowerCase().includes(q) || (p.author_name ?? "").toLowerCase().includes(q),
+        (p) => (p.body ?? "").toLowerCase().includes(q) || (p.author_name ?? "").toLowerCase().includes(q),
       );
 
   return (
     <div className="space-y-4">
       {filteredPosts.map((p) => {
-        const urls = (p.image_urls && p.image_urls.length ? p.image_urls : p.image_url ? [p.image_url] : []) as string[];
+        const urls = (p.image_urls?.length ? p.image_urls : p.image_url ? [p.image_url] : []) as string[];
         return (
           <article key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
             <div className="flex gap-3">
@@ -211,8 +211,9 @@ export function SocialFeed({
         authorId || organizerId ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 px-4 py-10 text-center">
             <Newspaper className="h-8 w-8 text-neutral-600" />
-            <p className="text-sm font-medium text-neutral-400">No posts yet</p>
-            <p className="text-xs text-neutral-600">When they publish, posts will show up here.</p>
+            <p className="text-sm font-medium text-neutral-300">
+              {emptyLabel || (organizerMeta?.name ? `${organizerMeta.name} is yet to post` : "No posts yet")}
+            </p>
           </div>
         ) : (
           <FeedEmptySuggestions mode={mode} />
