@@ -15,14 +15,7 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { buildSeoHead } from "@/lib/seo";
 import { toast } from "sonner";
 import {
-  Building2,
-  Loader2,
-  MessageCircle,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  AlertCircle,
-  ArrowLeft,
+  Building2, Loader2, MessageCircle, CheckCircle2, Clock, XCircle, AlertCircle, ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notifyPlatformAdmins } from "@/lib/organizers";
@@ -40,12 +33,8 @@ export const Route = createFileRoute("/become-organizer")({
 
 type ReqStatus = "pending" | "approved" | "rejected" | "changes_requested";
 type RequestRow = {
-  id: string;
-  org_name: string;
-  contact_email: string;
-  status: ReqStatus;
-  admin_note: string | null;
-  created_at: string;
+  id: string; org_name: string; contact_email: string; status: ReqStatus;
+  admin_note: string | null; created_at: string;
 };
 
 const STATUS_UI: Record<ReqStatus, { label: string; icon: typeof Clock; className: string }> = {
@@ -56,12 +45,12 @@ const STATUS_UI: Record<ReqStatus, { label: string; icon: typeof Clock; classNam
 };
 
 const GAMES = [
-  { id: "efootball", label: "eFootball", icon: "⚽" },
-  { id: "free_fire", label: "Free Fire", icon: "🔥" },
-  { id: "pubg", label: "PUBG Mobile", icon: "🎯" },
-  { id: "mlbb", label: "Mobile Legends", icon: "⚔️" },
-  { id: "ea_fc", label: "EA SPORTS FC", icon: "🏆" },
-  { id: "other", label: "Other esports", icon: "🎮" },
+  { id: "efootball", label: "eFootball", enabled: true },
+  { id: "free_fire", label: "Free Fire", enabled: false },
+  { id: "pubg", label: "PUBG Mobile", enabled: false },
+  { id: "mlbb", label: "Mobile Legends", enabled: false },
+  { id: "ea_fc", label: "EA SPORTS FC", enabled: false },
+  { id: "other", label: "Other esports", enabled: false },
 ];
 
 function BecomeOrganizerPage() {
@@ -101,6 +90,7 @@ function BecomeOrganizerPage() {
     if (!user) return toast.message("Sign in to apply");
     if (!orgName.trim() || !email.trim()) return toast.error("Name and email required");
     if (!game) return toast.error("Select a game");
+    if (game !== "efootball") return toast.error("Only eFootball applications are open right now");
     setBusy(true);
     try {
       const payload = {
@@ -111,11 +101,7 @@ function BecomeOrganizerPage() {
         description: description.trim() || null,
         logo_url: logoUrl,
         banner_url: bannerUrl,
-        social_links: {
-          facebook: facebook.trim() || null,
-          country: country.trim() || null,
-          game,
-        },
+        social_links: { facebook: facebook.trim() || null, country: country.trim() || null, game },
         status: "pending",
       };
       const { data, error } = await supabase
@@ -133,13 +119,10 @@ function BecomeOrganizerPage() {
           link: "/platform",
           actorId: user.id,
         });
-      } catch {
-        /* non-blocking */
-      }
+      } catch { /* non-blocking */ }
       toast.success("Application submitted — platform admin notified");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Submit failed";
-      toast.error(msg);
+      toast.error(e instanceof Error ? e.message : "Submit failed");
     } finally {
       setBusy(false);
     }
@@ -151,24 +134,14 @@ function BecomeOrganizerPage() {
     <PageShell force="platform" hideChrome>
       <PlatformTopBar showLogo={false} pageTitle="Become Organizer" />
       <div className="mx-auto max-w-lg px-4 pb-28 pt-4">
-        <Link
-          to="/organizers"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-white"
-        >
+        <Link to="/organizers" className="mb-4 inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-white">
           <ArrowLeft className="h-4 w-4" /> Organizers
         </Link>
 
         <div className="mb-4 flex gap-1 rounded-xl bg-white/[0.04] p-1">
           {(["info", "form", "status"] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setMode(id)}
-              className={cn(
-                "flex-1 rounded-lg py-2 text-xs font-semibold capitalize",
-                mode === id ? "bg-white/10 text-white" : "text-neutral-500",
-              )}
-            >
+            <button key={id} type="button" onClick={() => setMode(id)}
+              className={cn("flex-1 rounded-lg py-2 text-xs font-semibold capitalize", mode === id ? "bg-white/10 text-white" : "text-neutral-500")}>
               {id === "form" ? "Apply" : id}
             </button>
           ))}
@@ -186,7 +159,7 @@ function BecomeOrganizerPage() {
               </div>
             </div>
             <ul className="space-y-2 text-sm text-neutral-300">
-              <li>• Pick your game (eFootball, Free Fire, PUBG, MLBB, EA FC…)</li>
+              <li>• Currently open for eFootball organizers only</li>
               <li>• Platform admin reviews your application</li>
               <li>• After approval you get an organizer dashboard</li>
             </ul>
@@ -194,9 +167,7 @@ function BecomeOrganizerPage() {
               Start application
             </Button>
             {myReq && (
-              <button type="button" className="w-full text-center text-sm text-sky-400" onClick={() => setMode("status")}>
-                View application status
-              </button>
+              <button type="button" className="w-full text-center text-sm text-sky-400" onClick={() => setMode("status")}>View application status</button>
             )}
           </div>
         )}
@@ -219,18 +190,18 @@ function BecomeOrganizerPage() {
               <Label className="mb-2 block text-neutral-400">Primary game</Label>
               <div className="grid grid-cols-2 gap-2">
                 {GAMES.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setGame(g.id)}
+                  <button key={g.id} type="button" disabled={!g.enabled} onClick={() => g.enabled && setGame(g.id)}
                     className={cn(
                       "rounded-xl border px-3 py-2.5 text-left text-sm transition",
-                      game === g.id
+                      !g.enabled && "cursor-not-allowed opacity-50",
+                      g.enabled && game === g.id
                         ? "border-amber-400/50 bg-amber-500/15 text-white"
                         : "border-white/10 bg-white/[0.03] text-neutral-300",
+                    )}>
+                    <span className="font-medium">{g.label}</span>
+                    {!g.enabled && (
+                      <span className="mt-0.5 block text-[10px] uppercase tracking-wide text-neutral-500">Coming Soon</span>
                     )}
-                  >
-                    <span className="mr-1">{g.icon}</span> {g.label}
                   </button>
                 ))}
               </div>
@@ -309,18 +280,10 @@ function RequestChatPanel({ requestId }: { requestId: string }) {
       .order("created_at", { ascending: true });
     setMsgs((data as typeof msgs) ?? []);
     setLoading(false);
-    await supabase
-      .from("organizer_request_messages")
-      .update({ read_by_applicant: true })
-      .eq("request_id", requestId)
-      .eq("is_from_admin", true)
-      .eq("read_by_applicant", false);
+    await supabase.from("organizer_request_messages").update({ read_by_applicant: true }).eq("request_id", requestId).eq("is_from_admin", true).eq("read_by_applicant", false);
   };
 
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestId]);
+  useEffect(() => { void load(); }, [requestId]);
 
   const send = async () => {
     if (!user || !text.trim()) return;
@@ -328,26 +291,14 @@ function RequestChatPanel({ requestId }: { requestId: string }) {
     try {
       const body = text.trim();
       const { error } = await supabase.from("organizer_request_messages").insert({
-        request_id: requestId,
-        sender_id: user.id,
-        is_from_admin: false,
-        body,
-        read_by_applicant: true,
-        read_by_admin: false,
+        request_id: requestId, sender_id: user.id, is_from_admin: false, body, read_by_applicant: true, read_by_admin: false,
       });
       if (error) throw error;
       setText("");
       await load();
       try {
-        await notifyPlatformAdmins({
-          title: "Organizer applicant message",
-          body: body.slice(0, 120),
-          link: "/platform",
-          actorId: user.id,
-        });
-      } catch {
-        /* ignore */
-      }
+        await notifyPlatformAdmins({ title: "Organizer applicant message", body: body.slice(0, 120), link: "/platform", actorId: user.id });
+      } catch { /* ignore */ }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Send failed");
     } finally {
@@ -366,31 +317,15 @@ function RequestChatPanel({ requestId }: { requestId: string }) {
           <p className="py-4 text-center text-xs text-neutral-500">No messages yet. Ask anything about your application.</p>
         )}
         {msgs.map((m) => (
-          <div
-            key={m.id}
-            className={cn(
-              "max-w-[85%] rounded-xl px-3 py-2 text-sm",
-              m.is_from_admin ? "mr-auto bg-white/10 text-neutral-100" : "ml-auto bg-sky-500/20 text-sky-50",
-            )}
-          >
+          <div key={m.id} className={cn("max-w-[85%] rounded-xl px-3 py-2 text-sm", m.is_from_admin ? "mr-auto bg-white/10 text-neutral-100" : "ml-auto bg-sky-500/20 text-sky-50")}>
             <p>{m.body}</p>
             <p className="mt-1 text-[10px] text-neutral-500">{new Date(m.created_at).toLocaleString()}</p>
           </div>
         ))}
       </div>
       <div className="flex gap-2">
-        <Input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Write a message…"
-          className="border-white/10 bg-white/[0.04]"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void send();
-            }
-          }}
-        />
+        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a message…" className="border-white/10 bg-white/[0.04]"
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} />
         <Button size="sm" disabled={busy || !text.trim()} onClick={() => void send()} className="shrink-0">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
         </Button>
