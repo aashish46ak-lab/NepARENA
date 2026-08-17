@@ -1,9 +1,10 @@
 /**
- * User profile — banner, stats, social icons, full 3-dot menu.
+ * User profile — banner, country flag, full 3-dot (fixed portal, never clipped), social icons.
  */
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { PageShell } from "@/components/PageShell";
 import { supabase, type Profile } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +22,7 @@ import { EditProfileModal } from "@/components/EditProfileModal";
 import { CreatePostModal } from "@/components/CreatePostModal";
 import { PlatformIcon } from "@/lib/platforms";
 import { isSuperAdminEmail } from "@/lib/organizers";
+import { countryFlag } from "@/lib/country-flag";
 
 export const Route = createFileRoute("/members/$id")({
   head: ({ params }) => ({
@@ -55,7 +57,8 @@ function MemberProfilePage() {
   const [msgBusy, setMsgBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   const isOwn = !!user && user.id === id;
   const isPlatformAdmin = isSuperAdminEmail(user?.email) || isOwner;
@@ -63,11 +66,26 @@ function MemberProfilePage() {
   useEffect(() => {
     if (!menuOpen) return;
     const onDoc = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      const menu = document.getElementById("profile-overflow-menu");
+      if (menu?.contains(t)) return;
+      setMenuOpen(false);
     };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+    };
   }, [menuOpen]);
+
+  const openMenu = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setMenuPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
+    setMenuOpen((v) => !v);
+  };
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["member_profile", id],
@@ -122,6 +140,7 @@ function MemberProfilePage() {
     ? ((profile as any).social_links as Record<string, string>) : {}) as Record<string, string>;
   const bannerUrl = links.banner_url || (profile as any)?.banner_url || null;
   const socialEntries = SOCIAL_KEYS.filter((k) => links[k]?.trim()).map((k) => [k, links[k].trim()] as const);
+  const flag = countryFlag(profile?.country ?? null);
 
   const messageUser = async () => {
     if (!user) { toast.message("Sign in to message"); void navigate({ to: "/auth" }); return; }
@@ -172,6 +191,74 @@ function MemberProfilePage() {
     );
   }
 
+  const menu = menuOpen && typeof document !== "undefined"
+    ? createPortal(
+        <div
+          id="profile-overflow-menu"
+          role="menu"
+          className="fixed z-[400] min-w-[14rem] overflow-visible rounded-xl border border-white/15 bg-[#161618] py-1.5 shadow-2xl shadow-black/80"
+          style={{ top: menuPos.top, right: menuPos.right }}
+        >
+          {isOwn && (
+            <>
+              <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                onClick={() => { closeMenu(); setEditOpen(true); }}>
+                <Settings className="h-4 w-4 shrink-0 text-neutral-400" /> Edit profile
+              </button>
+              {(hasOrgMembership || isAdmin) && (
+                <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                  onClick={() => { closeMenu(); void navigate({ to: "/dashboard" }); }}>
+                  <LayoutDashboard className="h-4 w-4 shrink-0 text-neutral-400" /> Organizer dashboard
+                </button>
+              )}
+              {isPlatformAdmin && (
+                <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                  onClick={() => { closeMenu(); void navigate({ to: "/platform" }); }}>
+                  <Shield className="h-4 w-4 shrink-0 text-neutral-400" /> Platform control
+                </button>
+              )}
+              <div className="my-1 border-t border-white/10" />
+            </>
+          )}
+          <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+            onClick={async () => {
+              closeMenu();
+              const url = `${window.location.origin}/members/${id}`;
+              try {
+                if (navigator.share) await navigator.share({ title: displayName, url });
+                else { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
+              } catch { /* cancel */ }
+            }}>
+            <Share2 className="h-4 w-4 shrink-0 text-neutral-400" /> Share profile
+          </button>
+          <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+            onClick={async () => {
+              closeMenu();
+              const url = `${window.location.origin}/members/${id}`;
+              try { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
+              catch { toast.message(url); }
+            }}>
+            <Copy className="h-4 w-4 shrink-0 text-neutral-400" /> Copy link
+          </button>
+          {isOwn && (
+            <>
+              <div className="my-1 border-t border-white/10" />
+              <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-rose-300 hover:bg-white/[0.08]"
+                onClick={async () => {
+                  closeMenu();
+                  await signOut();
+                  void navigate({ to: "/" });
+                  toast.success("Signed out");
+                }}>
+                <LogOut className="h-4 w-4 shrink-0" /> Log out
+              </button>
+            </>
+          )}
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
     <PageShell force="platform" hideChrome>
       <div className="mx-auto max-w-lg px-3 pb-24 pt-3">
@@ -181,72 +268,28 @@ function MemberProfilePage() {
             style={bannerUrl ? { background: `url(${bannerUrl}) center/cover` } : undefined}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-[#121214] via-black/30 to-transparent" />
-            <div className="absolute right-3 top-3 z-20" ref={menuRef}>
-              <button type="button" onClick={() => setMenuOpen((v) => !v)}
+            {flag && (
+              <span
+                className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/45 text-lg shadow-lg backdrop-blur-md"
+                title={profile.country ?? ""}
+                aria-label={profile.country ?? "Country"}
+              >
+                {flag}
+              </span>
+            )}
+            <div className="absolute right-3 top-3 z-20">
+              <button
+                ref={btnRef}
+                type="button"
+                onClick={openMenu}
                 className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/75"
-                aria-label="More options">
+                aria-label="More options"
+                aria-expanded={menuOpen}
+              >
                 <MoreHorizontal className="h-5 w-5" />
               </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-11 z-50 min-w-[13rem] overflow-hidden rounded-xl border border-white/15 bg-[#161618] py-1.5 shadow-2xl shadow-black/70">
-                  {isOwn && (
-                    <>
-                      <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
-                        onClick={() => { closeMenu(); setEditOpen(true); }}>
-                        <Settings className="h-4 w-4 text-neutral-400" /> Edit profile
-                      </button>
-                      {(hasOrgMembership || isAdmin) && (
-                        <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
-                          onClick={() => { closeMenu(); void navigate({ to: "/dashboard" }); }}>
-                          <LayoutDashboard className="h-4 w-4 text-neutral-400" /> Organizer dashboard
-                        </button>
-                      )}
-                      {isPlatformAdmin && (
-                        <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
-                          onClick={() => { closeMenu(); void navigate({ to: "/platform" }); }}>
-                          <Shield className="h-4 w-4 text-neutral-400" /> Platform control
-                        </button>
-                      )}
-                      <div className="my-1 border-t border-white/10" />
-                    </>
-                  )}
-                  <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
-                    onClick={async () => {
-                      closeMenu();
-                      const url = `${window.location.origin}/members/${id}`;
-                      try {
-                        if (navigator.share) await navigator.share({ title: displayName, url });
-                        else { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
-                      } catch { /* cancel */ }
-                    }}>
-                    <Share2 className="h-4 w-4 text-neutral-400" /> Share profile
-                  </button>
-                  <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
-                    onClick={async () => {
-                      closeMenu();
-                      const url = `${window.location.origin}/members/${id}`;
-                      try { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
-                      catch { toast.message(url); }
-                    }}>
-                    <Copy className="h-4 w-4 text-neutral-400" /> Copy link
-                  </button>
-                  {isOwn && (
-                    <>
-                      <div className="my-1 border-t border-white/10" />
-                      <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-rose-300 hover:bg-white/[0.08]"
-                        onClick={async () => {
-                          closeMenu();
-                          await signOut();
-                          void navigate({ to: "/" });
-                          toast.success("Signed out");
-                        }}>
-                        <LogOut className="h-4 w-4" /> Log out
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
+            {menu}
           </div>
 
           <div className="relative px-4 pb-5">
@@ -278,6 +321,9 @@ function MemberProfilePage() {
               {profile.is_verified && <BadgeCheck className="h-5 w-5 text-sky-400" />}
             </h1>
             {profile.username && <p className="text-sm text-neutral-500">@{profile.username}</p>}
+            {profile.country && (
+              <p className="mt-0.5 text-xs text-neutral-500">{flag ? `${flag} ` : ""}{profile.country}</p>
+            )}
             {profile.bio && <p className="mt-2 text-sm leading-relaxed text-neutral-300">{profile.bio}</p>}
 
             <div className="mt-3 flex flex-wrap gap-4 text-sm text-neutral-400">
