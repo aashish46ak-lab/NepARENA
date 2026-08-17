@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Loader2, Newspaper, BadgeCheck } from "lucide-react";
+import { Heart, Loader2, Newspaper, BadgeCheck, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FeedEmptySuggestions } from "@/components/FeedEmptySuggestions";
@@ -91,12 +91,17 @@ export function SocialFeed({
       const pmap = new Map(((profiles ?? []) as any[]).map((p) => [p.id, p]));
       const ids = rows.map((r) => r.id as string);
       const likeCounts: Record<string, number> = {};
+      const commentCounts: Record<string, number> = {};
       const myLikes = new Set<string>();
       if (ids.length) {
         const { data: likes } = await supabase.from("post_likes").select("post_id, user_id").in("post_id", ids);
         for (const l of likes ?? []) {
           likeCounts[l.post_id] = (likeCounts[l.post_id] ?? 0) + 1;
           if (user && l.user_id === user.id) myLikes.add(l.post_id);
+        }
+        const { data: comments } = await supabase.from("post_comments").select("post_id").in("post_id", ids);
+        for (const c of comments ?? []) {
+          commentCounts[c.post_id] = (commentCounts[c.post_id] ?? 0) + 1;
         }
       }
       const mapped: FeedPost[] = rows.map((r) => {
@@ -112,7 +117,7 @@ export function SocialFeed({
           author_name: p?.full_name || p?.username || "User",
           author_avatar: p?.avatar_url ?? null,
           like_count: likeCounts[r.id] ?? 0,
-          comment_count: 0,
+          comment_count: commentCounts[r.id] ?? 0,
           liked_by_me: myLikes.has(r.id),
           author_verified: !!p?.is_verified,
         };
@@ -175,19 +180,30 @@ export function SocialFeed({
                   {p.author_verified && <BadgeCheck className="h-3.5 w-3.5 text-sky-400" />}
                   <span className="text-[11px] text-neutral-500">{new Date(p.created_at).toLocaleString()}</span>
                 </div>
-                {p.body && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-neutral-200">{p.body}</p>}
-                {urls.length === 1 && <img src={urls[0]} alt="" className="mt-2 max-h-80 w-full rounded-xl object-cover" />}
+                {p.body && (
+                  <Link to="/posts/$id" params={{ id: p.id }} className="mt-1 block whitespace-pre-wrap break-words text-sm text-neutral-200 hover:opacity-90">
+                    {p.body}
+                  </Link>
+                )}
+                {urls.length === 1 && (
+                  <Link to="/posts/$id" params={{ id: p.id }}>
+                    <img src={urls[0]} alt="" className="mt-2 max-h-80 w-full rounded-xl object-cover" />
+                  </Link>
+                )}
                 {urls.length > 1 && (
-                  <div className="mt-2 grid grid-cols-2 gap-1">
+                  <Link to="/posts/$id" params={{ id: p.id }} className="mt-2 grid grid-cols-2 gap-1">
                     {urls.slice(0, 4).map((u, i) => (
                       <img key={i} src={u} alt="" className="max-h-40 w-full rounded-lg object-cover" />
                     ))}
-                  </div>
+                  </Link>
                 )}
                 <div className="mt-3 flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => void toggleLike(p)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void toggleLike(p);
+                    }}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs hover:bg-white/5",
                       p.liked_by_me ? "text-rose-400" : "text-neutral-400",
@@ -196,6 +212,14 @@ export function SocialFeed({
                     <Heart className={cn("h-3.5 w-3.5", p.liked_by_me && "fill-current")} />
                     {p.like_count || ""}
                   </button>
+                  <Link
+                    to="/posts/$id"
+                    params={{ id: p.id }}
+                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-neutral-400 hover:bg-white/5 hover:text-sky-300"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {p.comment_count || ""}
+                  </Link>
                 </div>
               </div>
             </div>
