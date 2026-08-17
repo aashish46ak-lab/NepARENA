@@ -1,5 +1,5 @@
 /**
- * All organizer posts — dedicated page.
+ * Organizer posts — "{name} posts", latest → oldest.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -49,15 +49,17 @@ function OrgPostsPage() {
   return (
     <PageShell force="platform" hideChrome>
       <div className="mx-auto max-w-lg px-3 py-4 pb-20">
-        <div className="mb-4 flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost" className="rounded-full">
+        <div className="mb-5 flex items-center gap-2">
+          <Button asChild size="sm" variant="ghost" className="rounded-full -ml-2">
             <Link to="/o/$slug" params={{ slug }}>
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Link>
           </Button>
         </div>
-        <h1 className="text-xl font-bold text-white">Posts</h1>
-        <p className="mt-1 text-xs text-neutral-500">{organizer.name}</p>
+        <h1 className="text-2xl font-bold tracking-tight text-white">
+          {organizer.name} posts
+        </h1>
+        <p className="mt-1 text-sm text-neutral-500">Latest first</p>
         <div className="mt-5">
           <SocialFeed
             organizerId={organizer.id}
