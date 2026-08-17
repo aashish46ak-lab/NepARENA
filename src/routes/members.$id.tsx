@@ -1,5 +1,5 @@
 /**
- * User profile — banner, country flag, full 3-dot (fixed portal, never clipped), social icons.
+ * User profile — banner, country flag, full 3-dot (fixed portal), social icons.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -100,7 +100,10 @@ function MemberProfilePage() {
   const { data: followerCount = 0 } = useQuery({
     queryKey: ["member_followers", id],
     queryFn: async () => {
-      const { count } = await supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("following_id", id);
+      const { count } = await supabase
+        .from("user_follows")
+        .select("follower_id", { count: "exact", head: true })
+        .eq("following_id", id);
       return count ?? 0;
     },
     enabled: !!id,
@@ -109,7 +112,10 @@ function MemberProfilePage() {
   const { data: followingCount = 0 } = useQuery({
     queryKey: ["member_following", id],
     queryFn: async () => {
-      const { count } = await supabase.from("user_follows").select("id", { count: "exact", head: true }).eq("follower_id", id);
+      const { count } = await supabase
+        .from("user_follows")
+        .select("following_id", { count: "exact", head: true })
+        .eq("follower_id", id);
       return count ?? 0;
     },
     enabled: !!id,
@@ -119,7 +125,12 @@ function MemberProfilePage() {
     queryKey: ["member_i_follow", id, user?.id],
     queryFn: async () => {
       if (!user) return false;
-      const { data } = await supabase.from("user_follows").select("id").eq("follower_id", user.id).eq("following_id", id).maybeSingle();
+      const { data } = await supabase
+        .from("user_follows")
+        .select("follower_id")
+        .eq("follower_id", user.id)
+        .eq("following_id", id)
+        .maybeSingle();
       return !!data;
     },
     enabled: !!id && !!user && user.id !== id,
@@ -128,7 +139,7 @@ function MemberProfilePage() {
   const { data: hasOrgMembership = false } = useQuery({
     queryKey: ["member_has_org", id],
     queryFn: async () => {
-      const { data } = await supabase.from("organizer_members").select("id").eq("user_id", id).limit(1);
+      const { data } = await supabase.from("organizer_members").select("user_id").eq("user_id", id).limit(1);
       return (data?.length ?? 0) > 0;
     },
     enabled: !!id && isOwn,
@@ -160,14 +171,20 @@ function MemberProfilePage() {
     setFollowBusy(true);
     try {
       if (iFollow) {
-        await supabase.from("user_follows").delete().eq("follower_id", user.id).eq("following_id", id);
+        const { error } = await supabase.from("user_follows").delete().eq("follower_id", user.id).eq("following_id", id);
+        if (error) throw error;
         toast.success("Unfollowed");
       } else {
-        await supabase.from("user_follows").insert({ follower_id: user.id, following_id: id });
+        const { error } = await supabase.from("user_follows").upsert(
+          { follower_id: user.id, following_id: id },
+          { onConflict: "follower_id,following_id" },
+        );
+        if (error) throw error;
         toast.success("Following");
       }
       await qc.invalidateQueries({ queryKey: ["member_i_follow", id, user.id] });
       await qc.invalidateQueries({ queryKey: ["member_followers", id] });
+      await qc.invalidateQueries({ queryKey: ["member_following", id] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally { setFollowBusy(false); }
