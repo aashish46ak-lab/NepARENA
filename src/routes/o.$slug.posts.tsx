@@ -1,10 +1,11 @@
 /**
- * Organizer posts — "{name} posts", latest → oldest.
+ * Organizer posts page — logo, name, recent posts.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell } from "@/components/PageShell";
 import { getOrganizerBySlug } from "@/lib/organizers";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
@@ -49,29 +50,35 @@ function OrgPostsPage() {
   return (
     <PageShell force="platform" hideChrome>
       <div className="mx-auto max-w-lg px-3 py-4 pb-20">
-        <div className="mb-5 flex items-center gap-2">
-          <Button asChild size="sm" variant="ghost" className="rounded-full -ml-2">
-            <Link to="/o/$slug" params={{ slug }}>
-              <ArrowLeft className="mr-1 h-4 w-4" /> Back
-            </Link>
-          </Button>
+        <Button asChild size="sm" variant="ghost" className="-ml-2 mb-4 rounded-full">
+          <Link to="/o/$slug" params={{ slug }}>
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back
+          </Link>
+        </Button>
+
+        <div className="mb-5 flex items-center gap-3">
+          <Avatar className="h-12 w-12 rounded-xl">
+            <AvatarImage src={organizer.logo_url ?? undefined} className="rounded-xl object-cover" />
+            <AvatarFallback className="rounded-xl">{organizer.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-400/90">
+              Recent posts
+            </p>
+            <h1 className="text-xl font-bold text-white">{organizer.name}</h1>
+          </div>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          {organizer.name} posts
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500">Latest first</p>
-        <div className="mt-5">
-          <SocialFeed
-            organizerId={organizer.id}
-            organizerMeta={{
-              name: organizer.name,
-              logo_url: organizer.logo_url,
-              slug: organizer.slug,
-            }}
-            hideComposer
-            emptyLabel={`${organizer.name} is yet to post`}
-          />
-        </div>
+
+        <SocialFeed
+          organizerId={organizer.id}
+          organizerMeta={{
+            name: organizer.name,
+            logo_url: organizer.logo_url,
+            slug: organizer.slug,
+          }}
+          hideComposer
+          emptyLabel={`${organizer.name} is yet to post`}
+        />
       </div>
     </PageShell>
   );
