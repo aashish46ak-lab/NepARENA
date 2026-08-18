@@ -12,6 +12,7 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { Check, Loader2, Search, Trash2, UserPlus, Users, X, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import type { TournamentData } from "./shared";
+import { InvitationsTab } from "./InvitationsTab";
 
 interface Props {
   tournament: Tournament;
@@ -76,7 +77,9 @@ export function PlayersTab({ tournament, data }: Props) {
   });
 
   return (
-    <div className="space-y-4 pt-4">
+    <>
+      <InvitationsTab tournament={tournament} data={data} />
+      <div className="space-y-4 pt-4">
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -296,6 +299,7 @@ export function PlayersTab({ tournament, data }: Props) {
         </Dialog>
       )}
     </div>
+    </>
   );
 }
 
@@ -486,4 +490,4 @@ function AddPlayerDialog({
       </DialogContent>
     </Dialog>
   );
-                          }
+}
