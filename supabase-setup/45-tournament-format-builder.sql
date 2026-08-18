@@ -1,5 +1,8 @@
 -- Flexible competition format builder (stages, legs, groups, qualification)
 -- Safe to re-run. Does not break existing tournaments.
+--
+-- NOTE: public.tournament_standings is a VIEW (see 06-tournament-engine.sql),
+-- not a table — do NOT ALTER it. Group standings can use matches.group_key.
 
 -- Tournament-level format config (JSON). Existing bracket_type remains for compat.
 alter table public.tournaments
@@ -23,13 +26,6 @@ create index if not exists matches_stage_idx
 create index if not exists matches_series_idx
   on public.matches (tournament_id, series_key)
   where series_key is not null;
-
--- Optional: per-group standings key (reuse tournament_standings with group_key)
-alter table public.tournament_standings
-  add column if not exists group_key text;
-
-create index if not exists standings_group_idx
-  on public.tournament_standings (tournament_id, group_key);
 
 -- Seed format_config from existing bracket_type for rows that still have empty config
 update public.tournaments
