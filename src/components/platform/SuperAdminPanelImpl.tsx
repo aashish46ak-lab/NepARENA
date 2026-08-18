@@ -23,6 +23,7 @@ import {
   Copy, BadgeCheck, Clock, MoreVertical, User, Home,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { MessagesInbox } from "@/components/MessagesInbox";
 import { OrganizerRequestsPanel } from "@/components/platform/OrganizerRequestsPanel";
 import { GaAnalyticsDashboard } from "@/components/platform/GaAnalyticsDashboard";
@@ -262,7 +263,7 @@ export function SuperAdminPanelImpl() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={registrationTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                    <XAxis dataKey="date" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="date" tick={{ fill: "#a3a3a3" fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }} />
                     <Area type="monotone" dataKey="signups" stroke="#a78bfa" fill="rgba(167,139,250,0.25)" />
@@ -315,6 +316,34 @@ export function SuperAdminPanelImpl() {
                     {o.status === "active" && (
                       <Button size="sm" variant="ghost" className="text-rose-300" onClick={async () => { await setOrganizerStatus(o.id, "suspended"); toast.success("Suspended"); void reload(); }}>
                         <Ban className="mr-1 h-3.5 w-3.5" /> Suspend
+                      </Button>
+                    )}
+                    {o.slug !== DEFAULT_ORGANIZER_SLUG && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-rose-400"
+                        onClick={async () => {
+                          if (!window.confirm(`Permanently delete organizer "${o.name}"? Public page and dashboard access will be removed.`)) return;
+                          if (!window.confirm("This cannot be undone. Type confirm by clicking OK again.")) return;
+                          const { error } = await supabase
+                            .from("organizers")
+                            .update({
+                              status: "deleted",
+                              slug: `${o.slug}-deleted-${Date.now()}`,
+                              name: `[deleted] ${o.name}`,
+                            } as never)
+                            .eq("id", o.id);
+                          if (error) {
+                            toast.error(error.message);
+                            return;
+                          }
+                          await supabase.from("organizer_members").delete().eq("organizer_id", o.id);
+                          toast.success("Organizer permanently deleted");
+                          void reload();
+                        }}
+                      >
+                        Delete
                       </Button>
                     )}
                     <Button asChild size="sm" variant="secondary"><Link to="/o/$slug" params={{ slug: o.slug }}>Open</Link></Button>
