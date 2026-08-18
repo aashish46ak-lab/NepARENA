@@ -158,16 +158,14 @@ export function OrganizerCard({
                 </span>
               )}
             </div>
-            {organizer.is_verified && (
-              <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[#0e0e10] ring-1 ring-sky-400/50">
-                <CheckCircle2 className="h-3.5 w-3.5 text-sky-400" />
-              </span>
-            )}
           </div>
 
           <div className="min-w-0 flex-1 pb-0.5">
-            <h2 className="truncate text-base font-bold tracking-tight text-white sm:text-lg">
-              {organizer.name}
+            <h2 className="flex min-w-0 items-center gap-1.5 text-base font-bold tracking-tight text-white sm:text-lg">
+              <span className="truncate">{organizer.name}</span>
+              {organizer.is_verified && (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-400" aria-label="Verified" />
+              )}
             </h2>
             <p className="mt-0.5 line-clamp-1 text-xs text-neutral-400">
               {organizer.tagline || organizer.description || "Tournament organizer"}
