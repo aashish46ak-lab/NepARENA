@@ -6,6 +6,7 @@ import { MessageCircle, Send, Loader2, ImagePlus, X, ArrowLeft, Check, CheckChec
 import { toast } from "sonner";
 import { uploadPublicImage } from "@/lib/upload";
 import { cn } from "@/lib/utils";
+import { getOrCreateDm, sendDmMessage } from "@/lib/dm";
 
 type Thread = {
   user_id: string;
@@ -178,7 +179,6 @@ export function MessagesInbox({
           seen_by_other: m.is_from_admin ? !!m.read_by_user : !!m.read_by_admin,
         })),
       );
-      // Optimistic: clear this thread's unread in UI immediately
       setThreads((prev) => {
         const next = prev.map((t) =>
           t.user_id === uid ? { ...t, unread: 0 } : t,
@@ -186,7 +186,6 @@ export function MessagesInbox({
         onUnreadChange?.(next.reduce((s, t) => s + t.unread, 0));
         return next;
       });
-      // Prefer RPC (bypasses RLS); fall back to direct update
       const rpc = await supabase.rpc("admin_mark_platform_thread_read", {
         p_user_id: uid,
       });
@@ -273,7 +272,7 @@ export function MessagesInbox({
       if (mode === "platform") {
         const payload: Record<string, unknown> = {
           user_id: active,
-          body: body || (image_url ? "📷 Photo" : null),
+          body: body || (image_url ? "Photo" : null),
           is_from_admin: true,
           read_by_admin: true,
           read_by_user: false,
@@ -286,7 +285,7 @@ export function MessagesInbox({
         const { error } = await supabase.from("organizer_messages").insert({
           organizer_id: organizerId,
           user_id: active,
-          body: body || (image_url ? "📷 Photo" : null),
+          body: body || (image_url ? "Photo" : null),
           image_url,
           is_from_organizer: true,
           read_by_organizer: true,
@@ -294,6 +293,19 @@ export function MessagesInbox({
           sender_name: myName,
         });
         if (error) throw error;
+        try {
+          const cid = await getOrCreateDm(active);
+          if (cid && user) {
+            await sendDmMessage({
+              conversationId: cid,
+              senderId: user.id,
+              body: body || undefined,
+              imageUrl: image_url || undefined,
+            });
+          }
+        } catch {
+          /* non-fatal */
+        }
       }
       setText("");
       setPhoto(null);
@@ -453,7 +465,7 @@ export function MessagesInbox({
                     void send();
                   }
                 }}
-                placeholder="Message…"
+                placeholder="Message\u2026"
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/25"
               />
               <Button size="sm" disabled={busy} onClick={() => void send()}>
