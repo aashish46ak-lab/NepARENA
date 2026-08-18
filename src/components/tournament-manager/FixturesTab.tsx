@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase";
 import { generateFixtures, bracketLabel } from "@/lib/brackets";
 import { logActivity } from "@/lib/activity";
+import { ResultsTab } from "./ResultsTab";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -704,6 +705,12 @@ export function FixturesTab({ tournament, data }: Props) {
           )}
         </>
       )}
+
+      <div className="mt-6 space-y-2 border-t border-border/50 pt-4">
+        <h3 className="text-sm font-semibold">Manual results</h3>
+        <p className="text-xs text-muted-foreground">Update match scores here.</p>
+        <ResultsTab tournament={tournament} data={data} />
+      </div>
     </div>
   );
 }
