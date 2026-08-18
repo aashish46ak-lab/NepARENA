@@ -7,6 +7,7 @@ import { MessageCircle, Send, X, ImagePlus, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { getOrCreateDm, listDmMessages, sendDmMessage } from "@/lib/dm";
 
 type Msg = {
   id: string;
@@ -18,23 +19,23 @@ type Msg = {
 };
 
 /**
- * Messenger-style chat with an organizer (follower ↔ organizer).
- * Uses organizer_messages; falls back to platform_messages with [org:id] prefix.
+ * Messenger-style chat with an organizer (follower \u2194 organizer).
+ * Dual-writes to platform DM (owner) so the same thread appears in Messages.
  *
- * mode:
- *  - "button" / "fab" → trigger + modal overlay
- *  - "panel" → always-open embedded digital message panel (for organizer page tab)
+ * mode: "button" | "fab" \u2192 modal; "panel" \u2192 embedded tab (keyboard-aware).
  */
 export function OrganizerChat({
   organizerId,
   organizerName,
   organizerLogo,
+  organizerOwnerId,
   mode = "button",
   className,
 }: {
   organizerId: string;
   organizerName: string;
   organizerLogo?: string | null;
+  organizerOwnerId?: string | null;
   mode?: "button" | "fab" | "panel";
   className?: string;
 }) {
@@ -67,6 +68,8 @@ export function OrganizerChat({
     }
     setLoading(true);
     try {
+      let list: Msg[] = [];
+
       const { data, error } = await supabase
         .from("organizer_messages")
         .select("id, body, image_url, is_from_organizer, created_at, sender_name")
@@ -76,39 +79,65 @@ export function OrganizerChat({
         .limit(120);
 
       if (!error && data) {
-        setMessages(data as Msg[]);
-        const orgMsgs = (data as Msg[]).filter((m) => m.is_from_organizer);
-        setUnread(!open && !isPanel && orgMsgs.length ? Math.min(orgMsgs.length, 99) : 0);
-        if (open || isPanel) setUnread(0);
-        return;
+        list = data as Msg[];
+      } else {
+        const { data: plat } = await supabase
+          .from("platform_messages")
+          .select("id, body, is_from_admin, created_at")
+          .eq("user_id", user.id)
+          .ilike("body", `[org:${organizerId}]%`)
+          .order("created_at", { ascending: true })
+          .limit(80);
+
+        list = ((plat ?? []) as { id: string; body: string; is_from_admin: boolean; created_at: string }[]).map(
+          (m) => ({
+            id: m.id,
+            body: m.body.replace(`[org:${organizerId}] `, ""),
+            image_url: null as string | null,
+            is_from_organizer: m.is_from_admin,
+            created_at: m.created_at,
+            sender_name: null as string | null,
+          }),
+        );
       }
 
-      const { data: plat } = await supabase
-        .from("platform_messages")
-        .select("id, body, is_from_admin, created_at")
-        .eq("user_id", user.id)
-        .ilike("body", `[org:${organizerId}]%`)
-        .order("created_at", { ascending: true })
-        .limit(80);
-
-      const tagged = ((plat ?? []) as { id: string; body: string; is_from_admin: boolean; created_at: string }[]).map(
-        (m) => ({
-          id: m.id,
-          body: m.body.replace(`[org:${organizerId}] `, ""),
-          image_url: null as string | null,
-          is_from_organizer: m.is_from_admin,
-          created_at: m.created_at,
-          sender_name: null as string | null,
-        }),
-      );
-      setMessages(tagged);
-      if (!open && !isPanel) {
-        setUnread(tagged.filter((m) => m.is_from_organizer).length ? 1 : 0);
+      if (organizerOwnerId && organizerOwnerId !== user.id) {
+        try {
+          const cid = await getOrCreateDm(organizerOwnerId);
+          if (cid) {
+            const dm = await listDmMessages(cid, 120);
+            const seen = new Set(
+              list.map((m) => `${m.created_at}|${(m.body || "").slice(0, 80)}|${m.image_url || ""}`),
+            );
+            for (const m of dm) {
+              if (m.deleted_at) continue;
+              const key = `${m.created_at}|${(m.body || "").slice(0, 80)}|${m.image_url || ""}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+              list.push({
+                id: `dm-${m.id}`,
+                body: m.body || (m.image_url ? "Photo" : ""),
+                image_url: m.image_url ?? null,
+                is_from_organizer: m.sender_id === organizerOwnerId,
+                created_at: m.created_at,
+                sender_name: m.sender_id === organizerOwnerId ? organizerName : null,
+              });
+            }
+            list.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+          }
+        } catch {
+          /* non-fatal */
+        }
       }
+
+      setMessages(list);
+      const orgSide = list.filter((m) => m.is_from_organizer);
+      setUnread(!open && !isPanel && orgSide.length ? Math.min(orgSide.length, 99) : 0);
+      if (open || isPanel) setUnread(0);
     } finally {
       setLoading(false);
     }
-  }, [user, organizerId, open, isPanel]);
+  }, [user, organizerId, organizerOwnerId, organizerName, open, isPanel]);
 
   useEffect(() => {
     void load();
@@ -131,6 +160,11 @@ export function OrganizerChat({
           table: "platform_messages",
           filter: `user_id=eq.${user.id}`,
         },
+        () => void load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dm_messages" },
         () => void load(),
       )
       .subscribe();
@@ -156,7 +190,6 @@ export function OrganizerChat({
     return () => URL.revokeObjectURL(u);
   }, [photo]);
 
-  // Keep composer just above the soft keyboard (mobile), Grok-style
   useEffect(() => {
     if (!isPanel) return;
     const vv = window.visualViewport;
@@ -194,7 +227,7 @@ export function OrganizerChat({
       const row = {
         organizer_id: organizerId,
         user_id: user.id,
-        body: body || (image_url ? "📷 Photo" : ""),
+        body: body || (image_url ? "Photo" : ""),
         image_url,
         is_from_organizer: false,
         sender_name: displayName,
@@ -206,13 +239,30 @@ export function OrganizerChat({
       if (error) {
         const { error: e2 } = await supabase.from("platform_messages").insert({
           user_id: user.id,
-          body: `[org:${organizerId}] ${body || "📷 Photo"}`,
+          body: `[org:${organizerId}] ${body || "Photo"}`,
           is_from_admin: false,
           read_by_admin: false,
           read_by_user: true,
         });
         if (e2) throw e2;
       }
+
+      if (organizerOwnerId && organizerOwnerId !== user.id) {
+        try {
+          const cid = await getOrCreateDm(organizerOwnerId);
+          if (cid) {
+            await sendDmMessage({
+              conversationId: cid,
+              senderId: user.id,
+              body: body || undefined,
+              imageUrl: image_url || undefined,
+            });
+          }
+        } catch {
+          /* non-fatal */
+        }
+      }
+
       setText("");
       setPhoto(null);
       void load();
@@ -254,6 +304,7 @@ export function OrganizerChat({
         isPanel
           ? {
               height: kbInset > 0 ? `calc(100% - ${kbInset}px)` : "100%",
+              maxHeight: kbInset > 0 ? `calc(100% - ${kbInset}px)` : "100%",
               transition: "height 0.12s ease-out",
             }
           : undefined
@@ -272,7 +323,7 @@ export function OrganizerChat({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white">{organizerName}</p>
           <p className="text-[11px] text-neutral-500">
-            Direct line · you appear as {displayName}
+            Direct line \u00b7 you appear as {displayName}
           </p>
         </div>
         {!isPanel && (
@@ -314,7 +365,7 @@ export function OrganizerChat({
             <MessageCircle className="h-8 w-8 text-neutral-600" />
             <p className="text-sm font-medium text-neutral-300">Start the conversation</p>
             <p className="max-w-[220px] text-xs text-neutral-500">
-              Messages go directly to {organizerName}. Only you and the organizer team can see this thread.
+              Messages go to {organizerName} and also show in your platform Messages.
             </p>
           </div>
         )}
@@ -322,10 +373,7 @@ export function OrganizerChat({
         {messages.map((m) => {
           const mine = !m.is_from_organizer;
           return (
-            <div
-              key={m.id}
-              className={cn("flex", mine ? "justify-end" : "justify-start")}
-            >
+            <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
                   "max-w-[82%] space-y-1 rounded-2xl px-3 py-2 text-sm shadow-sm",
@@ -346,7 +394,7 @@ export function OrganizerChat({
                     className="mb-1 max-h-48 w-full rounded-xl object-cover"
                   />
                 )}
-                {m.body && m.body !== "📷 Photo" && (
+                {m.body && m.body !== "Photo" && (
                   <p className="whitespace-pre-wrap break-words leading-snug">{m.body}</p>
                 )}
                 <p
@@ -417,7 +465,7 @@ export function OrganizerChat({
                     void send();
                   }
                 }}
-                placeholder={`Message ${organizerName}…`}
+                placeholder={`Message ${organizerName}\u2026`}
                 enterKeyHint="send"
                 autoComplete="off"
                 className="min-h-10 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-base text-white outline-none placeholder:text-neutral-600 focus:border-sky-400/40 sm:text-sm"
