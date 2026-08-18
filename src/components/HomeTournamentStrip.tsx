@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { Swords, ChevronRight } from "lucide-react";
+import { Swords, ChevronRight, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Row = {
@@ -26,6 +26,7 @@ type Row = {
     name: string;
     slug: string;
     logo_url: string | null;
+    is_verified?: boolean;
   } | null;
 };
 
@@ -94,12 +95,12 @@ export function HomeTournamentStrip() {
         ];
         let orgMap = new Map<
           string,
-          { id: string; name: string; slug: string; logo_url: string | null }
+          { id: string; name: string; slug: string; logo_url: string | null; is_verified?: boolean }
         >();
         if (orgIds.length) {
           const { data: orgs } = await supabase
             .from("organizers")
-            .select("id, name, slug, logo_url")
+            .select("id, name, slug, logo_url, is_verified")
             .in("id", orgIds);
           for (const o of orgs ?? []) {
             orgMap.set(o.id, o as {
@@ -107,6 +108,7 @@ export function HomeTournamentStrip() {
               name: string;
               slug: string;
               logo_url: string | null;
+              is_verified?: boolean;
             });
           }
           list = list.map((t) => ({
@@ -243,8 +245,11 @@ export function HomeTournamentStrip() {
                         (org.name || "?").slice(0, 1).toUpperCase()
                       )}
                     </div>
-                    <span className="truncate text-[10px] text-neutral-400">
-                      {org.name}
+                    <span className="flex min-w-0 items-center gap-0.5 truncate text-[10px] text-neutral-400">
+                      <span className="truncate">{org.name}</span>
+                      {org.is_verified && (
+                        <BadgeCheck className="h-3 w-3 shrink-0 text-sky-400" />
+                      )}
                     </span>
                   </div>
                 )}
