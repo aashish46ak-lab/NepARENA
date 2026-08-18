@@ -38,7 +38,6 @@ export const Route = createFileRoute("/organizers")({
 function OrganizersPage() {
   const { user } = useAuth();
   const [q, setQ] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
 
   const { data: organizers = [], isLoading } = useQuery({
     queryKey: ["active_organizers_page"],
@@ -128,75 +127,60 @@ function OrganizersPage() {
   return (
     <PageShell force="platform" hideChrome>
       <PlatformTopBar showLogo={false} pageTitle="Organizers" />
-      <div className="mx-auto max-w-3xl px-4 pb-28 pt-4">
-        <div className="mb-4 flex items-center gap-2">
+      <div className="mx-auto max-w-3xl px-3 pb-28 pt-3 sm:px-4">
+        <div className="mb-3 flex items-center gap-2">
           <Building2 className="h-5 w-5 text-neutral-400" />
           <h1 className="text-lg font-semibold text-white">Organizers</h1>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
-          <button
-            type="button"
-            onClick={() => setSearchOpen((v) => !v)}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.05] px-3 py-3.5 text-sm font-semibold text-neutral-100 transition hover:border-sky-400/40 hover:bg-sky-500/10 active:scale-[0.98]",
-              searchOpen && "border-sky-400/40 bg-sky-500/10",
-            )}
-          >
-            <Search className="h-4 w-4 text-sky-400" />
-            Search Organizers
-          </button>
-
+        {/* Single search (half width) + become/status */}
+        <div className="mb-3 flex items-center gap-2">
+          <div className="relative w-1/2 min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search organizers…"
+              className="h-10 rounded-xl border-white/10 bg-white/[0.05] pl-9 text-sm"
+            />
+          </div>
           {hasApplication ? (
             <Link
               to="/become-organizer"
-              className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-sky-400/40 bg-gradient-to-br from-sky-500/25 via-sky-600/15 to-violet-600/20 px-3 py-3.5 text-sm font-semibold text-sky-50 shadow-[0_0_24px_rgba(56,189,248,0.15)] transition hover:border-sky-300/50 hover:shadow-[0_0_32px_rgba(56,189,248,0.25)] active:scale-[0.98]"
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-sky-400/40 bg-gradient-to-br from-sky-500/25 via-sky-600/15 to-violet-600/20 px-2 text-xs font-semibold text-sky-50 sm:text-sm"
             >
-              <FileText className="relative z-10 h-4 w-4 text-sky-300" />
-              <span className="relative z-10">View Status</span>
+              <FileText className="h-3.5 w-3.5 text-sky-300" />
+              View Status
             </Link>
           ) : (
             <Link
               to="/become-organizer"
-              className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-400/30 via-orange-500/20 to-rose-500/15 px-3 py-3.5 text-sm font-semibold text-amber-50 shadow-[0_0_24px_rgba(251,191,36,0.2)] transition hover:border-amber-300/55 hover:shadow-[0_0_36px_rgba(251,191,36,0.35)] active:scale-[0.98]"
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-400/40 bg-gradient-to-br from-amber-400/30 via-orange-500/20 to-rose-500/15 px-2 text-xs font-semibold text-amber-50 sm:text-sm"
             >
-              <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-transparent to-white/10 opacity-0 transition group-hover:opacity-100" />
-              <Star className="relative z-10 h-4 w-4 fill-amber-300/80 text-amber-300" />
-              <span className="relative z-10">Become Organizer</span>
+              <Star className="h-3.5 w-3.5 fill-amber-300/80 text-amber-300" />
+              Become Organizer
             </Link>
           )}
         </div>
 
-        <div className="mt-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search organizers by name…"
-              className="h-11 rounded-2xl border-white/10 bg-white/[0.05] pl-10"
-            />
-          </div>
-        </div>
-
-        <p className="mt-5 text-xs text-neutral-500">
+        <p className="mb-3 text-[11px] text-neutral-500">
           Following first, then by community size on {PLATFORM_NAME}.
         </p>
 
         {isLoading && (
-          <div className="mt-6 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-36 animate-pulse rounded-2xl border border-white/5 bg-white/[0.03]" />
+          <div className="grid grid-cols-2 gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="aspect-[5/4] animate-pulse rounded-xl border border-white/5 bg-white/[0.03]" />
             ))}
           </div>
         )}
 
         {!isLoading && followingList.length > 0 && (
-          <section className="mt-6">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-              Following Organizers
+          <section className="mb-5">
+            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              Following
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2">
               {followingList.map((o) => (
                 <OrganizerCard key={o.id} organizer={o} queryKeyPrefix="org_page_f" />
               ))}
@@ -205,11 +189,11 @@ function OrganizersPage() {
         )}
 
         {!isLoading && (
-          <section className="mt-8">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-              {followingList.length > 0 ? "Remaining Organizers" : "Organizers"}
+          <section>
+            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              {followingList.length > 0 ? "All organizers" : "Organizers"}
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2">
               {rest.map((o) => (
                 <OrganizerCard key={o.id} organizer={o} queryKeyPrefix="org_page_r" />
               ))}
