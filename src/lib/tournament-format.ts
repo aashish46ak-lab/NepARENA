@@ -214,11 +214,7 @@ export function buildPresetStages(preset: FormatPreset): StageDefinition[] {
           name: "Group Stage",
           type: "group",
           order: 0,
-          group: {
-            groupCount: 4,
-            legs: 1,
-            qualifyPerGroup: 0,
-          },
+          group: { groupCount: 4, legs: 1, qualifyPerGroup: 0 },
         },
       ];
     case "groups_knockout":
@@ -228,11 +224,7 @@ export function buildPresetStages(preset: FormatPreset): StageDefinition[] {
           name: "Group Stage",
           type: "group",
           order: 0,
-          group: {
-            groupCount: 4,
-            legs: 1,
-            qualifyPerGroup: 2,
-          },
+          group: { groupCount: 4, legs: 1, qualifyPerGroup: 2 },
         },
         {
           id: stageId("ko"),
@@ -460,31 +452,36 @@ export const PRESET_OPTIONS: {
   value: FormatPreset;
   label: string;
   description: string;
+  primary?: boolean;
 }[] = [
   {
-    value: "round_robin",
-    label: "League (single round-robin)",
-    description: "Everyone plays everyone once. Final table decides the winner.",
-  },
-  {
     value: "league",
-    label: "League (home & away)",
-    description: "Double round-robin. Points table only — no knockout.",
-  },
-  {
-    value: "knockout",
-    label: "Knockout only",
-    description: "Single-elimination bracket. No league or groups.",
+    label: "League",
+    description: "Everyone plays everyone. Choose single or home & away. Final table decides the winner.",
+    primary: true,
   },
   {
     value: "group_only",
-    label: "Group stage only",
-    description: "Split into groups, play group matches, end on group standings.",
+    label: "Group Stage",
+    description: "Split players into groups. Each group has its own table. Ends after the group stage.",
+    primary: true,
+  },
+  {
+    value: "knockout",
+    label: "Knockout",
+    description: "Single-elimination bracket (Round of 16 → Final). Optional third-place match.",
+    primary: true,
   },
   {
     value: "groups_knockout",
-    label: "Groups → Knockout",
-    description: "Group stage then knockout for qualifiers.",
+    label: "Group Stage + Knockout",
+    description: "Groups first, then top teams advance into a knockout bracket.",
+    primary: true,
+  },
+  {
+    value: "round_robin",
+    label: "League (single round-robin)",
+    description: "Everyone plays everyone once only.",
   },
   {
     value: "league_knockout",
@@ -494,7 +491,7 @@ export const PRESET_OPTIONS: {
   {
     value: "swiss",
     label: "Swiss system",
-    description: "Paired rounds by record (simple Swiss).",
+    description: "Paired rounds by record.",
   },
   {
     value: "custom",
