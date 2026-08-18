@@ -263,7 +263,7 @@ export function SuperAdminPanelImpl() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={registrationTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                    <XAxis dataKey="date" tick={{ fill: "#a3a3a3" fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="date" tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: "#a3a3a3", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <Tooltip contentStyle={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }} />
                     <Area type="monotone" dataKey="signups" stroke="#a78bfa" fill="rgba(167,139,250,0.25)" />
@@ -272,7 +272,6 @@ export function SuperAdminPanelImpl() {
               </div>
             </div>
 
-            {/* Merged GA analytics (was separate tab) */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <h3 className="mb-4 text-sm font-semibold text-neutral-100">Traffic analytics</h3>
               <GaAnalyticsDashboard />
