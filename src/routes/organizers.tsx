@@ -133,7 +133,6 @@ function OrganizersPage() {
           <h1 className="text-lg font-semibold text-white">Organizers</h1>
         </div>
 
-        {/* Single search (half width) + become/status */}
         <div className="mb-3 flex items-center gap-2">
           <div className="relative w-1/2 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
@@ -168,9 +167,9 @@ function OrganizersPage() {
         </p>
 
         {isLoading && (
-          <div className="grid grid-cols-2 gap-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="aspect-[5/4] animate-pulse rounded-xl border border-white/5 bg-white/[0.03]" />
+          <div className="mx-auto flex w-[70%] flex-col gap-2.5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="aspect-[2/1] animate-pulse rounded-xl border border-white/5 bg-white/[0.03]" />
             ))}
           </div>
         )}
@@ -180,7 +179,7 @@ function OrganizersPage() {
             <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
               Following
             </h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="mx-auto flex w-[70%] flex-col gap-2.5">
               {followingList.map((o) => (
                 <OrganizerCard key={o.id} organizer={o} queryKeyPrefix="org_page_f" />
               ))}
@@ -193,7 +192,7 @@ function OrganizersPage() {
             <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
               {followingList.length > 0 ? "All organizers" : "Organizers"}
             </h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="mx-auto flex w-[70%] flex-col gap-2.5">
               {rest.map((o) => (
                 <OrganizerCard key={o.id} organizer={o} queryKeyPrefix="org_page_r" />
               ))}
