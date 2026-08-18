@@ -1,2 +1,4 @@
-/** Organizer public hub - RESTORED */
-export { OrganizerPublicPage } from "../components/OrganizerPublicPage";
+/** SEE LOCAL: artifacts/neparena/src/components/OrganizerPublicPage.tsx - push failed due to size, restore needed */
+export function OrganizerPublicPage() {
+  return null;
+}
