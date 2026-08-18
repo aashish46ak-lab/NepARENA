@@ -4,7 +4,6 @@ import {
   type Tournament,
   type TournamentStatus,
 } from "@/lib/supabase";
-import { BRACKET_TYPES } from "@/lib/brackets";
 import { logActivity } from "@/lib/activity";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,12 @@ import {
   serializeTheme,
   type TournamentTheme,
 } from "@/components/TournamentThemeBuilder";
+import {
+  parseFormatConfig,
+  bracketTypeFromPreset,
+  type FormatConfig,
+} from "@/lib/tournament-format";
+import { FormatBuilder } from "./FormatBuilder";
 
 const STATUSES: { value: TournamentStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -56,8 +61,8 @@ export function SettingsTab({
   const [regOpen, setRegOpen] = useState(tournament.registration_open);
   const [published, setPublished] = useState(tournament.is_published);
   const [featured, setFeatured] = useState(tournament.is_featured);
-  const [bracket, setBracket] = useState(
-    tournament.bracket_type ?? "round_robin",
+  const [format, setFormat] = useState<FormatConfig>(() =>
+    parseFormatConfig(tournament.format_config, tournament.bracket_type),
   );
   const [maxPlayers, setMaxPlayers] = useState(
     tournament.max_players?.toString() ?? "",
@@ -123,7 +128,8 @@ export function SettingsTab({
         is_published: published,
         is_featured:
           status === "completed" || status === "archived" ? false : featured,
-        bracket_type: bracket,
+        bracket_type: bracketTypeFromPreset(format.preset),
+        format_config: format as unknown as Record<string, unknown>,
         max_players: maxPlayers === "" ? null : Number(maxPlayers),
         registration_deadline: deadline
           ? new Date(deadline).toISOString()
@@ -263,21 +269,6 @@ export function SettingsTab({
             )}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Tournament format</label>
-            <Select value={bracket} onValueChange={setBracket}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BRACKET_TYPES.map((b) => (
-                  <SelectItem key={b.value} value={b.value}>
-                    {b.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
             <label className="text-sm font-medium">Max players</label>
             <Input
               type="number"
@@ -296,6 +287,13 @@ export function SettingsTab({
             />
           </div>
         </div>
+      </div>
+
+      <div className="glass rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Competition format
+        </h3>
+        <FormatBuilder value={format} onChange={setFormat} />
       </div>
 
       <div className="glass rounded-2xl p-5 space-y-3">
