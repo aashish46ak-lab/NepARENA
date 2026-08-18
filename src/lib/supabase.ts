@@ -53,6 +53,8 @@ export interface Tournament {
   rules_text: string | null;
   prize_image_url: string | null;
   bracket_type: string;
+  /** Flexible competition format (stages, legs, groups, points). */
+  format_config?: Record<string, unknown> | null;
   prize_pool: string | null;
   registration_fee: number;
   participants_count: number;
@@ -117,16 +119,7 @@ export interface CommunityLink {
   sort_order: number;
 }
 
-export interface Announcement {
-  id: string;
-  title: string;
-  body: string;
-  image_url: string | null;
-  is_pinned: boolean;
-  created_at: string;
-}
-
-export type ParticipantStatus = "pending" | "approved" | "rejected" | "withdrawn";
+export type ParticipantStatus = "pending" | "approved" | "rejected";
 
 export interface TournamentParticipant {
   id: string;
@@ -134,14 +127,11 @@ export interface TournamentParticipant {
   user_id: string | null;
   player_name: string;
   club: string | null;
-  photo_url: string | null;
-  club_logo_url: string | null;
   status: ParticipantStatus;
   seed: number | null;
+  photo_url?: string | null;
+  club_logo_url?: string | null;
   created_at: string;
-  team_name?: string | null;
-  captain_user_id?: string | null;
-  game_payload?: Record<string, unknown> | null;
 }
 
 export interface Matchday {
@@ -167,7 +157,17 @@ export interface Match {
   position: number | null;
   scheduled_at: string | null;
   notes: string | null;
+  status?: string;
   created_at: string;
+  /** Multi-stage format metadata */
+  stage_id?: string | null;
+  stage_type?: string | null;
+  group_key?: string | null;
+  leg?: number | null;
+  series_key?: string | null;
+  aggregate_home?: number | null;
+  aggregate_away?: number | null;
+  is_aggregate_decider?: boolean;
 }
 
 export interface TournamentInvitation {

@@ -12,6 +12,11 @@ import { getGame, isBattleRoyale } from "@/lib/games";
 import { GameBadge } from "@/components/tournaments/games/GameBadge";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import {
+  hasKnockoutStage,
+  hasStandingsStage,
+  parseFormatConfig,
+} from "@/lib/tournament-format";
 
 const LEGACY_TABS = [
   { id: "overview", label: "Overview" },
@@ -50,11 +55,30 @@ export function TournamentManager({ tournament: initial }: Props) {
   const game = getGame(tournament.game);
   const br = isBattleRoyale(tournament.game);
 
+  const formatCfg = useMemo(
+    () => parseFormatConfig(tournament.format_config, tournament.bracket_type),
+    [tournament.format_config, tournament.bracket_type],
+  );
+  const showStandings = hasStandingsStage(formatCfg);
+  const showBracket = hasKnockoutStage(formatCfg);
+
   const tabs = useMemo(() => {
-    if (game.usesLegacyEngine) return LEGACY_TABS;
+    if (game.usesLegacyEngine) {
+      return LEGACY_TABS.filter((t) => {
+        if (t.id === "standings") return showStandings;
+        return true;
+      }).concat(
+        showBracket && !LEGACY_TABS.some((t) => t.id === "bracket")
+          ? ([{ id: "bracket" as const, label: "Bracket" }] as const)
+          : [],
+      );
+    }
     if (br) return BR_TABS;
-    return MLBB_EA_TABS;
-  }, [game.usesLegacyEngine, br]);
+    return MLBB_EA_TABS.filter((t) => {
+      if (t.id === "standings") return showStandings;
+      return true;
+    });
+  }, [game.usesLegacyEngine, br, showStandings, showBracket]);
 
   return (
     <div className="space-y-4">
@@ -103,13 +127,13 @@ export function TournamentManager({ tournament: initial }: Props) {
             <PlayersTab tournament={tournament} data={data} />
           )}
           {tab === "rounds" && br && <BrRoundsTab tournament={tournament} />}
-          {tab === "fixtures" && (
+          {(tab === "fixtures" || tab === "bracket") && (
             <FixturesTab tournament={tournament} data={data} />
           )}
           {tab === "verify" && (
             <VerificationsTab tournament={tournament} data={data} />
           )}
-          {tab === "standings" && (
+          {tab === "standings" && showStandings && (
             <StandingsTab tournament={tournament} data={data} />
           )}
           {tab === "settings" && (
