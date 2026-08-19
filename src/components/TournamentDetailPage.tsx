@@ -3,57 +3,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Trophy,
-  Users,
-  Table2,
-  FileText,
-  ShieldAlert,
-  Loader2,
-  ExternalLink,
-  ArrowLeft,
-  MoreHorizontal,
-  Share2,
-  MessageCircle,
-  Flag,
-  Gamepad2,
-  CalendarDays,
+  Trophy, Users, Table2, FileText, ShieldAlert, Loader2, ExternalLink,
+  ArrowLeft, MoreHorizontal, Share2, MessageCircle, Flag, Gamepad2, CalendarDays,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ReportForm } from "@/components/ReportForm";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  supabase,
-  type Tournament,
-  type TournamentParticipant,
-  type Match,
-} from "@/lib/supabase";
+import { supabase, type Tournament, type TournamentParticipant, type Match } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import {
-  loadPendingMatches,
-  loadMySubmissions,
-  type PendingMatch,
-  type MatchSubmission,
-} from "@/lib/matches-pending";
+import { loadPendingMatches, loadMySubmissions, type PendingMatch, type MatchSubmission } from "@/lib/matches-pending";
 import { BracketTree } from "@/components/BracketTree";
-import {
-  MyMatchesPanel,
-  FixturesByMatchday,
-  StandingsTable,
-  PlayersList,
-} from "@/components/TournamentDetailHelpers";
+import { MyMatchesPanel, FixturesByMatchday, StandingsTable, PlayersList } from "@/components/TournamentDetailHelpers";
 import { getOrCreateDm } from "@/lib/dm";
 
-type TabId =
-  | "my_matches"
-  | "fixtures"
-  | "standings"
-  | "bracket"
-  | "players"
-  | "rules"
-  | "report";
+type TabId = "my_matches" | "fixtures" | "standings" | "bracket" | "players" | "rules" | "report";
 
 export function TournamentDetailPage() {
   const { id } = useParams({ from: "/tournaments/$id" });
@@ -120,9 +86,7 @@ export function TournamentDetailPage() {
         void qc.invalidateQueries({ queryKey: ["tournament", id] });
         void refetchPending();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "match_submissions" }, () => {
-        void refetchPending();
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "match_submissions" }, () => { void refetchPending(); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [id, qc, refetchPending]);
@@ -148,9 +112,7 @@ export function TournamentDetailPage() {
         m.stage_type === "third_place" ||
         (typeof m.round === "number" && m.round >= 100),
     );
-    if (ko.length === 0 && ["single_elimination", "double_elimination", "knockout"].includes(bracketType)) {
-      return all;
-    }
+    if (ko.length === 0 && ["single_elimination", "double_elimination", "knockout"].includes(bracketType)) return all;
     return ko.length ? ko : all;
   }, [data?.matches, data?.tournament]);
 
@@ -169,9 +131,7 @@ export function TournamentDetailPage() {
       <PageShell force="platform" hideChrome>
         <div className="mx-auto max-w-lg space-y-3 py-20 text-center">
           <p className="text-muted-foreground">Tournament not found</p>
-          <Button asChild variant="outline">
-            <Link to="/tournaments">Back to tournaments</Link>
-          </Button>
+          <Button asChild variant="outline"><Link to="/tournaments">Back to tournaments</Link></Button>
         </div>
       </PageShell>
     );
@@ -212,43 +172,20 @@ export function TournamentDetailPage() {
     const url = `${window.location.origin}/tournaments/${id}`;
     try {
       if (navigator.share) await navigator.share({ title: name, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link copied");
-      }
+      else { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
     } catch {
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link copied");
-      } catch {
-        toast.message(url);
-      }
+      try { await navigator.clipboard.writeText(url); toast.success("Link copied"); } catch { toast.message(url); }
     }
     setMenuOpen(false);
   };
 
   const contactOrganizer = async () => {
     setMenuOpen(false);
-    if (!user) {
-      toast.message("Sign in to message");
-      void navigate({ to: "/auth" });
-      return;
-    }
-    if (!organizer) {
-      toast.message("Organizer contact unavailable");
-      return;
-    }
-    const { data: members } = await supabase
-      .from("organizer_members")
-      .select("user_id, role")
-      .eq("organizer_id", organizer.id)
-      .in("role", ["owner", "admin"])
-      .limit(1);
+    if (!user) { toast.message("Sign in to message"); void navigate({ to: "/auth" }); return; }
+    if (!organizer) { toast.message("Organizer contact unavailable"); return; }
+    const { data: members } = await supabase.from("organizer_members").select("user_id, role").eq("organizer_id", organizer.id).in("role", ["owner", "admin"]).limit(1);
     const contactId = (members?.[0] as { user_id?: string } | undefined)?.user_id;
-    if (!contactId) {
-      toast.message("Organizer contact unavailable");
-      return;
-    }
+    if (!contactId) { toast.message("Organizer contact unavailable"); return; }
     try {
       const convId = await getOrCreateDm(contactId);
       if (convId) void navigate({ to: "/messages", search: { c: convId } });
@@ -261,28 +198,21 @@ export function TournamentDetailPage() {
   const selectTab = (tid: TabId) => {
     setTab(tid);
     requestAnimationFrame(() => {
-      tabRef.current?.querySelector<HTMLElement>(`[data-tab="${tid}"]`)?.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest",
-      });
+      tabRef.current?.querySelector<HTMLElement>(`[data-tab="${tid}"]`)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     });
   };
+
+  const bracketMatches = knockoutMatches.map((m) => {
+    const md = data.matchdays.find((d) => String((d as { id?: string }).id) === String(m.matchday_id)) as { name?: string } | undefined;
+    return { ...m, matchday: md?.name ?? null };
+  });
 
   return (
     <PageShell force="platform" hideChrome>
       <div className="min-h-[100dvh] bg-[#0a0a0a] pb-24">
         <div className="sticky top-0 z-40 border-b border-white/8 bg-[#0a0a0a]/95 backdrop-blur-md">
           <div className="mx-auto flex max-w-lg items-center gap-2 px-3 py-2.5 sm:max-w-2xl">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.history.length > 1) window.history.back();
-                else void navigate({ to: "/" });
-              }}
-              className="rounded-full border border-white/10 p-2.5 text-neutral-300 hover:bg-white/[0.06]"
-              aria-label="Back"
-            >
+            <button type="button" onClick={() => { if (window.history.length > 1) window.history.back(); else void navigate({ to: "/" }); }} className="rounded-full border border-white/10 p-2.5 text-neutral-300 hover:bg-white/[0.06]" aria-label="Back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             {organizer?.logo_url ? (
@@ -293,48 +223,25 @@ export function TournamentDetailPage() {
                 </Avatar>
               </Link>
             ) : (
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
-                <Trophy className="h-5 w-5 text-amber-400" />
-              </div>
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10"><Trophy className="h-5 w-5 text-amber-400" /></div>
             )}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <h1 className="truncate text-sm font-bold text-white sm:text-base">{name}</h1>
-                {isLive && (
-                  <span className="shrink-0 rounded-full bg-rose-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase text-rose-200">LIVE</span>
-                )}
+                {isLive && <span className="shrink-0 rounded-full bg-rose-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase text-rose-200">LIVE</span>}
               </div>
               {organizer && <p className="truncate text-[11px] text-neutral-500">{organizer.name}</p>}
             </div>
-            <button
-              ref={menuBtnRef}
-              type="button"
-              onClick={openMenu}
-              className="rounded-full border border-white/12 p-2.5 text-neutral-300 hover:bg-white/[0.06]"
-              aria-label="More"
-            >
+            <button ref={menuBtnRef} type="button" onClick={openMenu} className="rounded-full border border-white/12 p-2.5 text-neutral-300 hover:bg-white/[0.06]" aria-label="More">
               <MoreHorizontal className="h-5 w-5" />
             </button>
           </div>
-          <div
-            ref={tabRef}
-            className="mx-auto flex max-w-lg gap-1.5 overflow-x-auto px-2 pb-2.5 sm:max-w-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            style={{ WebkitOverflowScrolling: "touch" }}
-          >
+          <div ref={tabRef} className="mx-auto flex max-w-lg gap-1.5 overflow-x-auto px-2 pb-2.5 sm:max-w-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
             {tabs.map((t) => {
               const Icon = t.icon;
               const active = tab === t.id;
               return (
-                <button
-                  key={t.id}
-                  type="button"
-                  data-tab={t.id}
-                  onClick={() => selectTab(t.id)}
-                  className={cn(
-                    "flex min-w-[4.5rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold transition",
-                    active ? "bg-white/12 text-white" : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200",
-                  )}
-                >
+                <button key={t.id} type="button" data-tab={t.id} onClick={() => selectTab(t.id)} className={cn("flex min-w-[4.5rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold transition", active ? "bg-white/12 text-white" : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200")}>
                   <Icon className={cn("h-5 w-5", active && "text-sky-400")} strokeWidth={2} />
                   <span className="whitespace-nowrap">{t.label}</span>
                 </button>
@@ -345,71 +252,44 @@ export function TournamentDetailPage() {
 
         <div className="mx-auto max-w-lg px-3 pt-4 sm:max-w-2xl sm:px-4">
           {tab === "my_matches" && (
-            <MyMatchesPanel
-              userId={user?.id}
-              tournamentId={id}
-              myPart={myPart}
-              registrationOpen={registrationOpen}
-              registrationClosed={registrationClosed && !myPart}
-              pendingItems={pendingItems}
-              matches={data.matches}
-              participants={data.participants}
-              onDone={() => void refetchPending()}
-            />
+            <MyMatchesPanel userId={user?.id} tournamentId={id} myPart={myPart} registrationOpen={registrationOpen} registrationClosed={registrationClosed && !myPart} pendingItems={pendingItems} matches={data.matches} participants={data.participants} onDone={() => void refetchPending()} />
           )}
-
           {tab === "fixtures" && (
-            <FixturesByMatchday
-              matches={data.matches}
-              matchdays={data.matchdays}
-              participants={data.participants}
-            />
+            <FixturesByMatchday matches={data.matches} matchdays={data.matchdays} participants={data.participants} />
           )}
           {tab === "bracket" && (
             <BracketTree
-              matches={knockoutMatches}
+              matches={bracketMatches}
               players={playersTyped}
               tournamentName={name}
               tournamentLogo={tournamentTyped.logo_url}
               bannerUrl={tournamentTyped.banner_url}
               organizerName={organizer?.name}
               organizerLogo={organizer?.logo_url}
+              eventDate={(tournament as { starts_at?: string | null }).starts_at ?? null}
             />
           )}
           {tab === "standings" && (
-            <StandingsTable
-              standings={data.standings}
-              participants={data.participants}
-              matches={data.matches}
-            />
+            <StandingsTable standings={data.standings} participants={data.participants} matches={data.matches} />
           )}
           {tab === "players" && <PlayersList participants={data.participants} />}
-
           {tab === "rules" && (
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-              <h2 className="flex items-center gap-2 font-semibold">
-                <FileText className="h-4 w-4" /> Tournament rules
-              </h2>
+              <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4" /> Tournament rules</h2>
               {rulesText ? (
                 <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{rulesText}</p>
               ) : rulesUrl ? (
-                <Button asChild variant="outline">
-                  <a href={rulesUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" /> View rules document
-                  </a>
-                </Button>
+                <Button asChild variant="outline"><a href={rulesUrl} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" /> View rules document</a></Button>
               ) : (
                 <p className="text-sm text-muted-foreground">No rules published yet.</p>
               )}
             </div>
           )}
-
           {tab === "report" && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <ReportForm tournament={tournamentTyped} players={playersTyped} />
             </div>
           )}
-
           <footer className="mt-10 border-t border-white/5 py-6 text-center text-[11px] text-neutral-600">
             <p>All rights reserved · Designed by NepARENA</p>
           </footer>
@@ -418,22 +298,11 @@ export function TournamentDetailPage() {
         {menuOpen && menuPos && createPortal(
           <>
             <div className="fixed inset-0 z-[340]" onClick={() => setMenuOpen(false)} aria-hidden />
-            <div
-              className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl"
-              style={{ top: menuPos.top, right: menuPos.right }}
-            >
-              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => void shareTournament()}>
-                <Share2 className="h-4 w-4 text-sky-400" /> Share Tournament
-              </button>
-              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => void contactOrganizer()}>
-                <MessageCircle className="h-4 w-4 text-violet-400" /> Contact Organizer
-              </button>
-              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => { setMenuOpen(false); selectTab("rules"); }}>
-                <FileText className="h-4 w-4 text-neutral-300" /> Rules
-              </button>
-              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-neutral-400 hover:bg-white/[0.06]" onClick={() => { setMenuOpen(false); selectTab("report"); }}>
-                <Flag className="h-4 w-4" /> Report Tournament
-              </button>
+            <div className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl" style={{ top: menuPos.top, right: menuPos.right }}>
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => void shareTournament()}><Share2 className="h-4 w-4 text-sky-400" /> Share Tournament</button>
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => void contactOrganizer()}><MessageCircle className="h-4 w-4 text-violet-400" /> Contact Organizer</button>
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => { setMenuOpen(false); selectTab("rules"); }}><FileText className="h-4 w-4 text-neutral-300" /> Rules</button>
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-neutral-400 hover:bg-white/[0.06]" onClick={() => { setMenuOpen(false); selectTab("report"); }}><Flag className="h-4 w-4" /> Report Tournament</button>
             </div>
           </>,
           document.body,
