@@ -8,24 +8,17 @@ import { StandingsTab } from "./StandingsTab";
 import { SettingsTab } from "./SettingsTab";
 import { VerificationsTab } from "./VerificationsTab";
 import { BrRoundsTab } from "./BrRoundsTab";
+import { GroupsTab } from "./GroupsTab";
 import { getGame, isBattleRoyale } from "@/lib/games";
 import { GameBadge } from "@/components/tournaments/games/GameBadge";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import {
+  hasGroupStage,
   hasKnockoutStage,
   hasStandingsStage,
   parseFormatConfig,
 } from "@/lib/tournament-format";
-
-const LEGACY_TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "players", label: "Players" },
-  { id: "fixtures", label: "Fixtures" },
-  { id: "verify", label: "Verify" },
-  { id: "standings", label: "Standings" },
-  { id: "settings", label: "Settings" },
-] as const;
 
 const BR_TABS = [
   { id: "overview", label: "Overview" },
@@ -59,26 +52,29 @@ export function TournamentManager({ tournament: initial }: Props) {
     () => parseFormatConfig(tournament.format_config, tournament.bracket_type),
     [tournament.format_config, tournament.bracket_type],
   );
-  const showStandings = hasStandingsStage(formatCfg);
-  const showBracket = hasKnockoutStage(formatCfg);
 
   const tabs = useMemo(() => {
-    if (game.usesLegacyEngine) {
-      return LEGACY_TABS.filter((t) => {
-        if (t.id === "standings") return showStandings;
-        return true;
-      }).concat(
-        showBracket && !LEGACY_TABS.some((t) => t.id === "bracket")
-          ? ([{ id: "bracket" as const, label: "Bracket" }] as const)
-          : [],
-      );
-    }
     if (br) return BR_TABS;
-    return MLBB_EA_TABS.filter((t) => {
-      if (t.id === "standings") return showStandings;
-      return true;
-    });
-  }, [game.usesLegacyEngine, br, showStandings, showBracket]);
+    if (!game.usesLegacyEngine) return MLBB_EA_TABS;
+
+    const list: { id: string; label: string }[] = [
+      { id: "overview", label: "Overview" },
+      { id: "players", label: "Players" },
+    ];
+    if (hasGroupStage(formatCfg)) {
+      list.push({ id: "groups", label: "Groups" });
+    }
+    list.push({ id: "fixtures", label: "Fixtures" });
+    list.push({ id: "verify", label: "Verify" });
+    if (hasStandingsStage(formatCfg)) {
+      list.push({ id: "standings", label: "Standings" });
+    }
+    if (hasKnockoutStage(formatCfg)) {
+      list.push({ id: "bracket", label: "Bracket" });
+    }
+    list.push({ id: "settings", label: "Settings" });
+    return list;
+  }, [game.usesLegacyEngine, br, formatCfg]);
 
   return (
     <div className="space-y-4">
@@ -126,6 +122,13 @@ export function TournamentManager({ tournament: initial }: Props) {
           {tab === "players" && (
             <PlayersTab tournament={tournament} data={data} />
           )}
+          {tab === "groups" && (
+            <GroupsTab
+              tournament={tournament}
+              data={data}
+              onPatched={setTournament}
+            />
+          )}
           {tab === "rounds" && br && <BrRoundsTab tournament={tournament} />}
           {(tab === "fixtures" || tab === "bracket") && (
             <FixturesTab tournament={tournament} data={data} />
@@ -133,7 +136,7 @@ export function TournamentManager({ tournament: initial }: Props) {
           {tab === "verify" && (
             <VerificationsTab tournament={tournament} data={data} />
           )}
-          {tab === "standings" && showStandings && (
+          {tab === "standings" && (
             <StandingsTab tournament={tournament} data={data} />
           )}
           {tab === "settings" && (
