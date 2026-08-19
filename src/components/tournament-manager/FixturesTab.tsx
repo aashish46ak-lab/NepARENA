@@ -10,7 +10,7 @@ import {
   bracketLabel,
 } from "@/lib/brackets";
 import { parseFormatConfig, hasGroupStage } from "@/lib/tournament-format";
-import { seedKnockoutFromGroups } from "@/lib/seed-knockout";
+import { seedKnockoutFromGroups, advanceKnockoutWinners } from "@/lib/seed-knockout";
 import { logActivity } from "@/lib/activity";
 import { ResultsTab } from "./ResultsTab";
 import { Button } from "@/components/ui/button";
@@ -140,11 +140,6 @@ export function FixturesTab({ tournament, data }: Props) {
   const [toggling, setToggling] = useState(false);
   const settings = useSiteSettings();
   const approved = data.players.filter((p) => p.status === "approved");
-
-  const logoUrl =
-    settings?.logo_url ||
-    "https://efootballnepal.vercel.app/android-chrome-512x512.png";
-  const brandName = settings?.site_name || "eFootball Nepal";
 
   const groups = useMemo(() => {
     type G = { id: string | null; name: string; matches: Match[] };
@@ -301,19 +296,6 @@ export function FixturesTab({ tournament, data }: Props) {
     }
   };
 
-  const setSide = async (
-    m: Match,
-    side: "home_id" | "away_id",
-    value: string,
-  ) => {
-    const { error } = await supabase
-      .from("matches")
-      .update({ [side]: value === "tbd" ? null : value })
-      .eq("id", m.id);
-    if (error) return toast.error(error.message);
-    data.reload();
-  };
-
   const removeMatch = async (m: Match) => {
     const { error } = await supabase.from("matches").delete().eq("id", m.id);
     if (error) return toast.error(error.message);
@@ -401,6 +383,22 @@ export function FixturesTab({ tournament, data }: Props) {
             Seed knockout from groups
           </Button>
         )}
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy || data.matches.length === 0}
+          onClick={() => {
+            setBusy(true);
+            void advanceKnockoutWinners(tournament, data)
+              .catch((e) =>
+                toast.error(e instanceof Error ? e.message : "Advance failed"),
+              )
+              .finally(() => setBusy(false));
+          }}
+          title="Push match winners into the next knockout round"
+        >
+          Advance KO winners
+        </Button>
         <Button variant="secondary" onClick={addMatch} disabled={!activeMdId}>
           <Plus className="h-4 w-4 mr-1.5" /> Add match
         </Button>
