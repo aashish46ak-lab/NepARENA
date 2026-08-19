@@ -1,2 +1,1 @@
-matchday-v4-2026-08-19T14:20
-If you see Group A · Matchday 1 tabs, production is still on old JS.
+matchday-v6-bracket-compact-2026-08-19T20:45

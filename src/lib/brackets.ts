@@ -1,3 +1,4 @@
+// MATCHDAY_V6: unified Matchday N only (no Group prefix)
 // Fixture generators for every supported bracket / competition format.
 // Each fixture is assigned a matchday name; the manager persists
 // matchdays first and maps names to ids before inserting matches.
@@ -233,7 +234,7 @@ function fixturesForStage(
       const flip = stage.league.homeAway && leg % 2 === 0;
       const specs = roundRobin(
         ids, offset,
-        (n) => legs > 1 ? `${stage.name} · Matchday ${n} (Leg ${leg})` : `${stage.name} · Matchday ${n}`,
+        (n) => legs > 1 ? `Matchday ${n} · Leg ${leg}` : `Matchday ${n}`,
         flip, { ...meta, leg },
       );
       out.push(...specs);
