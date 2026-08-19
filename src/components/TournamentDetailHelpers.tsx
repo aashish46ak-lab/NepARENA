@@ -26,7 +26,7 @@ export function MyMatchesPanel({
     if (registrationClosed) {
       return (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-center">
-          <p className="text-sm font-semibold text-amber-100">You&apos;re late!</p>
+          <p className="text-sm font-semibold text-amber-100">You're late!</p>
           <p className="mt-1 text-xs text-neutral-400">Registration has closed for this tournament.</p>
         </div>
       );
@@ -70,9 +70,7 @@ export function MyMatchesPanel({
                   <span className="min-w-0 flex-1 truncate text-right font-medium text-white">{homeName}</span>
                   <span className="shrink-0 rounded-lg bg-white/10 px-2 py-0.5 font-bold tabular-nums text-sky-300">{hs} – {as_}</span>
                   <span className="min-w-0 flex-1 truncate font-medium text-white">{awayName}</span>
-                  <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase", draw ? "bg-neutral-500/20 text-neutral-300" : won ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300")}>
-                    {draw ? "Draw" : won ? "Win" : "Loss"}
-                  </span>
+                  <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase", draw ? "bg-neutral-500/20 text-neutral-300" : won ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300")}>{draw ? "Draw" : won ? "Win" : "Loss"}</span>
                 </div>
               );
             })}
@@ -172,66 +170,156 @@ export function FixturesByMatchday({ matches, matchdays, participants }: { match
   );
 }
 
-export function StandingsTable({ standings, participants }: { standings: Record<string, unknown>[]; participants: Record<string, unknown>[] }) {
-  if (!standings.length) return <p className="text-sm text-muted-foreground">Standings not available yet.</p>;
+export function StandingsTable({
+  standings,
+  participants,
+  matches = [],
+}: {
+  standings: Record<string, unknown>[];
+  participants: Record<string, unknown>[];
+  matches?: Record<string, unknown>[];
+}) {
+  const groupKeys = Array.from(
+    new Set(matches.map((m) => (m.group_key as string | null) ?? null).filter((g): g is string => !!g)),
+  ).sort();
+
+  const nameOf = (pid: string) => {
+    const p = participants.find((x) => String(x.id) === String(pid));
+    if (!p) return "—";
+    return String(p.club || p.player_name || "Player");
+  };
+  const photoOfP = (pid: string) => {
+    const p = participants.find((x) => String(x.id) === String(pid));
+    return (p?.photo_url as string | null) || (p?.club_logo_url as string | null) || null;
+  };
+
+  type Row = {
+    participant_id: string;
+    played: number; won: number; drawn: number; lost: number;
+    gf: number; ga: number; gd: number; points: number;
+  };
+
+  const computeFor = (matchList: Record<string, unknown>[]): Row[] => {
+    const map = new Map<string, Row>();
+    const ensure = (id: string) => {
+      if (!map.has(id)) {
+        map.set(id, { participant_id: id, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 });
+      }
+      return map.get(id)!;
+    };
+    for (const m of matchList) {
+      if (m.home_id) ensure(String(m.home_id));
+      if (m.away_id) ensure(String(m.away_id));
+    }
+    for (const m of matchList) {
+      if (!m.played || m.home_score == null || m.away_score == null) continue;
+      const hid = m.home_id ? String(m.home_id) : null;
+      const aid = m.away_id ? String(m.away_id) : null;
+      if (!hid || !aid) continue;
+      const h = ensure(hid);
+      const a = ensure(aid);
+      const hs = Number(m.home_score);
+      const as_ = Number(m.away_score);
+      h.played++; a.played++;
+      h.gf += hs; h.ga += as_;
+      a.gf += as_; a.ga += hs;
+      if (hs > as_) { h.won++; a.lost++; h.points += 3; }
+      else if (hs < as_) { a.won++; h.lost++; a.points += 3; }
+      else { h.drawn++; a.drawn++; h.points += 1; a.points += 1; }
+    }
+    for (const r of map.values()) r.gd = r.gf - r.ga;
+    return [...map.values()].sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
+  };
+
+  const renderTable = (rows: Row[], title?: string) => (
+    <div key={title ?? "all"} className="space-y-2">
+      {title && (
+        <h3 className="text-xs font-bold uppercase tracking-wider text-sky-300/90">{title}</h3>
+      )}
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full min-w-[520px] text-sm">
+          <thead className="bg-white/5 text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-2 py-2 w-8">#</th>
+              <th className="px-2 py-2">Player / Team</th>
+              <th className="px-1 py-2 text-center">P</th>
+              <th className="px-1 py-2 text-center">W</th>
+              <th className="px-1 py-2 text-center">D</th>
+              <th className="px-1 py-2 text-center">L</th>
+              <th className="px-1 py-2 text-center">GF</th>
+              <th className="px-1 py-2 text-center">GA</th>
+              <th className="px-1 py-2 text-center">GD</th>
+              <th className="px-2 py-2 text-center font-bold">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.participant_id} className={cn("border-t border-white/5", i < 2 && "bg-emerald-500/[0.06]")}>
+                <td className="px-2 py-2 text-xs text-muted-foreground">{i + 1}</td>
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={photoOfP(r.participant_id) ?? undefined} />
+                      <AvatarFallback className="text-[9px]">{nameOf(r.participant_id).slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className="truncate font-medium text-white">{nameOf(r.participant_id)}</span>
+                  </div>
+                </td>
+                <td className="px-1 py-2 text-center tabular-nums">{r.played}</td>
+                <td className="px-1 py-2 text-center tabular-nums text-emerald-400">{r.won}</td>
+                <td className="px-1 py-2 text-center tabular-nums">{r.drawn}</td>
+                <td className="px-1 py-2 text-center tabular-nums text-rose-400">{r.lost}</td>
+                <td className="px-1 py-2 text-center tabular-nums">{r.gf}</td>
+                <td className="px-1 py-2 text-center tabular-nums">{r.ga}</td>
+                <td className="px-1 py-2 text-center tabular-nums">{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
+                <td className="px-2 py-2 text-center font-bold tabular-nums text-white">{r.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  if (groupKeys.length > 0) {
+    return (
+      <div className="space-y-6">
+        {groupKeys.map((gk) => {
+          const gm = matches.filter((m) => m.group_key === gk);
+          const rows = computeFor(gm);
+          if (!rows.length) return null;
+          return renderTable(rows, gk.startsWith("Group") ? gk : `Group ${gk}`);
+        })}
+      </div>
+    );
+  }
+
+  if (!standings.length) {
+    return (
+      <p className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm text-neutral-500">
+        Standings not available yet.
+      </p>
+    );
+  }
   const sorted = [...standings].sort((a, b) => {
     const pts = Number(b.points ?? 0) - Number(a.points ?? 0);
     if (pts !== 0) return pts;
-    const gd = Number(b.goal_difference ?? b.gd ?? 0) - Number(a.goal_difference ?? a.gd ?? 0);
+    const gd = Number(b.goal_difference ?? b.goal_diff ?? b.gd ?? 0) - Number(a.goal_difference ?? a.goal_diff ?? a.gd ?? 0);
     if (gd !== 0) return gd;
     return Number(b.goals_for ?? b.gf ?? 0) - Number(a.goals_for ?? a.gf ?? 0);
   });
-  return (
-    <div className="overflow-x-auto rounded-xl border border-white/10">
-      <table className="w-full min-w-[560px] text-sm">
-        <thead className="bg-white/5 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-2 py-2.5 font-medium">#</th>
-            <th className="px-2 py-2.5 font-medium">Player</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">Pts</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">MP</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">W</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">D</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">L</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">GF</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">GA</th>
-            <th className="px-1.5 py-2.5 text-center font-medium">GD</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row, i) => {
-            const pid = row.participant_id;
-            const displayName = labelOf(participants, pid) || String(row.player_name ?? "—");
-            const photo = photoOf(participants, pid);
-            const uid = userIdOf(participants, pid);
-            const gf = Number(row.goals_for ?? row.gf ?? 0);
-            const ga = Number(row.goals_against ?? row.ga ?? 0);
-            const gd = Number(row.goal_difference ?? row.gd ?? gf - ga);
-            const nameCell = (
-              <span className="flex min-w-0 items-center gap-2">
-                <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={photo ?? undefined} /><AvatarFallback className="text-[9px]">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-                <span className="truncate font-semibold text-white">{displayName}</span>
-              </span>
-            );
-            return (
-              <tr key={String(row.id ?? i)} className="border-t border-white/5 hover:bg-white/[0.03]">
-                <td className="px-2 py-2.5 tabular-nums text-neutral-400">{i + 1}</td>
-                <td className="px-2 py-2.5">{uid ? <Link to="/members/$id" params={{ id: uid }} className="hover:underline">{nameCell}</Link> : nameCell}</td>
-                <td className="px-1.5 py-2.5 text-center font-bold tabular-nums text-sky-300">{Number(row.points ?? 0)}</td>
-                <td className="px-1.5 py-2.5 text-center tabular-nums">{Number(row.played ?? row.matches_played ?? 0)}</td>
-                <td className="px-1.5 py-2.5 text-center tabular-nums">{Number(row.won ?? row.wins ?? 0)}</td>
-                <td className="px-1.5 py-2.5 text-center tabular-nums">{Number(row.drawn ?? row.draws ?? 0)}</td>
-                <td className="px-1.5 py-2.5 text-center tabular-nums">{Number(row.lost ?? row.losses ?? 0)}</td>
-                <td className="px-1.5 py-2.5 text-center tabular-nums">{gf}</td>
-                <td className="px-1.5 py-2.5 text-center tabular-nums">{ga}</td>
-                <td className={cn("px-1.5 py-2.5 text-center font-medium tabular-nums", gd > 0 ? "text-emerald-400" : gd < 0 ? "text-rose-400" : "")}>{gd > 0 ? `+${gd}` : gd}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+  const rows: Row[] = sorted.map((s) => ({
+    participant_id: String(s.participant_id ?? s.player_id ?? ""),
+    played: Number(s.played ?? 0),
+    won: Number(s.won ?? s.wins ?? 0),
+    drawn: Number(s.drawn ?? s.draws ?? 0),
+    lost: Number(s.lost ?? s.losses ?? 0),
+    gf: Number(s.goals_for ?? s.gf ?? 0),
+    ga: Number(s.goals_against ?? s.ga ?? 0),
+    gd: Number(s.goal_diff ?? s.goal_difference ?? s.gd ?? 0),
+    points: Number(s.points ?? 0),
+  }));
+  return renderTable(rows);
 }
 
 export function PlayersList({ participants }: { participants: Record<string, unknown>[] }) {
