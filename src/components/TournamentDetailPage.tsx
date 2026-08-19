@@ -260,6 +260,7 @@ export function TournamentDetailPage() {
           {tab === "bracket" && (
             <BracketTree
               matches={bracketMatches}
+              allMatches={(data.matches ?? []) as unknown as Match[]}
               players={playersTyped}
               tournamentName={name}
               tournamentLogo={tournamentTyped.logo_url}
@@ -267,6 +268,7 @@ export function TournamentDetailPage() {
               organizerName={organizer?.name}
               organizerLogo={organizer?.logo_url}
               eventDate={(tournament as { starts_at?: string | null }).starts_at ?? null}
+              groupCount={4}
             />
           )}
           {tab === "standings" && (
