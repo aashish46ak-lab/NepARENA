@@ -119,3 +119,101 @@ export async function seedKnockoutFromGroups(
   });
   data.reload();
 }
+
+function winnerId(m: Match): string | null {
+  if (!m.played || m.home_score == null || m.away_score == null) return null;
+  if (!m.home_id || !m.away_id) return null;
+  if (m.home_score > m.away_score) return m.home_id;
+  if (m.away_score > m.home_score) return m.away_id;
+  return null;
+}
+
+/** Push winners of completed knockout matches into the next round slots. */
+export async function advanceKnockoutWinners(
+  tournament: Tournament,
+  data: DataLike,
+): Promise<void> {
+  const ko = data.matches.filter(
+    (m) =>
+      m.stage_type === "knockout" ||
+      m.stage_type === "final" ||
+      m.stage_type === "third_place" ||
+      (typeof m.round === "number" && m.round >= 100),
+  );
+  if (!ko.length) {
+    toast.message("No knockout matches");
+    return;
+  }
+
+  const byRound = new Map<number, Match[]>();
+  for (const m of ko) {
+    if ((m.leg ?? 1) !== 1) continue;
+    if (m.stage_type === "third_place") continue;
+    const r = m.round ?? 0;
+    const list = byRound.get(r) ?? [];
+    list.push(m);
+    byRound.set(r, list);
+  }
+  const rounds = [...byRound.keys()].sort((a, b) => a - b);
+  if (rounds.length < 2) {
+    toast.message("Need at least two knockout rounds");
+    return;
+  }
+
+  let updated = 0;
+  for (let i = 0; i < rounds.length - 1; i++) {
+    const r = rounds[i]!;
+    const nextR = rounds[i + 1]!;
+    const current = (byRound.get(r) ?? []).sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0),
+    );
+    const next = (byRound.get(nextR) ?? []).sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0),
+    );
+
+    for (const m of current) {
+      const w = winnerId(m);
+      if (!w) continue;
+      const pos = m.position ?? 1;
+      const nextPos = Math.ceil(pos / 2);
+      const target = next.find((x) => (x.position ?? 0) === nextPos);
+      if (!target) continue;
+      const asHome = pos % 2 === 1;
+      const field = asHome ? "home_id" : "away_id";
+      const currentVal = asHome ? target.home_id : target.away_id;
+      if (currentVal === w) continue;
+      const { error } = await supabase
+        .from("matches")
+        .update({ [field]: w })
+        .eq("id", target.id);
+      if (error) throw error;
+      if (target.series_key) {
+        const leg2 = data.matches.find(
+          (x) =>
+            x.series_key === target.series_key &&
+            (x.leg ?? 1) === 2 &&
+            x.id !== target.id,
+        );
+        if (leg2) {
+          const field2 = asHome ? "away_id" : "home_id";
+          await supabase
+            .from("matches")
+            .update({ [field2]: w })
+            .eq("id", leg2.id);
+        }
+      }
+      updated++;
+    }
+  }
+
+  toast.success(
+    updated
+      ? `Advanced ${updated} winner(s) into the next round`
+      : "No new winners to advance (finish matches or already seeded)",
+  );
+  void logActivity("fixtures.advance_knockout", {
+    tournament: tournament.name,
+    updated,
+  });
+  data.reload();
+}
