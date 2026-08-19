@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   supabase,
   type Match,
@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import {
   matchdayName,
   normalizeMatchdayLabel,
+  migrateLegacyMatchdayNames,
   type TournamentData,
 } from "./shared";
 import { cn } from "@/lib/utils";
@@ -169,6 +170,23 @@ export function FixturesTab({ tournament, data }: Props) {
     );
   }, [data.matches, data.matchdays]);
 
+  // Auto-fix DB: Group A · Matchday 1 → Matchday 1 (merge groups)
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const changed = await migrateLegacyMatchdayNames(
+        tournament.id,
+        data.matchdays,
+        data.matches,
+      );
+      if (changed && !cancelled) data.reload();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournament.id, data.matchdays.length]);
+
   const [selected, setSelected] = useState<string | null>(null);
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -270,9 +288,9 @@ export function FixturesTab({ tournament, data }: Props) {
       const fmt = parseFormatConfig(tournament.format_config, tournament.bracket_type);
       toast.success(
         payload.length +
-          " fixtures generated (" +
+          " fixtures (" +
           bracketLabel(tournament.bracket_type ?? fmt.preset) +
-          "). All matchdays are unpublished until you toggle Publish.",
+          "). Tabs: Matchday 1, 2… then R16/QF/SF/Final.",
       );
       void logActivity("fixtures.generate", {
         tournament: tournament.name,
@@ -326,10 +344,8 @@ export function FixturesTab({ tournament, data }: Props) {
       );
       toast.success(
         on
-          ? activeName +
-              " published to public & players notified" +
-              (n ? " (" + n + ")" : "")
-          : activeName + " unpublished — locked for public",
+          ? activeName + " published" + (n ? " (" + n + ")" : "")
+          : activeName + " unpublished",
       );
       data.reload();
     } catch (e) {
@@ -419,7 +435,6 @@ export function FixturesTab({ tournament, data }: Props) {
                 )
                 .finally(() => setBusy(false));
             }}
-            title="Fill first knockout round from group tables (A1 vs B2)"
           >
             Seed knockout from groups
           </Button>
@@ -436,7 +451,6 @@ export function FixturesTab({ tournament, data }: Props) {
               )
               .finally(() => setBusy(false));
           }}
-          title="Push match winners into the next knockout round"
         >
           Advance KO winners
         </Button>
@@ -451,8 +465,7 @@ export function FixturesTab({ tournament, data }: Props) {
 
       {data.matches.length === 0 && groups.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center text-sm text-muted-foreground">
-          No fixtures yet. Click <strong>Generate fixtures</strong>. Matchdays
-          stay unpublished until you turn Publish on.
+          No fixtures yet. Click <strong>Generate fixtures</strong>.
         </div>
       ) : (
         <>
@@ -466,12 +479,11 @@ export function FixturesTab({ tournament, data }: Props) {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="flex flex-1 gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1">
+            <div className="flex flex-1 gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1">
               {groups.map((g) => {
                 const played = g.matches.filter((m) => m.played).length;
                 const isActive = g.name === activeName;
-                const pub = !!data.matchdays.find((d) => d.id === g.id)
-                  ?.is_published;
+                const pub = !!data.matchdays.find((d) => d.id === g.id)?.is_published;
                 return (
                   <button
                     key={g.name}
@@ -488,17 +500,11 @@ export function FixturesTab({ tournament, data }: Props) {
                         : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
                     )}
                   >
-                    <div
-                      className={cn(
-                        "w-full truncate text-xs font-semibold",
-                        isActive && "text-brand-glow",
-                      )}
-                    >
+                    <div className={cn("w-full truncate text-xs font-semibold", isActive && "text-brand-glow")}>
                       {g.name}
                     </div>
                     <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {String(played) + "/" + String(g.matches.length)}
-                      {pub ? " · Live" : " · Draft"}
+                      {played}/{g.matches.length}{pub ? " · Live" : " · Draft"}
                     </div>
                   </button>
                 );
@@ -528,11 +534,6 @@ export function FixturesTab({ tournament, data }: Props) {
                   {isPublished ? "Published" : "Publish"}
                 </label>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                {isPublished
-                  ? "Visible on public tournament page + pending matches for players."
-                  : "Draft — public sees this matchday locked/blurred."}
-              </p>
               <div className="space-y-2">
                 {activeMatches.length === 0 ? (
                   <p className="py-4 text-center text-sm text-muted-foreground">
@@ -542,10 +543,7 @@ export function FixturesTab({ tournament, data }: Props) {
                   activeMatchesByGroup.flatMap(([gKey, gMatches]) => [
                     ...(gKey
                       ? [
-                          <div
-                            key={`g-${gKey}`}
-                            className="flex items-center gap-2 pt-2 first:pt-0"
-                          >
+                          <div key={`g-${gKey}`} className="flex items-center gap-2 pt-2 first:pt-0">
                             <span className="h-px flex-1 bg-border/50" />
                             <span className="text-[10px] font-bold uppercase tracking-wider text-brand-glow">
                               {gKey}
@@ -565,7 +563,6 @@ export function FixturesTab({ tournament, data }: Props) {
 
       <div className="mt-6 space-y-2 border-t border-border/50 pt-4">
         <h3 className="text-sm font-semibold">Manual results</h3>
-        <p className="text-xs text-muted-foreground">Update match scores here.</p>
         <ResultsTab tournament={tournament} data={data} />
       </div>
     </div>
