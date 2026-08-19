@@ -77,6 +77,7 @@ export interface FormatConfig {
   tieBreakers: TieBreaker[];
   leagueQualifyCount?: number;
   migratedFrom?: string;
+  groupDraw?: { name: string; ids: string[] }[];
 }
 
 export const DEFAULT_POINTS: PointsConfig = { win: 3, draw: 1, loss: 0 };
@@ -99,184 +100,66 @@ export function stageId(prefix = "s"): string {
 
 export function presetFromBracketType(bracketType: string | null | undefined): FormatPreset {
   switch (bracketType) {
-    case "league":
-      return "league";
-    case "round_robin":
-      return "round_robin";
-    case "single_elimination":
-      return "knockout";
-    case "double_elimination":
-      return "double_elimination";
-    case "groups_knockout":
-      return "groups_knockout";
-    case "swiss":
-      return "swiss";
-    case "group_only":
-      return "group_only";
-    case "league_knockout":
-      return "league_knockout";
-    case "custom":
-      return "custom";
-    default:
-      return "round_robin";
+    case "league": return "league";
+    case "round_robin": return "round_robin";
+    case "single_elimination": return "knockout";
+    case "double_elimination": return "double_elimination";
+    case "groups_knockout": return "groups_knockout";
+    case "swiss": return "swiss";
+    case "group_only": return "group_only";
+    case "league_knockout": return "league_knockout";
+    case "custom": return "custom";
+    default: return "round_robin";
   }
 }
 
 export function bracketTypeFromPreset(preset: FormatPreset): string {
   switch (preset) {
-    case "league":
-      return "league";
-    case "round_robin":
-      return "round_robin";
+    case "league": return "league";
+    case "round_robin": return "round_robin";
     case "knockout":
-    case "single_elimination":
-      return "single_elimination";
-    case "double_elimination":
-      return "double_elimination";
-    case "groups_knockout":
-      return "groups_knockout";
-    case "group_only":
-      return "group_only";
-    case "league_knockout":
-      return "league_knockout";
-    case "swiss":
-      return "swiss";
-    case "custom":
-      return "custom";
-    default:
-      return "round_robin";
+    case "single_elimination": return "single_elimination";
+    case "double_elimination": return "double_elimination";
+    case "groups_knockout": return "groups_knockout";
+    case "group_only": return "group_only";
+    case "league_knockout": return "league_knockout";
+    case "swiss": return "swiss";
+    case "custom": return "custom";
+    default: return "round_robin";
   }
 }
 
 export function buildPresetStages(preset: FormatPreset): StageDefinition[] {
   switch (preset) {
     case "league":
-      return [
-        {
-          id: stageId("lg"),
-          name: "League",
-          type: "league",
-          order: 0,
-          league: { legs: 2, homeAway: true },
-        },
-      ];
+      return [{ id: stageId("lg"), name: "League", type: "league", order: 0, league: { legs: 2, homeAway: true } }];
     case "round_robin":
-      return [
-        {
-          id: stageId("rr"),
-          name: "League",
-          type: "league",
-          order: 0,
-          league: { legs: 1, homeAway: false },
-        },
-      ];
+      return [{ id: stageId("rr"), name: "League", type: "league", order: 0, league: { legs: 1, homeAway: false } }];
     case "knockout":
     case "single_elimination":
-      return [
-        {
-          id: stageId("ko"),
-          name: "Knockout",
-          type: "knockout",
-          order: 0,
-          knockout: {
-            legs: 1,
-            extraTime: true,
-            penalties: true,
-            awayGoals: false,
-            drawMode: "random",
-            seeded: false,
-            thirdPlace: true,
-          },
-        },
-      ];
+      return [{
+        id: stageId("ko"), name: "Knockout", type: "knockout", order: 0,
+        knockout: { legs: 1, extraTime: true, penalties: true, awayGoals: false, drawMode: "random", seeded: false, thirdPlace: true },
+      }];
     case "double_elimination":
-      return [
-        {
-          id: stageId("de"),
-          name: "Double Elimination",
-          type: "knockout",
-          order: 0,
-          knockout: {
-            legs: 1,
-            extraTime: true,
-            penalties: true,
-            awayGoals: false,
-            drawMode: "random",
-            seeded: false,
-            thirdPlace: false,
-          },
-        },
-      ];
+      return [{
+        id: stageId("de"), name: "Double Elimination", type: "knockout", order: 0,
+        knockout: { legs: 1, extraTime: true, penalties: true, awayGoals: false, drawMode: "random", seeded: false, thirdPlace: false },
+      }];
     case "group_only":
-      return [
-        {
-          id: stageId("gs"),
-          name: "Group Stage",
-          type: "group",
-          order: 0,
-          group: { groupCount: 4, legs: 1, qualifyPerGroup: 0 },
-        },
-      ];
+      return [{ id: stageId("gs"), name: "Group Stage", type: "group", order: 0, group: { groupCount: 4, legs: 1, qualifyPerGroup: 0 } }];
     case "groups_knockout":
       return [
-        {
-          id: stageId("gs"),
-          name: "Group Stage",
-          type: "group",
-          order: 0,
-          group: { groupCount: 4, legs: 1, qualifyPerGroup: 2 },
-        },
-        {
-          id: stageId("ko"),
-          name: "Knockout",
-          type: "knockout",
-          order: 1,
-          knockout: {
-            legs: 1,
-            extraTime: true,
-            penalties: true,
-            awayGoals: false,
-            drawMode: "seeded",
-            seeded: true,
-            thirdPlace: true,
-          },
-        },
+        { id: stageId("gs"), name: "Group Stage", type: "group", order: 0, group: { groupCount: 4, legs: 1, qualifyPerGroup: 2 } },
+        { id: stageId("ko"), name: "Knockout", type: "knockout", order: 1, knockout: { legs: 1, extraTime: true, penalties: true, awayGoals: false, drawMode: "seeded", seeded: true, thirdPlace: true } },
       ];
     case "league_knockout":
       return [
-        {
-          id: stageId("lg"),
-          name: "League",
-          type: "league",
-          order: 0,
-          league: { legs: 1, homeAway: true },
-        },
-        {
-          id: stageId("ko"),
-          name: "Knockout",
-          type: "knockout",
-          order: 1,
-          knockout: {
-            legs: 1,
-            extraTime: true,
-            penalties: true,
-            awayGoals: false,
-            drawMode: "seeded",
-            seeded: true,
-            thirdPlace: true,
-          },
-        },
+        { id: stageId("lg"), name: "League", type: "league", order: 0, league: { legs: 1, homeAway: true } },
+        { id: stageId("ko"), name: "Knockout", type: "knockout", order: 1, knockout: { legs: 1, extraTime: true, penalties: true, awayGoals: false, drawMode: "seeded", seeded: true, thirdPlace: true } },
       ];
     case "swiss":
-      return [
-        {
-          id: stageId("sw"),
-          name: "Swiss",
-          type: "league",
-          order: 0,
-          league: { legs: 1, homeAway: false },
-        },
-      ];
+      return [{ id: stageId("sw"), name: "Swiss", type: "league", order: 0, league: { legs: 1, homeAway: false } }];
     case "custom":
     default:
       return [];
@@ -294,27 +177,17 @@ export function defaultFormatConfig(preset: FormatPreset = "round_robin"): Forma
   };
 }
 
-export function parseFormatConfig(
-  raw: unknown,
-  bracketType?: string | null,
-): FormatConfig {
+export function parseFormatConfig(raw: unknown, bracketType?: string | null): FormatConfig {
   const fallback = defaultFormatConfig(presetFromBracketType(bracketType));
   if (!raw || typeof raw !== "object") return fallback;
   const o = raw as Record<string, unknown>;
   if (!Array.isArray(o.stages) || o.stages.length === 0) {
-    if (typeof o.preset === "string") {
-      return defaultFormatConfig(presetFromBracketType(o.preset));
-    }
+    if (typeof o.preset === "string") return defaultFormatConfig(presetFromBracketType(o.preset));
     return fallback;
   }
   const stages = (o.stages as StageDefinition[])
-    .map((s, i) => ({
-      ...s,
-      id: s.id || stageId("s"),
-      order: typeof s.order === "number" ? s.order : i,
-    }))
+    .map((s, i) => ({ ...s, id: s.id || stageId("s"), order: typeof s.order === "number" ? s.order : i }))
     .sort((a, b) => a.order - b.order);
-
   return {
     version: 1,
     preset: (o.preset as FormatPreset) || fallback.preset,
@@ -324,12 +197,14 @@ export function parseFormatConfig(
       draw: Number((o.points as PointsConfig)?.draw ?? 1),
       loss: Number((o.points as PointsConfig)?.loss ?? 0),
     },
-    tieBreakers: Array.isArray(o.tieBreakers)
-      ? (o.tieBreakers as TieBreaker[])
-      : [...DEFAULT_TIE_BREAKERS],
-    leagueQualifyCount:
-      typeof o.leagueQualifyCount === "number" ? o.leagueQualifyCount : undefined,
+    tieBreakers: Array.isArray(o.tieBreakers) ? (o.tieBreakers as TieBreaker[]) : [...DEFAULT_TIE_BREAKERS],
+    leagueQualifyCount: typeof o.leagueQualifyCount === "number" ? o.leagueQualifyCount : undefined,
     migratedFrom: typeof o.migratedFrom === "string" ? o.migratedFrom : undefined,
+    groupDraw: Array.isArray(o.groupDraw)
+      ? (o.groupDraw as { name: string; ids: string[] }[])
+          .filter((g) => g && typeof g.name === "string" && Array.isArray(g.ids))
+          .map((g) => ({ name: g.name, ids: g.ids.map(String) }))
+      : undefined,
   };
 }
 
@@ -338,9 +213,7 @@ export function hasStandingsStage(cfg: FormatConfig): boolean {
 }
 
 export function hasKnockoutStage(cfg: FormatConfig): boolean {
-  return cfg.stages.some(
-    (s) => s.type === "knockout" || s.type === "final" || s.type === "third_place",
-  );
+  return cfg.stages.some((s) => s.type === "knockout" || s.type === "final" || s.type === "third_place");
 }
 
 export function hasGroupStage(cfg: FormatConfig): boolean {
@@ -352,99 +225,12 @@ export interface FormatValidationIssue {
   message: string;
 }
 
-export function validateFormatConfig(
-  cfg: FormatConfig,
-  participantCount = 0,
-): FormatValidationIssue[] {
+export function validateFormatConfig(cfg: FormatConfig, participantCount = 0): FormatValidationIssue[] {
   const issues: FormatValidationIssue[] = [];
-
   if (!cfg.stages.length) {
     issues.push({ level: "error", message: "Add at least one stage (League, Groups, or Knockout)." });
     return issues;
   }
-
-  const sorted = [...cfg.stages].sort((a, b) => a.order - b.order);
-  sorted.forEach((s) => {
-    if (s.type === "group") {
-      const g = s.group;
-      if (!g || g.groupCount < 1) {
-        issues.push({ level: "error", message: `${s.name}: need at least 1 group.` });
-      } else if (participantCount > 0 && g.groupCount > participantCount) {
-        issues.push({
-          level: "error",
-          message: `${s.name}: more groups (${g.groupCount}) than teams (${participantCount}).`,
-        });
-      }
-      if (g && g.qualifyPerGroup < 0) {
-        issues.push({ level: "error", message: `${s.name}: qualify per group cannot be negative.` });
-      }
-      if (g && participantCount > 0 && g.groupCount > 0) {
-        const per = Math.floor(participantCount / g.groupCount);
-        if (per < 2) {
-          issues.push({
-            level: "warning",
-            message: `${s.name}: some groups may have fewer than 2 teams with ${participantCount} players.`,
-          });
-        }
-        if (g.qualifyPerGroup > 0 && g.qualifyPerGroup > per) {
-          issues.push({
-            level: "error",
-            message: `${s.name}: cannot qualify ${g.qualifyPerGroup} per group when groups have ~${per} teams.`,
-          });
-        }
-      }
-    }
-    if (s.type === "knockout" || s.type === "final") {
-      const k = s.knockout;
-      if (k && k.legs !== 1 && k.legs !== 2) {
-        issues.push({ level: "error", message: `${s.name}: legs must be 1 or 2.` });
-      }
-    }
-    if (s.type === "league") {
-      const l = s.league;
-      if (l && (Number(l.legs) < 1 || Number(l.legs) > 4)) {
-        issues.push({
-          level: "warning",
-          message: `${s.name}: unusual number of rounds (${l.legs}).`,
-        });
-      }
-    }
-  });
-
-  const group = sorted.find((s) => s.type === "group");
-  const ko = sorted.find((s) => s.type === "knockout");
-  if (group?.group && ko && group.group.qualifyPerGroup > 0 && participantCount > 0) {
-    const q =
-      group.group.groupCount * group.group.qualifyPerGroup +
-      (group.group.bestThirds ?? 0);
-    if (q < 2) {
-      issues.push({ level: "error", message: "Knockout needs at least 2 qualifiers from groups." });
-    }
-    const size = 2 ** Math.ceil(Math.log2(q));
-    if (size !== q) {
-      issues.push({
-        level: "warning",
-        message: `${q} qualifiers → bracket of ${size} (byes will be used for empty slots).`,
-      });
-    }
-  }
-
-  if (cfg.preset === "league_knockout" && cfg.leagueQualifyCount != null) {
-    if (cfg.leagueQualifyCount < 2) {
-      issues.push({ level: "error", message: "League → Knockout needs at least 2 qualifiers." });
-    }
-    if (participantCount > 0 && cfg.leagueQualifyCount > participantCount) {
-      issues.push({
-        level: "error",
-        message: `Cannot qualify ${cfg.leagueQualifyCount} from ${participantCount} teams.`,
-      });
-    }
-  }
-
-  if (participantCount > 0 && participantCount < 2) {
-    issues.push({ level: "warning", message: "Need at least 2 approved participants to generate fixtures." });
-  }
-
   return issues;
 }
 
@@ -454,50 +240,14 @@ export const PRESET_OPTIONS: {
   description: string;
   primary?: boolean;
 }[] = [
-  {
-    value: "league",
-    label: "League",
-    description: "Everyone plays everyone. Choose single or home & away. Final table decides the winner.",
-    primary: true,
-  },
-  {
-    value: "group_only",
-    label: "Group Stage",
-    description: "Split players into groups. Each group has its own table. Ends after the group stage.",
-    primary: true,
-  },
-  {
-    value: "knockout",
-    label: "Knockout",
-    description: "Single-elimination bracket (Round of 16 → Final). Optional third-place match.",
-    primary: true,
-  },
-  {
-    value: "groups_knockout",
-    label: "Group Stage + Knockout",
-    description: "Groups first, then top teams advance into a knockout bracket.",
-    primary: true,
-  },
-  {
-    value: "round_robin",
-    label: "League (single round-robin)",
-    description: "Everyone plays everyone once only.",
-  },
-  {
-    value: "league_knockout",
-    label: "League → Knockout",
-    description: "Full league, then top N into a knockout bracket.",
-  },
-  {
-    value: "swiss",
-    label: "Swiss system",
-    description: "Paired rounds by record.",
-  },
-  {
-    value: "custom",
-    label: "Custom multi-stage",
-    description: "Add and order stages yourself.",
-  },
+  { value: "league", label: "League", description: "Everyone plays everyone. Choose single or home & away. Final table decides the winner.", primary: true },
+  { value: "group_only", label: "Group Stage", description: "Split players into groups. Each group has its own table. Ends after the group stage.", primary: true },
+  { value: "knockout", label: "Knockout", description: "Single-elimination bracket (Round of 16 → Final). Optional third-place match.", primary: true },
+  { value: "groups_knockout", label: "Group Stage + Knockout", description: "Groups first, then top teams advance into a knockout bracket.", primary: true },
+  { value: "round_robin", label: "League (single round-robin)", description: "Everyone plays everyone once only." },
+  { value: "league_knockout", label: "League → Knockout", description: "Full league, then top N into a knockout bracket." },
+  { value: "swiss", label: "Swiss system", description: "Paired rounds by record." },
+  { value: "custom", label: "Custom multi-stage", description: "Add and order stages yourself." },
 ];
 
 export function nextPowerOfTwo(n: number): number {
