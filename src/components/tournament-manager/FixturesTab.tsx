@@ -9,7 +9,8 @@ import {
   generateFixturesForTournament,
   bracketLabel,
 } from "@/lib/brackets";
-import { parseFormatConfig } from "@/lib/tournament-format";
+import { parseFormatConfig, hasGroupStage } from "@/lib/tournament-format";
+import { seedKnockoutFromGroups } from "@/lib/seed-knockout";
 import { logActivity } from "@/lib/activity";
 import { ResultsTab } from "./ResultsTab";
 import { Button } from "@/components/ui/button";
@@ -380,6 +381,26 @@ export function FixturesTab({ tournament, data }: Props) {
           )}
           {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
         </Button>
+        {hasGroupStage(
+          parseFormatConfig(tournament.format_config, tournament.bracket_type),
+        ) && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || data.matches.length === 0}
+            onClick={() => {
+              setBusy(true);
+              void seedKnockoutFromGroups(tournament, data)
+                .catch((e) =>
+                  toast.error(e instanceof Error ? e.message : "Seed failed"),
+                )
+                .finally(() => setBusy(false));
+            }}
+            title="Fill first knockout round from group tables (A1 vs B2)"
+          >
+            Seed knockout from groups
+          </Button>
+        )}
         <Button variant="secondary" onClick={addMatch} disabled={!activeMdId}>
           <Plus className="h-4 w-4 mr-1.5" /> Add match
         </Button>
