@@ -34,7 +34,6 @@ export function sortStandings(rows: StandingRow[]): StandingRow[] {
   );
 }
 
-/** Rebuild standings from finished matches. Returns computed rows. */
 export async function recomputeStandings(
   tournamentId: string,
 ): Promise<StandingRow[]> {
@@ -326,12 +325,14 @@ export function useTournamentData(tournamentId: string, active: boolean) {
 
 export type TournamentData = ReturnType<typeof useTournamentData>;
 
-/** Collapse "Group A · Matchday 1" → "Matchday 1"; strip KO path suffixes. */
+/** "Group A · Matchday 1" → "Matchday 1"; "Round of 16 · A1 vs B2" → "Round of 16" */
 export function normalizeMatchdayLabel(raw: string): string {
   const s = raw.trim();
-  const groupMd = s.match(/^Group\s+[A-Z0-9]+\s*[·•\-–]\s*(Matchday\s+\d+)/i);
-  if (groupMd?.[1]) return groupMd[1];
-  const head = s.split(/[·•]/)[0]?.trim() ?? s;
+  const mdNum = s.match(/Matchday\s+(\d+)/i);
+  if (mdNum && /group\s*[a-z0-9]/i.test(s)) {
+    return `Matchday ${mdNum[1]}`;
+  }
+  const head = s.split(/\s*[·•|—–]\s*/)[0]?.trim() ?? s;
   if (/^(Round of \d+|Quarter-?finals?|Semi-?finals?|Final|Third Place)/i.test(head)) {
     return head.replace(/\s*—\s*Leg\s*\d+$/i, "").trim() || head;
   }
