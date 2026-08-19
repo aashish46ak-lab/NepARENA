@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useLayoutEffect, type CSSProperties } from "
 import type { Match, TournamentParticipant } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { Trophy, Lock } from "lucide-react";
+import { Trophy, Lock, Download } from "lucide-react";
 
 const CARD_W = 176;
 const CARD_H = 68;
@@ -33,20 +33,14 @@ function roundTitle(roundIndex: number, totalRounds: number): string {
 
 type RoundCol = { round: number; matches: Match[] };
 
-/** Vertical slot layout so each later-round match sits between its two feeders */
 function layoutTree(rounds: RoundCol[]) {
   if (!rounds.length) return { slots: [] as number[][], totalHeight: 0 };
-
   const n0 = Math.max(rounds[0].matches.length, 1);
   const unit = CARD_H + 20;
   const slots: number[][] = [];
-
   const r0: number[] = [];
-  for (let i = 0; i < n0; i++) {
-    r0.push(unit / 2 + i * unit);
-  }
+  for (let i = 0; i < n0; i++) r0.push(unit / 2 + i * unit);
   slots.push(r0);
-
   for (let r = 1; r < rounds.length; r++) {
     const prev = slots[r - 1];
     const n = rounds[r].matches.length;
@@ -60,79 +54,39 @@ function layoutTree(rounds: RoundCol[]) {
     }
     slots.push(centers);
   }
-
   const last = slots[slots.length - 1] ?? [0];
   const totalHeight = Math.max(...last.map((c) => c + CARD_H / 2), n0 * unit) + 24;
   return { slots, totalHeight };
 }
 
-function ConnectorSvg({
-  rounds,
-  slots,
-  height,
-}: {
-  rounds: RoundCol[];
-  slots: number[][];
-  height: number;
-}) {
+function ConnectorSvg({ rounds, slots, height }: { rounds: RoundCol[]; slots: number[][]; height: number }) {
   if (rounds.length < 2) return null;
   const width = rounds.length * (CARD_W + COL_GAP) - COL_GAP + ROUND_PAD_X * 2;
   const paths: string[] = [];
-
   for (let r = 0; r < rounds.length - 1; r++) {
     const leftX = ROUND_PAD_X + r * (CARD_W + COL_GAP) + CARD_W;
     const rightX = ROUND_PAD_X + (r + 1) * (CARD_W + COL_GAP);
     const midX = (leftX + rightX) / 2;
     const nextN = rounds[r + 1].matches.length;
-
     for (let i = 0; i < nextN; i++) {
       const yParent = slots[r + 1]?.[i];
       if (yParent == null) continue;
       const yA = slots[r]?.[i * 2];
       const yB = slots[r]?.[i * 2 + 1];
-
-      if (yA != null) {
-        paths.push(`M ${leftX} ${yA} H ${midX} V ${yParent} H ${rightX}`);
-      }
-      if (yB != null) {
-        paths.push(`M ${leftX} ${yB} H ${midX} V ${yParent}`);
-      }
+      if (yA != null) paths.push(`M ${leftX} ${yA} H ${midX} V ${yParent} H ${rightX}`);
+      if (yB != null) paths.push(`M ${leftX} ${yB} H ${midX} V ${yParent}`);
     }
   }
-
   return (
-    <svg
-      className="pointer-events-none absolute left-0 top-0"
-      width={width}
-      height={height}
-      style={{ overflow: "visible" }}
-    >
+    <svg className="pointer-events-none absolute left-0 top-0" width={width} height={height} style={{ overflow: "visible" }}>
       {paths.map((d, i) => (
-        <path
-          key={i}
-          d={d}
-          fill="none"
-          stroke="rgba(148,163,184,0.35)"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path key={i} d={d} fill="none" stroke="rgba(148,163,184,0.35)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       ))}
     </svg>
   );
 }
 
-function MatchCard({
-  m,
-  players,
-  isFinal,
-  style,
-}: {
-  m: Match;
-  players: TournamentParticipant[];
-  isFinal: boolean;
-  style: CSSProperties;
-}) {
+function MatchCard({ m, players, isFinal, style }: { m: Match; players: TournamentParticipant[]; isFinal: boolean; style: CSSProperties }) {
   const home = labelOf(players, m.home_id);
   const away = labelOf(players, m.away_id);
   const hp = photoOf(players, m.home_id);
@@ -142,6 +96,12 @@ function MatchCard({
   const homeWin = hs != null && ascore != null && hs > ascore;
   const awayWin = hs != null && ascore != null && ascore > hs;
   const leg = m.leg && m.leg > 1 ? `L${m.leg}` : m.leg === 1 ? "L1" : null;
+  const pathHint =
+    !m.home_id && !m.away_id && m.matchday && String(m.matchday).includes("·")
+      ? String(m.matchday).split("·").slice(1).join("·").trim()
+      : null;
+  const homeLabel = pathHint && !m.home_id ? pathHint.split(/\s+vs\s+/i)[0]?.trim() || home : home;
+  const awayLabel = pathHint && !m.away_id ? pathHint.split(/\s+vs\s+/i)[1]?.trim() || away : away;
 
   return (
     <div
@@ -156,60 +116,34 @@ function MatchCard({
       {isFinal && (
         <div className="flex h-4 items-center justify-center gap-1 border-b border-amber-400/25 bg-amber-400/10">
           <Trophy className="h-2.5 w-2.5 text-amber-300" />
-          <span className="text-[8px] font-bold uppercase tracking-wider text-amber-200">
-            Final
-          </span>
+          <span className="text-[8px] font-bold uppercase tracking-wider text-amber-200">Final</span>
         </div>
       )}
       <div className={cn("flex flex-col", isFinal ? "h-[calc(100%-1rem)]" : "h-full")}>
-        <Row name={home} photo={hp} score={hs} win={homeWin} muted={!m.home_id} />
+        <Row name={homeLabel} photo={hp} score={hs} win={homeWin} muted={!m.home_id} />
         <div className="border-t border-white/8" />
-        <Row name={away} photo={ap} score={ascore} win={awayWin} muted={!m.away_id} />
+        <Row name={awayLabel} photo={ap} score={ascore} win={awayWin} muted={!m.away_id} />
       </div>
-      {leg && (
-        <span className="absolute right-1 top-1 rounded bg-black/50 px-1 text-[8px] font-semibold text-white/60">
-          {leg}
+      {(leg || pathHint) && (
+        <span className="absolute right-1 top-0.5 max-w-[72%] truncate rounded bg-black/55 px-1 text-[7px] font-semibold text-sky-200/90">
+          {pathHint || leg}
         </span>
       )}
     </div>
   );
 }
 
-function Row({
-  name,
-  photo,
-  score,
-  win,
-  muted,
-}: {
-  name: string;
-  photo: string | null;
-  score: number | null;
-  win: boolean;
-  muted: boolean;
-}) {
+function Row({ name, photo, score, win, muted }: { name: string; photo: string | null; score: number | null; win: boolean; muted: boolean }) {
   return (
     <div className={cn("flex flex-1 items-center gap-1.5 px-2", win && "bg-emerald-500/15")}>
       <Avatar className="h-6 w-6 shrink-0 rounded-md">
         <AvatarImage src={photo ?? undefined} className="rounded-md object-cover" />
-        <AvatarFallback className="rounded-md text-[8px] bg-white/10">
-          {name.slice(0, 2).toUpperCase()}
-        </AvatarFallback>
+        <AvatarFallback className="rounded-md text-[8px] bg-white/10">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-[11px] font-semibold",
-          muted ? "text-white/35 italic" : win ? "text-emerald-100" : "text-white/90",
-        )}
-      >
+      <span className={cn("min-w-0 flex-1 truncate text-[11px] font-semibold", muted ? "text-white/35 italic" : win ? "text-emerald-100" : "text-white/90")}>
         {name}
       </span>
-      <span
-        className={cn(
-          "w-5 shrink-0 text-right text-xs font-bold tabular-nums",
-          score == null ? "text-white/20" : win ? "text-emerald-300" : "text-white/70",
-        )}
-      >
+      <span className={cn("w-5 shrink-0 text-right text-xs font-bold tabular-nums", score == null ? "text-white/20" : win ? "text-emerald-300" : "text-white/70")}>
         {score != null ? score : "–"}
       </span>
     </div>
@@ -217,14 +151,7 @@ function Row({
 }
 
 export function BracketTree({
-  matches,
-  players,
-  locked,
-  tournamentName,
-  tournamentLogo,
-  organizerName,
-  organizerLogo,
-  bannerUrl,
+  matches, players, locked, tournamentName, tournamentLogo, organizerName, organizerLogo, bannerUrl,
 }: {
   matches: Match[];
   players: TournamentParticipant[];
@@ -253,42 +180,91 @@ export function BracketTree({
 
   const totalRounds = rounds.length;
   const { slots, totalHeight } = useMemo(() => layoutTree(rounds), [rounds]);
+  const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   useLayoutEffect(() => setMounted(true), []);
+
+  const downloadPng = async () => {
+    const el = rootRef.current;
+    if (!el) return;
+    try {
+      const mod = await import("html2canvas").catch(() => null);
+      if (mod?.default) {
+        const canvas = await mod.default(el, { backgroundColor: "#070b14", scale: 2, useCORS: true });
+        const a = document.createElement("a");
+        a.download = `${(tournamentName || "bracket").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-bracket.png`;
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+        return;
+      }
+    } catch { /* fall through */ }
+    const canvas = document.createElement("canvas");
+    const colW = 200;
+    canvas.width = Math.max(900, rounds.length * colW + 80);
+    canvas.height = Math.max(400, totalHeight + 120);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#070b14";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "bold 18px system-ui,sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(tournamentName || "Knockout Bracket", canvas.width / 2, 36);
+    if (organizerName) {
+      ctx.font = "12px system-ui,sans-serif";
+      ctx.fillStyle = "#7dd3fc";
+      ctx.fillText(organizerName, canvas.width / 2, 56);
+    }
+    rounds.forEach((col, ci) => {
+      const x = 40 + ci * colW;
+      col.matches.forEach((m, mi) => {
+        const y = 80 + mi * (CARD_H + 24) * Math.pow(2, Math.min(ci, 3));
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
+        ctx.fillRect(x, y, 170, CARD_H);
+        ctx.strokeRect(x, y, 170, CARD_H);
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "12px system-ui,sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(labelOf(players, m.home_id).slice(0, 18), x + 10, y + 28);
+        ctx.fillText(labelOf(players, m.away_id).slice(0, 18), x + 10, y + 50);
+        if (m.played && m.home_score != null && m.away_score != null) {
+          ctx.textAlign = "right";
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillText(String(m.home_score), x + 160, y + 28);
+          ctx.fillText(String(m.away_score), x + 160, y + 50);
+        }
+      });
+    });
+    ctx.fillStyle = "#64748b";
+    ctx.font = "11px system-ui,sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("NEPARENA", canvas.width / 2, canvas.height - 16);
+    const a = document.createElement("a");
+    a.download = `${(tournamentName || "bracket").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-bracket.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
 
   if (rounds.length === 0) {
     return (
       <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/80 to-slate-950 px-4 py-12 text-center">
         <Trophy className="mx-auto mb-3 h-8 w-8 text-white/20" />
         <p className="text-sm text-muted-foreground">No bracket matches yet.</p>
-        <p className="mt-1 text-xs text-muted-foreground/70">
-          Generate knockout fixtures from the organizer dashboard.
-        </p>
       </div>
     );
   }
 
-  const treeWidth =
-    rounds.length * (CARD_W + COL_GAP) - COL_GAP + ROUND_PAD_X * 2;
+  const treeWidth = rounds.length * (CARD_W + COL_GAP) - COL_GAP + ROUND_PAD_X * 2;
 
   return (
     <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl border border-white/10",
-        "bg-[#070b14]",
-        locked && "select-none",
-      )}
+      ref={rootRef}
+      className={cn("relative overflow-hidden rounded-2xl border border-white/10", "bg-[#070b14]", locked && "select-none")}
     >
       {bannerUrl && (
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.1]"
-          style={{
-            backgroundImage: `url(${bannerUrl})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.1]" style={{ backgroundImage: `url(${bannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
       )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sky-500/[0.06] via-transparent to-emerald-500/[0.04]" />
 
@@ -296,103 +272,52 @@ export function BracketTree({
         <div className="flex items-center gap-3">
           {(organizerLogo || tournamentLogo) && (
             <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/5 shadow-lg shadow-sky-500/10">
-              <img
-                src={organizerLogo || tournamentLogo || ""}
-                alt=""
-                className="h-full w-full object-cover"
-              />
+              <img src={organizerLogo || tournamentLogo || ""} alt="" className="h-full w-full object-cover" />
             </div>
           )}
           <div className="min-w-0 text-center sm:text-left">
             {organizerName && (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300/80">
-                {organizerName}
-              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300/80">{organizerName}</p>
             )}
-            <h2 className="truncate text-base font-bold tracking-tight text-white sm:text-lg">
-              {tournamentName || "Knockout Bracket"}
-            </h2>
+            <h2 className="truncate text-base font-bold tracking-tight text-white sm:text-lg">{tournamentName || "Knockout Bracket"}</h2>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="h-px w-8 bg-gradient-to-r from-transparent to-sky-400/50" />
-          <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-200">
-            Knockout Bracket
-          </span>
+          <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-200">Knockout Bracket</span>
           <span className="h-px w-8 bg-gradient-to-l from-transparent to-sky-400/50" />
         </div>
       </div>
 
-      <div
-        ref={scrollRef}
-        className={cn(
-          "relative z-[1] overflow-x-auto overflow-y-hidden",
-          locked && "pointer-events-none",
-        )}
-      >
+      <div ref={scrollRef} className={cn("relative z-[1] overflow-x-auto overflow-y-hidden", locked && "pointer-events-none")}>
         {locked && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#070b14]/45 backdrop-blur-[2px]">
             <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/55 px-4 py-2 text-xs font-semibold text-white/80">
-              <Lock className="h-3.5 w-3.5" />
-              Bracket locked
+              <Lock className="h-3.5 w-3.5" /> Bracket locked
             </div>
           </div>
         )}
-
-        <div
-          className={cn("relative mx-auto", locked && "blur-[2px]")}
-          style={{
-            width: treeWidth,
-            height: totalHeight + 40,
-            minWidth: "100%",
-          }}
-        >
+        <div className={cn("relative mx-auto", locked && "blur-[2px]")} style={{ width: treeWidth, height: totalHeight + 40, minWidth: "100%" }}>
           <div className="absolute left-0 top-0 flex" style={{ width: treeWidth }}>
             {rounds.map((col, colIdx) => {
               const title = roundTitle(colIdx, totalRounds);
               const isFinal = colIdx === totalRounds - 1;
               return (
-                <div
-                  key={`lbl-${col.round}`}
-                  className="flex justify-center"
-                  style={{
-                    width: CARD_W,
-                    marginLeft: colIdx === 0 ? ROUND_PAD_X : COL_GAP,
-                  }}
-                >
-                  <span
-                    className={cn(
-                      "text-[10px] font-bold uppercase tracking-[0.12em]",
-                      isFinal ? "text-amber-300" : "text-white/40",
-                    )}
-                  >
-                    {title}
-                  </span>
+                <div key={`lbl-${col.round}`} className="flex justify-center" style={{ width: CARD_W, marginLeft: colIdx === 0 ? ROUND_PAD_X : COL_GAP }}>
+                  <span className={cn("text-[10px] font-bold uppercase tracking-[0.12em]", isFinal ? "text-amber-300" : "text-white/40")}>{title}</span>
                 </div>
               );
             })}
           </div>
-
           <div className="absolute left-0 top-8" style={{ width: treeWidth, height: totalHeight }}>
-            {mounted && (
-              <ConnectorSvg rounds={rounds} slots={slots} height={totalHeight} />
-            )}
+            {mounted && <ConnectorSvg rounds={rounds} slots={slots} height={totalHeight} />}
             {rounds.map((col, colIdx) => {
               const isFinal = colIdx === totalRounds - 1;
               const left = ROUND_PAD_X + colIdx * (CARD_W + COL_GAP);
               return col.matches.map((m, mi) => {
                 const cy = slots[colIdx]?.[mi] ?? CARD_H;
                 return (
-                  <div
-                    key={m.id}
-                    className="absolute"
-                    style={{
-                      left,
-                      top: cy - CARD_H / 2,
-                      width: CARD_W,
-                      height: CARD_H,
-                    }}
-                  >
+                  <div key={m.id} className="absolute" style={{ left, top: cy - CARD_H / 2, width: CARD_W, height: CARD_H }}>
                     <MatchCard m={m} players={players} isFinal={isFinal} style={{}} />
                   </div>
                 );
@@ -402,12 +327,18 @@ export function BracketTree({
         </div>
       </div>
 
-      <div className="relative z-[1] flex flex-col items-center gap-1 border-t border-white/10 px-4 py-4">
+      <div className="relative z-[1] flex flex-col items-center gap-2 border-t border-white/10 px-4 py-4">
+        <button
+          type="button"
+          onClick={() => void downloadPng()}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] font-semibold text-white/80 hover:bg-white/10"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Download bracket PNG
+        </button>
         <div className="flex items-center gap-2">
           <span className="h-px w-10 bg-gradient-to-r from-transparent to-white/20" />
-          <span className="text-[11px] font-bold tracking-[0.2em] text-white/50">
-            NEPARENA
-          </span>
+          <span className="text-[11px] font-bold tracking-[0.2em] text-white/50">NEPARENA</span>
           <span className="h-px w-10 bg-gradient-to-l from-transparent to-white/20" />
         </div>
         <p className="text-[9px] text-white/30">Powered by NepARENA</p>
