@@ -144,10 +144,6 @@ export async function recomputeStandings(
 
 const PLACE_LABELS = ["Champion (1st)", "Runner-up (2nd)", "3rd Place"];
 
-/**
- * End tournament → History + Hall of Fame (top 3).
- * Always attempts to save; does not block ending if podium is empty.
- */
 export async function archiveTournamentToHistory(
   tournament: Tournament,
 ): Promise<{ winner: string; count: number; warning?: string }> {
@@ -330,10 +326,22 @@ export function useTournamentData(tournamentId: string, active: boolean) {
 
 export type TournamentData = ReturnType<typeof useTournamentData>;
 
+/** Collapse "Group A · Matchday 1" → "Matchday 1"; strip KO path suffixes. */
+export function normalizeMatchdayLabel(raw: string): string {
+  const s = raw.trim();
+  const groupMd = s.match(/^Group\s+[A-Z0-9]+\s*[·•\-–]\s*(Matchday\s+\d+)/i);
+  if (groupMd?.[1]) return groupMd[1];
+  const head = s.split(/[·•]/)[0]?.trim() ?? s;
+  if (/^(Round of \d+|Quarter-?finals?|Semi-?finals?|Final|Third Place)/i.test(head)) {
+    return head.replace(/\s*—\s*Leg\s*\d+$/i, "").trim() || head;
+  }
+  return s;
+}
+
 export function matchdayName(matchdays: Matchday[], m: Match): string {
-  return (
-    matchdays.find((d) => d.id === m.matchday_id)?.name ?? "Round " + m.round
-  );
+  const raw =
+    matchdays.find((d) => d.id === m.matchday_id)?.name ?? "Round " + m.round;
+  return normalizeMatchdayLabel(raw);
 }
 
 export function playerName(
