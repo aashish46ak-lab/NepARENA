@@ -62,9 +62,7 @@ export function TournamentDetailPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<TabId>("my_matches");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
-    null,
-  );
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const tabRef = useRef<HTMLDivElement>(null);
 
@@ -74,42 +72,17 @@ export function TournamentDetailPage() {
     queryFn: async () => {
       const [tRes, pRes, mRes, mdRes, sRes] = await Promise.all([
         supabase.from("tournaments").select("*").eq("id", id).maybeSingle(),
-        supabase
-          .from("tournament_participants")
-          .select("*")
-          .eq("tournament_id", id)
-          .order("created_at"),
-        supabase
-          .from("matches")
-          .select("*")
-          .eq("tournament_id", id)
-          .order("round")
-          .order("position"),
-        supabase
-          .from("matchdays")
-          .select("*")
-          .eq("tournament_id", id)
-          .order("sort_order"),
-        supabase
-          .from("tournament_standings")
-          .select("*")
-          .eq("tournament_id", id),
+        supabase.from("tournament_participants").select("*").eq("tournament_id", id).order("created_at"),
+        supabase.from("matches").select("*").eq("tournament_id", id).order("round").order("position"),
+        supabase.from("matchdays").select("*").eq("tournament_id", id).order("sort_order"),
+        supabase.from("tournament_standings").select("*").eq("tournament_id", id),
       ]);
       if (tRes.error) throw tRes.error;
       const tour = tRes.data as Record<string, unknown> | null;
-      let organizer: {
-        id: string;
-        name: string;
-        slug: string;
-        logo_url: string | null;
-      } | null = null;
+      let organizer: { id: string; name: string; slug: string; logo_url: string | null } | null = null;
       const orgId = tour?.organizer_id as string | null | undefined;
       if (orgId) {
-        const { data: o } = await supabase
-          .from("organizers")
-          .select("id, name, slug, logo_url")
-          .eq("id", orgId)
-          .maybeSingle();
+        const { data: o } = await supabase.from("organizers").select("id, name, slug, logo_url").eq("id", orgId).maybeSingle();
         if (o) organizer = o as typeof organizer;
       }
       return {
@@ -125,11 +98,7 @@ export function TournamentDetailPage() {
 
   const myPart = useMemo(() => {
     if (!user || !data) return null;
-    return (
-      data.participants.find(
-        (p) => p.user_id === user.id && String(p.status) === "approved",
-      ) ?? null
-    );
+    return data.participants.find((p) => p.user_id === user.id && String(p.status) === "approved") ?? null;
   }, [user, data]);
 
   const { data: pendingItems = [], refetch: refetchPending } = useQuery({
@@ -138,14 +107,8 @@ export function TournamentDetailPage() {
     queryFn: async () => {
       const pms = await loadPendingMatches(user!.id);
       const mine = pms.filter((p) => p.tournamentId === id);
-      const subs = await loadMySubmissions(
-        user!.id,
-        mine.map((p) => p.match.id),
-      );
-      return mine.map((pm) => ({
-        pm,
-        submission: subs.get(pm.match.id) ?? null,
-      })) as { pm: PendingMatch; submission: MatchSubmission | null }[];
+      const subs = await loadMySubmissions(user!.id, mine.map((p) => p.match.id));
+      return mine.map((pm) => ({ pm, submission: subs.get(pm.match.id) ?? null })) as { pm: PendingMatch; submission: MatchSubmission | null }[];
     },
   });
 
@@ -153,30 +116,15 @@ export function TournamentDetailPage() {
     if (!id) return;
     const channel = supabase
       .channel("tour-" + id)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "matches",
-          filter: "tournament_id=eq." + id,
-        },
-        () => {
-          void qc.invalidateQueries({ queryKey: ["tournament", id] });
-          void refetchPending();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "match_submissions" },
-        () => {
-          void refetchPending();
-        },
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "matches", filter: "tournament_id=eq." + id }, () => {
+        void qc.invalidateQueries({ queryKey: ["tournament", id] });
+        void refetchPending();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "match_submissions" }, () => {
+        void refetchPending();
+      })
       .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return () => { void supabase.removeChannel(channel); };
   }, [id, qc, refetchPending]);
 
   useEffect(() => {
@@ -190,12 +138,9 @@ export function TournamentDetailPage() {
     };
   }, [menuOpen]);
 
-  // MUST be before any early return (hooks order)
   const knockoutMatches = useMemo(() => {
     const all = (data?.matches ?? []) as unknown as Match[];
-    const bracketType = String(
-      (data?.tournament as Tournament | null | undefined)?.bracket_type ?? "",
-    );
+    const bracketType = String((data?.tournament as Tournament | null | undefined)?.bracket_type ?? "");
     const ko = all.filter(
       (m) =>
         m.stage_type === "knockout" ||
@@ -203,12 +148,7 @@ export function TournamentDetailPage() {
         m.stage_type === "third_place" ||
         (typeof m.round === "number" && m.round >= 100),
     );
-    if (
-      ko.length === 0 &&
-      ["single_elimination", "double_elimination", "knockout"].includes(
-        bracketType,
-      )
-    ) {
+    if (ko.length === 0 && ["single_elimination", "double_elimination", "knockout"].includes(bracketType)) {
       return all;
     }
     return ko.length ? ko : all;
@@ -244,16 +184,8 @@ export function TournamentDetailPage() {
   const rulesText = (tournament.rules_text as string | null) ?? null;
   const rulesUrl = (tournament.rules_url as string | null) ?? null;
   const organizer = data.organizer;
-  const registrationOpen =
-    status === "registration_open" || status === "upcoming";
-  const registrationClosed = [
-    "registration_closed",
-    "live",
-    "ongoing",
-    "check_in",
-    "completed",
-    "archived",
-  ].includes(status);
+  const registrationOpen = status === "registration_open" || status === "upcoming";
+  const registrationClosed = ["registration_closed", "live", "ongoing", "check_in", "completed", "archived"].includes(status);
 
   const tabs: { id: TabId; label: string; icon: typeof Trophy }[] = [
     { id: "my_matches", label: "My Matches", icon: Gamepad2 },
@@ -272,10 +204,7 @@ export function TournamentDetailPage() {
     const el = menuBtnRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setMenuPos({
-      top: r.bottom + 6,
-      right: Math.max(8, window.innerWidth - r.right),
-    });
+    setMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
     setMenuOpen((v) => !v);
   };
 
@@ -315,8 +244,7 @@ export function TournamentDetailPage() {
       .eq("organizer_id", organizer.id)
       .in("role", ["owner", "admin"])
       .limit(1);
-    const contactId = (members?.[0] as { user_id?: string } | undefined)
-      ?.user_id;
+    const contactId = (members?.[0] as { user_id?: string } | undefined)?.user_id;
     if (!contactId) {
       toast.message("Organizer contact unavailable");
       return;
@@ -333,13 +261,11 @@ export function TournamentDetailPage() {
   const selectTab = (tid: TabId) => {
     setTab(tid);
     requestAnimationFrame(() => {
-      tabRef.current
-        ?.querySelector<HTMLElement>(`[data-tab="${tid}"]`)
-        ?.scrollIntoView({
-          behavior: "smooth",
-          inline: "center",
-          block: "nearest",
-        });
+      tabRef.current?.querySelector<HTMLElement>(`[data-tab="${tid}"]`)?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
     });
   };
 
@@ -360,19 +286,10 @@ export function TournamentDetailPage() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             {organizer?.logo_url ? (
-              <Link
-                to="/o/$slug"
-                params={{ slug: organizer.slug }}
-                className="shrink-0"
-              >
+              <Link to="/o/$slug" params={{ slug: organizer.slug }} className="shrink-0">
                 <Avatar className="h-10 w-10 rounded-xl">
-                  <AvatarImage
-                    src={organizer.logo_url}
-                    className="rounded-xl object-cover"
-                  />
-                  <AvatarFallback className="rounded-xl text-xs">
-                    {name.slice(0, 2)}
-                  </AvatarFallback>
+                  <AvatarImage src={organizer.logo_url} className="rounded-xl object-cover" />
+                  <AvatarFallback className="rounded-xl text-xs">{name.slice(0, 2)}</AvatarFallback>
                 </Avatar>
               </Link>
             ) : (
@@ -382,20 +299,12 @@ export function TournamentDetailPage() {
             )}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <h1 className="truncate text-sm font-bold text-white sm:text-base">
-                  {name}
-                </h1>
+                <h1 className="truncate text-sm font-bold text-white sm:text-base">{name}</h1>
                 {isLive && (
-                  <span className="shrink-0 rounded-full bg-rose-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase text-rose-200">
-                    LIVE
-                  </span>
+                  <span className="shrink-0 rounded-full bg-rose-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase text-rose-200">LIVE</span>
                 )}
               </div>
-              {organizer && (
-                <p className="truncate text-[11px] text-neutral-500">
-                  {organizer.name}
-                </p>
-              )}
+              {organizer && <p className="truncate text-[11px] text-neutral-500">{organizer.name}</p>}
             </div>
             <button
               ref={menuBtnRef}
@@ -423,15 +332,10 @@ export function TournamentDetailPage() {
                   onClick={() => selectTab(t.id)}
                   className={cn(
                     "flex min-w-[4.5rem] shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold transition",
-                    active
-                      ? "bg-white/12 text-white"
-                      : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200",
+                    active ? "bg-white/12 text-white" : "text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200",
                   )}
                 >
-                  <Icon
-                    className={cn("h-5 w-5", active && "text-sky-400")}
-                    strokeWidth={2}
-                  />
+                  <Icon className={cn("h-5 w-5", active && "text-sky-400")} strokeWidth={2} />
                   <span className="whitespace-nowrap">{t.label}</span>
                 </button>
               );
@@ -476,11 +380,10 @@ export function TournamentDetailPage() {
             <StandingsTable
               standings={data.standings}
               participants={data.participants}
+              matches={data.matches}
             />
           )}
-          {tab === "players" && (
-            <PlayersList participants={data.participants} />
-          )}
+          {tab === "players" && <PlayersList participants={data.participants} />}
 
           {tab === "rules" && (
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
@@ -488,30 +391,22 @@ export function TournamentDetailPage() {
                 <FileText className="h-4 w-4" /> Tournament rules
               </h2>
               {rulesText ? (
-                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                  {rulesText}
-                </p>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{rulesText}</p>
               ) : rulesUrl ? (
                 <Button asChild variant="outline">
                   <a href={rulesUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" /> View rules
-                    document
+                    <ExternalLink className="mr-2 h-4 w-4" /> View rules document
                   </a>
                 </Button>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  No rules published yet.
-                </p>
+                <p className="text-sm text-muted-foreground">No rules published yet.</p>
               )}
             </div>
           )}
 
           {tab === "report" && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-              <ReportForm
-                tournament={tournamentTyped}
-                players={playersTyped}
-              />
+              <ReportForm tournament={tournamentTyped} players={playersTyped} />
             </div>
           )}
 
@@ -520,58 +415,29 @@ export function TournamentDetailPage() {
           </footer>
         </div>
 
-        {menuOpen &&
-          menuPos &&
-          createPortal(
-            <>
-              <div
-                className="fixed inset-0 z-[340]"
-                onClick={() => setMenuOpen(false)}
-                aria-hidden
-              />
-              <div
-                className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl"
-                style={{ top: menuPos.top, right: menuPos.right }}
-              >
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]"
-                  onClick={() => void shareTournament()}
-                >
-                  <Share2 className="h-4 w-4 text-sky-400" /> Share Tournament
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]"
-                  onClick={() => void contactOrganizer()}
-                >
-                  <MessageCircle className="h-4 w-4 text-violet-400" /> Contact
-                  Organizer
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    selectTab("rules");
-                  }}
-                >
-                  <FileText className="h-4 w-4 text-neutral-300" /> Rules
-                </button>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-neutral-400 hover:bg-white/[0.06]"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    selectTab("report");
-                  }}
-                >
-                  <Flag className="h-4 w-4" /> Report Tournament
-                </button>
-              </div>
-            </>,
-            document.body,
-          )}
+        {menuOpen && menuPos && createPortal(
+          <>
+            <div className="fixed inset-0 z-[340]" onClick={() => setMenuOpen(false)} aria-hidden />
+            <div
+              className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl"
+              style={{ top: menuPos.top, right: menuPos.right }}
+            >
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => void shareTournament()}>
+                <Share2 className="h-4 w-4 text-sky-400" /> Share Tournament
+              </button>
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => void contactOrganizer()}>
+                <MessageCircle className="h-4 w-4 text-violet-400" /> Contact Organizer
+              </button>
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]" onClick={() => { setMenuOpen(false); selectTab("rules"); }}>
+                <FileText className="h-4 w-4 text-neutral-300" /> Rules
+              </button>
+              <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-neutral-400 hover:bg-white/[0.06]" onClick={() => { setMenuOpen(false); selectTab("report"); }}>
+                <Flag className="h-4 w-4" /> Report Tournament
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
       </div>
     </PageShell>
   );
