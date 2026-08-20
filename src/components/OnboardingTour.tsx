@@ -1,15 +1,24 @@
 /**
- * First-login onboarding — 5 short screens.
- * Final screen links to Rules; works for global players.
+ * First-login onboarding — polished 5-screen flow for global players.
+ * Final screen: View Rules + Get Started.
  */
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Swords,
+  UserCircle2,
+  Megaphone,
+  Scale,
+  Globe2,
+  ChevronLeft,
+} from "lucide-react";
 
-const STORAGE_PREFIX = "neparena_onboarding_done_v5:";
+const STORAGE_PREFIX = "neparena_onboarding_done_v6:";
 const LEGACY_KEYS = [
+  "neparena_onboarding_done_v5:",
   "neparena_onboarding_done_v4:",
   "neparena_onboarding_done_v3:",
   "neparena_onboarding_done_v2:",
@@ -19,23 +28,33 @@ const LEGACY_KEYS = [
 const SCREENS = [
   {
     title: "Welcome to NepARENA",
-    text: "A multi-organizer esports platform for players, organizers, and fans worldwide.",
+    text: "A multi-organizer esports platform for players, organizers, and fans around the world.",
+    icon: Globe2,
+    tint: "text-sky-300 bg-sky-500/15 border-sky-500/30",
   },
   {
-    title: "Compete & Follow Tournaments",
-    text: "Discover tournaments, follow fixtures, check standings, and keep up with results in one place.",
+    title: "Compete & follow tournaments",
+    text: "Discover cups, track fixtures and standings, and stay on top of results — all in one place.",
+    icon: Swords,
+    tint: "text-violet-300 bg-violet-500/15 border-violet-500/30",
   },
   {
-    title: "Build Your Gaming Profile",
-    text: "Create your profile, share achievements, and connect with the global competitive community.",
+    title: "Build your gaming profile",
+    text: "Set up your profile, share achievements, and connect with the competitive community worldwide.",
+    icon: UserCircle2,
+    tint: "text-emerald-300 bg-emerald-500/15 border-emerald-500/30",
   },
   {
-    title: "Stay Updated",
-    text: "Follow tournament news, announcements, guides, and community updates — all in one hub.",
+    title: "Stay in the loop",
+    text: "News, guides, announcements, and organizer updates — so you never miss what matters.",
+    icon: Megaphone,
+    tint: "text-amber-300 bg-amber-500/15 border-amber-500/30",
   },
   {
-    title: "Play Fair. Respect Everyone.",
-    text: "Follow NepARENA's community and tournament rules to keep competition fair and enjoyable for everyone.",
+    title: "Play fair. Respect everyone.",
+    text: "Clear community and tournament rules keep competition fair for every player and organizer.",
+    icon: Scale,
+    tint: "text-rose-300 bg-rose-500/15 border-rose-500/30",
     final: true,
   },
 ] as const;
@@ -75,9 +94,9 @@ export function resetOnboarding(userId?: string | null) {
     localStorage.removeItem(storageKey(userId));
     localStorage.removeItem("neparena_onboarding_done_v1");
     if (userId) {
-      localStorage.removeItem(`neparena_onboarding_done_v2:${userId}`);
-      localStorage.removeItem(`neparena_onboarding_done_v3:${userId}`);
-      localStorage.removeItem(`neparena_onboarding_done_v4:${userId}`);
+      for (const leg of LEGACY_KEYS) {
+        if (leg.endsWith(":")) localStorage.removeItem(`${leg}${userId}`);
+      }
     }
   } catch {
     /* ignore */
@@ -116,6 +135,8 @@ export function OnboardingTour() {
 
   const screen = SCREENS[step]!;
   const isLast = step >= SCREENS.length - 1;
+  const isFirst = step === 0;
+  const Icon = screen.icon;
 
   const finish = () => {
     markOnboardingDone(user?.id);
@@ -123,33 +144,58 @@ export function OnboardingTour() {
   };
 
   return (
-    <div className="fixed inset-0 z-[400] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center">
+    <div className="fixed inset-0 z-[400] flex items-end justify-center bg-black/75 p-4 backdrop-blur-md sm:items-center">
       <div
-        className={cn(
-          "w-full max-w-sm overflow-hidden rounded-3xl border border-white/12 bg-[#121214] shadow-2xl",
-        )}
+        className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/12 bg-[#121214] shadow-2xl shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboard-title"
       >
-        <div className="flex flex-col items-center px-6 pb-6 pt-8 text-center">
-          <img
-            src="/neparena-logo.png"
-            alt="NepARENA"
-            className="mb-5 h-14 w-14 rounded-2xl object-contain ring-1 ring-white/15"
-          />
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
-            {step + 1} / {SCREENS.length}
+        <div className="h-1 w-full bg-gradient-to-r from-sky-500 via-violet-500 to-fuchsia-500" />
+
+        <div className="flex flex-col items-center px-6 pb-6 pt-7 text-center">
+          <div
+            className={cn(
+              "mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border",
+              screen.tint,
+            )}
+          >
+            <Icon className="h-7 w-7" strokeWidth={1.75} />
+          </div>
+
+          <div className="mb-4 flex items-center gap-1.5" aria-hidden>
+            {SCREENS.map((_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "h-1.5 rounded-full transition-all duration-300",
+                  i === step
+                    ? "w-5 bg-sky-400"
+                    : i < step
+                      ? "w-1.5 bg-sky-400/50"
+                      : "w-1.5 bg-white/15",
+                )}
+              />
+            ))}
+          </div>
+
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
+            {step + 1} of {SCREENS.length}
           </p>
-          <h2 id="onboard-title" className="text-lg font-bold text-white">
+          <h2 id="onboard-title" className="text-lg font-bold tracking-tight text-white">
             {screen.title}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-400">{screen.text}</p>
+          <p className="mt-2 max-w-[280px] text-sm leading-relaxed text-neutral-400">
+            {screen.text}
+          </p>
 
-          <div className="mt-6 flex w-full flex-col gap-2">
+          <div className="mt-7 flex w-full flex-col gap-2">
             {isLast ? (
               <>
-                <Button asChild className="w-full rounded-full bg-white text-black hover:bg-neutral-100">
+                <Button
+                  asChild
+                  className="w-full rounded-full bg-white text-black hover:bg-neutral-100"
+                >
                   <Link to="/rules" onClick={finish}>
                     View Rules
                   </Link>
@@ -157,30 +203,43 @@ export function OnboardingTour() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full rounded-full border-white/15"
+                  className="w-full rounded-full border-white/15 text-white hover:bg-white/5"
                   onClick={finish}
                 >
                   Get Started
                 </Button>
               </>
             ) : (
-              <Button
-                type="button"
-                className="w-full rounded-full bg-gradient-to-r from-sky-500 to-violet-500 text-white"
-                onClick={() => setStep((s) => s + 1)}
-              >
-                Next
-              </Button>
+              <div className="flex gap-2">
+                {!isFirst ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full border-white/15 px-3 text-neutral-300 hover:bg-white/5"
+                    onClick={() => setStep((s) => Math.max(0, s - 1))}
+                    aria-label="Back"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  className="flex-1 rounded-full bg-gradient-to-r from-sky-500 to-violet-500 font-semibold text-white shadow-lg shadow-sky-500/20"
+                  onClick={() => setStep((s) => s + 1)}
+                >
+                  Continue
+                </Button>
+              </div>
             )}
           </div>
 
           {!isLast ? (
             <button
               type="button"
-              className="mt-3 text-xs text-neutral-600 hover:text-neutral-400"
+              className="mt-4 text-xs text-neutral-600 transition hover:text-neutral-400"
               onClick={finish}
             >
-              Skip
+              Skip for now
             </button>
           ) : null}
         </div>
