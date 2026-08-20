@@ -1,101 +1,47 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PLATFORM_NAME } from "@/lib/organizers";
 
-const SESSION_KEY = "neparena_splash_seen_v3";
-const TOTAL_MS = 2400;
+const MIN_MS = 1800;
 
-/** True only on first paint of a browser session */
-export function shouldShowSplash(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    if (sessionStorage.getItem(SESSION_KEY)) return false;
-  } catch {
-    /* private mode — still show once per mount is ok */
-  }
-  return true;
-}
+type Phase = "in" | "hold" | "out";
 
-function markSplashSeen() {
-  try {
-    sessionStorage.setItem(SESSION_KEY, "1");
-  } catch {
-    /* ignore */
-  }
-}
-
-/**
- * Short modern splash — first session load only.
- */
-export function SplashScreen({ onDone }: { onDone?: () => void }) {
-  const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
-  const [visible, setVisible] = useState(true);
-  const doneRef = useRef(false);
+export function SplashScreen({ onDone }: { onDone: () => void }) {
+  const [phase, setPhase] = useState<Phase>("in");
 
   useEffect(() => {
-    const img = new Image();
-    img.src = "/pwa-192x192.png";
-
-    const t1 = window.setTimeout(() => setPhase("hold"), 200);
-    const t2 = window.setTimeout(() => setPhase("out"), 1900);
-    const t3 = window.setTimeout(() => {
-      if (doneRef.current) return;
-      doneRef.current = true;
-      markSplashSeen();
-      setVisible(false);
-      onDone?.();
-    }, TOTAL_MS);
-
+    const t1 = window.setTimeout(() => setPhase("hold"), 400);
+    const t2 = window.setTimeout(() => setPhase("out"), MIN_MS);
+    const t3 = window.setTimeout(() => onDone(), MIN_MS + 450);
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
     };
   }, [onDone]);
 
-  if (!visible) return null;
-
   return (
     <div
-      className="fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-[#0a0a0a]"
+      className="fixed inset-0 z-[500] flex flex-col items-center justify-center bg-[#07070a]"
       style={{
         opacity: phase === "out" ? 0 : 1,
         transition: "opacity 0.4s ease",
         pointerEvents: phase === "out" ? "none" : "auto",
       }}
-      aria-hidden
     >
       <div
-        className="pointer-events-none absolute inset-0"
+        className="flex flex-col items-center"
         style={{
-          background:
-            "radial-gradient(ellipse at 50% 40%, rgba(56,189,248,0.12), transparent 55%)",
-        }}
-      />
-
-      <div
-        className="relative flex flex-col items-center"
-        style={{
-          opacity: phase === "in" ? 0 : 1,
-          transform: phase === "in" ? "scale(0.92) translateY(8px)" : "scale(1) translateY(0)",
-          transition: "opacity 0.45s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1)",
+          transform: phase === "in" ? "scale(0.92)" : "scale(1)",
+          opacity: phase === "in" ? 0.6 : 1,
+          transition: "transform 0.5s ease, opacity 0.5s ease",
         }}
       >
-        <div
-          className="relative rounded-[1.25rem] p-1"
-          style={{
-            boxShadow:
-              phase === "hold"
-                ? "0 0 40px rgba(56,189,248,0.25)"
-                : "0 0 20px rgba(56,189,248,0.12)",
-            transition: "box-shadow 0.5s ease",
-          }}
-        >
+        <div className="relative">
+          <div className="absolute inset-0 rounded-3xl bg-sky-500/20 blur-2xl" />
           <img
-            src="/pwa-192x192.png"
+            src="/neparena-logo.png"
             alt={PLATFORM_NAME}
-            width={96}
-            height={96}
-            className="h-20 w-20 rounded-[1.1rem] object-contain bg-black sm:h-24 sm:w-24"
+            className="relative h-20 w-20 rounded-3xl object-contain ring-1 ring-white/10"
             onError={(e) => {
               e.currentTarget.src = "/neparena-logo.png";
             }}
@@ -106,7 +52,7 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
           {PLATFORM_NAME}
         </h1>
         <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.32em] text-neutral-500">
-          Esports · Nepal
+          Esports · Worldwide
         </p>
 
         <div className="mt-8 h-0.5 w-16 overflow-hidden rounded-full bg-white/10">
