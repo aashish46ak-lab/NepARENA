@@ -41,12 +41,14 @@ function photoOf(players: TournamentParticipant[], id: string | null) {
 
 function roundTitle(roundIndex: number, totalRounds: number): string {
   const fromEnd = totalRounds - (roundIndex + 1);
-  if (fromEnd === 0) return "Final";
+  if (fromEnd <= 0) return "Final";
   if (fromEnd === 1) return "SF";
   if (fromEnd === 2) return "QF";
   if (fromEnd === 3) return "R16";
   if (fromEnd === 4) return "R32";
-  return `R${2 ** (fromEnd + 1)}`;
+  if (fromEnd === 5) return "R64";
+  const size = 2 ** Math.min(fromEnd + 1, 10);
+  return `R${size}`;
 }
 
 function pathFromPosition(
@@ -417,25 +419,15 @@ export function BracketTree({
   const zoomReset = useCallback(() => setUserZoom(1), []);
 
   const downloadPng = async () => {
-    const el = rootRef.current;
-    if (!el) return;
     try {
-      const mod = await import("html2canvas").catch(() => null);
-      if (mod?.default) {
-        const canvas = await mod.default(el, {
-          backgroundColor: "#070b14",
-          scale: 2,
-          useCORS: true,
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: tournamentName || "Bracket",
+          url: typeof window !== "undefined" ? window.location.href : undefined,
         });
-        const a = document.createElement("a");
-        a.download = `${(tournamentName || "bracket")
-          .replace(/[^a-z0-9]+/gi, "-")
-          .toLowerCase()}-bracket.png`;
-        a.href = canvas.toDataURL("image/png");
-        a.click();
       }
     } catch {
-      /* ignore */
+      /* user cancelled */
     }
   };
 
@@ -634,7 +626,7 @@ export function BracketTree({
           onClick={() => void downloadPng()}
           className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[9px] font-semibold text-white/80"
         >
-          <Download className="h-2.5 w-2.5" /> PNG
+          <Download className="h-2.5 w-2.5" /> Share
         </button>
         <div className="flex items-center gap-1.5">
           <span className="h-px w-6 bg-gradient-to-r from-transparent to-white/25" />
