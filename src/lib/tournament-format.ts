@@ -78,6 +78,8 @@ export interface FormatConfig {
   leagueQualifyCount?: number;
   migratedFrom?: string;
   groupDraw?: { name: string; ids: string[] }[];
+  /** Organizer turned on knockout stage — public bracket visible when true */
+  knockoutStarted?: boolean;
 }
 
 export const DEFAULT_POINTS: PointsConfig = { win: 3, draw: 1, loss: 0 };
@@ -205,6 +207,7 @@ export function parseFormatConfig(raw: unknown, bracketType?: string | null): Fo
           .filter((g) => g && typeof g.name === "string" && Array.isArray(g.ids))
           .map((g) => ({ name: g.name, ids: g.ids.map(String) }))
       : undefined,
+    knockoutStarted: o.knockoutStarted === true,
   };
 }
 
