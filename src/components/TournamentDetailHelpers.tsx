@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { normalizeMatchdayLabel } from "@/components/tournament-manager/shared";
 import { SubmitResultCard } from "@/components/SubmitResultCard";
 import type { PendingMatch, MatchSubmission } from "@/lib/matches-pending";
 import { Lock } from "lucide-react";
@@ -30,7 +31,7 @@ export function MyMatchesPanel({
   if (!userId) return <p className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm text-neutral-500">Sign in to see your matches</p>;
   if (!myPart) {
     if (registrationOpen) return <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 p-5 text-center"><p className="text-sm font-semibold text-white">Join the tournament</p></div>;
-    if (registrationClosed) return <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-center"><p className="text-sm font-semibold text-amber-100">You&apos;re late!</p></div>;
+    if (registrationClosed) return <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-center"><p className="text-sm font-semibold text-amber-100">You're late!</p></div>;
     return <p className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm text-neutral-500">You are not in this tournament</p>;
   }
   const myId = String(myPart.id);
@@ -69,20 +70,59 @@ export function MyMatchesPanel({
 
 export function FixturesByMatchday({ matches, matchdays, participants }: { matches: Record<string, unknown>[]; matchdays: Record<string, unknown>[]; participants: Record<string, unknown>[] }) {
   const groups = useMemo(() => {
-    type G = { id: string | null; name: string; published: boolean; matches: Record<string, unknown>[] };
+    type G = { id: string | null; name: string; published: boolean; matches: Record<string, unknown>[]; sort: number };
     const map = new Map<string, G>();
     for (const m of matches) {
       const md = matchdays.find((d) => d.id === m.matchday_id);
-      const gname = String(md?.name ?? `Round ${m.round ?? "?"}`);
+      const raw = String(md?.name ?? `Round ${m.round ?? "?"}`);
+      const gname = normalizeMatchdayLabel(raw);
+      const sort = Number(md?.sort_order ?? 999);
+      const published = md ? md.is_published === true : false;
       const existing = map.get(gname);
-      if (existing) existing.matches.push(m);
-      else map.set(gname, { id: (md?.id as string) ?? (m.matchday_id as string) ?? null, name: gname, published: md ? md.is_published === true : false, matches: [m] });
+      if (existing) {
+        existing.matches.push(m);
+        existing.published = existing.published || published;
+        existing.sort = Math.min(existing.sort, sort);
+      } else {
+        map.set(gname, {
+          id: (md?.id as string) ?? (m.matchday_id as string) ?? null,
+          name: gname,
+          published,
+          matches: [m],
+          sort,
+        });
+      }
     }
     for (const md of matchdays) {
-      const gname = String(md.name);
-      if (!map.has(gname)) map.set(gname, { id: md.id as string, name: gname, published: md.is_published === true, matches: [] });
+      const gname = normalizeMatchdayLabel(String(md.name));
+      if (!map.has(gname)) {
+        map.set(gname, {
+          id: md.id as string,
+          name: gname,
+          published: md.is_published === true,
+          matches: [],
+          sort: Number(md.sort_order ?? 999),
+        });
+      } else {
+        const g = map.get(gname)!;
+        g.published = g.published || md.is_published === true;
+      }
     }
-    return [...map.values()].sort((a, b) => Number(matchdays.find((d) => d.id === a.id)?.sort_order ?? 999) - Number(matchdays.find((d) => d.id === b.id)?.sort_order ?? 999));
+    const stageOrder = (name: string): number => {
+      const n = name.toLowerCase();
+      const md = n.match(/matchday\s+(\d+)/);
+      if (md) return Number(md[1]);
+      if (n.includes("round of 32")) return 100;
+      if (n.includes("round of 16")) return 110;
+      if (n.includes("quarter") || n.includes("round of 8")) return 120;
+      if (n.includes("semi")) return 130;
+      if (n.includes("final") && !n.includes("third")) return 140;
+      if (n.includes("third")) return 150;
+      return 200;
+    };
+    return [...map.values()].sort(
+      (a, b) => stageOrder(a.name) - stageOrder(b.name) || a.sort - b.sort,
+    );
   }, [matches, matchdays]);
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -144,6 +184,7 @@ export function FixturesByMatchday({ matches, matchdays, participants }: { match
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-black/55 backdrop-blur-md">
               <Lock className="mb-2 h-8 w-8 text-neutral-300" />
               <p className="text-sm font-semibold text-white">Fixtures locked</p>
+              <p className="mt-1 text-xs text-neutral-400">This matchday is not published yet.</p>
             </div>
           )}
           <div className={cn("space-y-4", !active.published && "pointer-events-none select-none opacity-40")}>
