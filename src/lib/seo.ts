@@ -6,11 +6,11 @@
 export const SITE_URL = "https://neparena.xyz";
 export const SITE_NAME = "NepARENA";
 export const SITE_TITLE =
-  "NepARENA – Nepal's Multi Organizer Esports Platform";
+  "NepARENA – Multi-Organizer Esports Platform";
 export const SITE_DESCRIPTION =
-  "NepARENA is Nepal's multi-organizer esports platform where tournament organizers manage competitions, members, communities and events.";
+  "NepARENA is a multi-organizer esports platform where players and organizers worldwide run tournaments, communities, and competitive events.";
 export const SITE_KEYWORDS =
-  "NepARENA, Nepal Esports, eFootball Nepal, Esports Nepal, Tournament Platform, Gaming Nepal, eFootball tournaments, multi organizer esports";
+  "NepARENA, esports, multi organizer, tournament platform, competitive gaming, eFootball, online tournaments, gaming community";
 export const SITE_OG_IMAGE = `${SITE_URL}/neparena-logo.png`;
 export const FOUNDER_NAME = "Ashish Khadka";
 
@@ -76,7 +76,7 @@ export function buildSeoHead(input: SeoInput = {}) {
     { property: "og:url", content: url },
     { property: "og:image", content: image },
     { property: "og:image:alt", content: title },
-    { property: "og:locale", content: "en_NP" },
+    { property: "og:locale", content: "en_US" },
     // Twitter
     { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:title", content: title },
@@ -110,8 +110,8 @@ export function organizationJsonLd(): string {
       "@type": "ContactPoint",
       contactType: "customer support",
       email: "aashish46ak@gmail.com",
-      areaServed: "NP",
-      availableLanguage: ["en", "ne"],
+      areaServed: "Worldwide",
+      availableLanguage: ["en"],
     },
   };
   return JSON.stringify(data);
