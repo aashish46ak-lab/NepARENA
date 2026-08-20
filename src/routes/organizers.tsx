@@ -28,7 +28,7 @@ export const Route = createFileRoute("/organizers")({
     ...buildSeoHead({
       title: "Organizers",
       description:
-        "Browse verified tournament organizers on NepARENA — Nepal's multi-organizer esports platform.",
+        "Browse verified tournament organizers on NepARENA — a multi-organizer esports platform for competitors worldwide.",
       path: "/organizers",
     }),
   }),
@@ -88,7 +88,7 @@ function OrganizersPage() {
               slug: DEFAULT_ORGANIZER_SLUG,
               name: "eFootball Nepal",
               description:
-                "Tournaments, standings, fixtures and community — the first organizer on NepARENA.",
+                "Tournaments, standings, fixtures and community — an organizer on NepARENA.",
               logo_url: null,
               cover_url: null,
               is_verified: true,
