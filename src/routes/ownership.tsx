@@ -9,7 +9,7 @@ export const Route = createFileRoute("/ownership")({
     ...buildSeoHead({
       title: "Creators",
       description:
-        "Meet the founders of NepARENA — Nepal's multi-organizer esports platform. Founder: Ashish Khadka.",
+        "Meet the creators of NepARENA — a multi-organizer esports platform for players and organizers worldwide. Founder: Ashish Khadka.",
       path: "/ownership",
     }),
   }),
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/ownership")({
 function OwnershipPage() {
   return (
     <PageShell force="platform">
-      <div className="mx-auto max-w-3xl px-4 py-14">
+      <div className="mx-auto max-w-3xl px-4 py-12">
         <Link
           to="/"
           className="mb-8 inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-200"

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/users")({
     ...buildSeoHead({
       title: "Users",
       description:
-        "Registered players and members on NepARENA — Nepal's multi-organizer esports platform.",
+        "Registered players and members on NepARENA — a global multi-organizer esports community.",
       path: "/users",
     }),
   }),
