@@ -63,7 +63,7 @@ export function PlatformHomePage() {
           <div className="pointer-events-none absolute -right-16 top-0 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
           <div className="relative mx-auto max-w-md px-4 pb-6 pt-5 text-center">
             <div className="mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-300">
-              <Sparkles className="h-3 w-3" /> Nepal’s multi-organizer esports hub
+              <Sparkles className="h-3 w-3" /> Multi-organizer esports for everyone
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
               Compete. Follow.{" "}
