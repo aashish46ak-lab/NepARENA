@@ -17,6 +17,7 @@ import {
 import { StoriesRow } from "@/components/StoriesRow";
 import { cn } from "@/lib/utils";
 import { HomeTournamentStrip } from "@/components/HomeTournamentStrip";
+import { HomeInfoGrid } from "@/components/HomeInfoGrid";
 import { PendingMatchesPanel } from "@/components/PendingMatchesPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -118,6 +119,8 @@ export function PlatformHomePage() {
       <div className="mx-auto max-w-md px-3 pt-3" data-onboard="tournament-strip">
         <HomeTournamentStrip />
       </div>
+
+      <HomeInfoGrid />
 
       {user && <PendingMatchesPanel />}
 
