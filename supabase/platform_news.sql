@@ -1,4 +1,6 @@
--- Optional: run in Supabase SQL editor for admin-managed News
+-- Run in Supabase SQL editor for admin-managed News
+-- Safe to re-run (drops policies first, creates table/index if missing)
+
 create table if not exists public.platform_news (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -20,13 +22,19 @@ create index if not exists platform_news_status_published_at
 
 alter table public.platform_news enable row level security;
 
+-- Policies: drop then create (Postgres has no CREATE POLICY IF NOT EXISTS)
+drop policy if exists "platform_news_public_read" on public.platform_news;
+drop policy if exists "platform_news_auth_write" on public.platform_news;
+
 -- Public read of published rows
-create policy if not exists "platform_news_public_read"
-  on public.platform_news for select
+create policy "platform_news_public_read"
+  on public.platform_news
+  for select
   using (status = 'published');
 
 -- Authenticated write (tighten to super-admin in production if desired)
-create policy if not exists "platform_news_auth_write"
-  on public.platform_news for all
+create policy "platform_news_auth_write"
+  on public.platform_news
+  for all
   using (auth.role() = 'authenticated')
   with check (auth.role() = 'authenticated');
