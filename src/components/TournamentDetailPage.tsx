@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { loadPendingMatches, loadMySubmissions, type PendingMatch, type MatchSubmission } from "@/lib/matches-pending";
 import { BracketTree } from "@/components/BracketTree";
+import { parseFormatConfig, hasGroupStage } from "@/lib/tournament-format";
 import { MyMatchesPanel, FixturesByMatchday, StandingsTable, PlayersList } from "@/components/TournamentDetailHelpers";
 import { getOrCreateDm } from "@/lib/dm";
 
@@ -257,20 +258,42 @@ export function TournamentDetailPage() {
           {tab === "fixtures" && (
             <FixturesByMatchday matches={data.matches} matchdays={data.matchdays} participants={data.participants} />
           )}
-          {tab === "bracket" && (
-            <BracketTree
-              matches={bracketMatches}
-              allMatches={(data.matches ?? []) as unknown as Match[]}
-              players={playersTyped}
-              tournamentName={name}
-              tournamentLogo={tournamentTyped.logo_url}
-              bannerUrl={tournamentTyped.banner_url}
-              organizerName={organizer?.name}
-              organizerLogo={organizer?.logo_url}
-              eventDate={(tournament as { starts_at?: string | null }).starts_at ?? null}
-              groupCount={4}
-            />
-          )}
+          {tab === "bracket" && (() => {
+            const fmt = parseFormatConfig(
+              (tournament as { format_config?: unknown }).format_config,
+              (tournament as { bracket_type?: string | null }).bracket_type,
+            );
+            const pureKo = ["single_elimination", "double_elimination", "knockout"].includes(
+              String((tournament as { bracket_type?: string }).bracket_type ?? ""),
+            );
+            const show =
+              pureKo || !hasGroupStage(fmt) || fmt.knockoutStarted === true;
+            if (!show) {
+              return (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-12 text-center">
+                  <Trophy className="mx-auto mb-3 h-8 w-8 text-white/20" />
+                  <p className="text-sm font-semibold text-white/80">Knockout not started</p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Organizer will turn on <span className="text-sky-300">Start knockout</span> after group stage.
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <BracketTree
+                matches={bracketMatches}
+                allMatches={(data.matches ?? []) as unknown as Match[]}
+                players={playersTyped}
+                tournamentName={name}
+                tournamentLogo={tournamentTyped.logo_url}
+                bannerUrl={tournamentTyped.banner_url}
+                organizerName={organizer?.name}
+                organizerLogo={organizer?.logo_url}
+                eventDate={(tournament as { starts_at?: string | null }).starts_at ?? null}
+                groupCount={4}
+              />
+            );
+          })()}
           {tab === "standings" && (
             <StandingsTable standings={data.standings} participants={data.participants} matches={data.matches} />
           )}
