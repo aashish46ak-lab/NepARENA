@@ -21,6 +21,9 @@ export function isPlatformPath(pathname: string): boolean {
     "/profile",
     "/settings",
     "/about",
+    "/rules",
+    "/news",
+    "/guides",
   ];
   return platformPrefixes.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
