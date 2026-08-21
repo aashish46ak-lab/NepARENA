@@ -27,6 +27,7 @@ export function PlatformHomePage() {
   const { user } = useAuth();
   const [postOpen, setPostOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
+  const [feedHasPosts, setFeedHasPosts] = useState(false);
   const [feedMode, setFeedMode] = useState<"for_you" | "following">("for_you");
 
   const { data: stats } = useQuery({
@@ -122,7 +123,8 @@ export function PlatformHomePage() {
 
       {user && <PendingMatchesPanel />}
 
-      <HomeInfoGrid />
+      {/* Learn more (About / Rules / News / Guides) — only when feed is empty */}
+      {!feedHasPosts && <HomeInfoGrid />}
 
       <section className="border-b border-white/5" data-onboard="feed">
         <div className="mx-auto max-w-md px-3 pb-8 pt-4">
@@ -146,6 +148,7 @@ export function PlatformHomePage() {
                 type="button"
                 onClick={() => {
                   setFeedMode(id);
+                  setFeedHasPosts(false);
                   setFeedKey((k) => k + 1);
                 }}
                 className={cn(
@@ -160,7 +163,12 @@ export function PlatformHomePage() {
             ))}
           </div>
 
-          <SocialFeed key={feedKey} mode={feedMode} hideComposer />
+          <SocialFeed
+            key={feedKey}
+            mode={feedMode}
+            hideComposer
+            onPostsChange={(n) => setFeedHasPosts(n > 0)}
+          />
         </div>
       </section>
 
