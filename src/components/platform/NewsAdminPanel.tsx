@@ -10,6 +10,7 @@ import {
   upsertNews,
 } from "@/lib/news";
 import type { NewsArticle } from "@/content/news";
+import { uploadPublicImage } from "@/lib/upload";
 
 function slugify(s: string) {
   return s
@@ -101,11 +102,10 @@ export function NewsAdminPanel() {
     <div className="space-y-6">
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
         <h3 className="text-sm font-semibold text-white">
-          {form.id ? "Edit article" : "Create article"}
+          {form.id ? "Edit article" : "New article"}
         </h3>
         <p className="text-xs text-neutral-500">
-          Requires a <code className="text-neutral-400">platform_news</code> table in Supabase.
-          If missing, seed articles still show on the public News page.
+          Published articles appear on the public News page and home feed.
         </p>
         <Input
           placeholder="Title"
@@ -146,11 +146,44 @@ export function NewsAdminPanel() {
             onChange={(e) => setForm((f) => ({ ...f, author: e.target.value }))}
           />
         </div>
-        <Input
-          placeholder="Cover image URL (optional)"
-          value={form.cover_url}
-          onChange={(e) => setForm((f) => ({ ...f, cover_url: e.target.value }))}
-        />
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-neutral-400">Cover image (PNG / JPG)</label>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp"
+            className="block w-full text-xs text-neutral-300 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              if (f.size > 8 * 1024 * 1024) {
+                toast.error("Max 8MB");
+                return;
+              }
+              setBusy(true);
+              try {
+                const url = await uploadPublicImage(f, "efn-public", { folder: "news" });
+                setForm((prev) => ({ ...prev, cover_url: url }));
+                toast.success("Cover uploaded");
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Upload failed");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+          {form.cover_url ? (
+            <div className="relative mt-1 overflow-hidden rounded-xl border border-white/10">
+              <img src={form.cover_url} alt="" className="h-32 w-full object-cover" />
+              <button
+                type="button"
+                className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white"
+                onClick={() => setForm((f) => ({ ...f, cover_url: "" }))}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
+        </div>
         <div className="flex flex-wrap gap-3 text-xs text-neutral-300">
           <label className="flex items-center gap-2">
             <input
@@ -178,11 +211,7 @@ export function NewsAdminPanel() {
           </label>
         </div>
         <div className="flex gap-2">
-          <Button
-            className="bg-neutral-100 text-black"
-            disabled={busy}
-            onClick={() => void save()}
-          >
+          <Button className="bg-neutral-100 text-black" disabled={busy} onClick={() => void save()}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
             Save
           </Button>
