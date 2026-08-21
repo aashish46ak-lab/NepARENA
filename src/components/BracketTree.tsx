@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
   useMemo,
   useRef,
@@ -21,13 +22,13 @@ import {
 } from "lucide-react";
 import { captureElementPng } from "@/lib/capture-png";
 
+/** Phone-first: readable cards; scroll if tree is wider than screen */
 const CARD_W = 118;
 const CARD_H = 46;
 const COL_GAP = 16;
 const ROUND_PAD_X = 8;
 const ROW_GAP = 10;
-/** Allow smaller scale on phones; prefer scroll over crushing into illegible overlap */
-const MIN_FIT_SCALE = 0.5;
+const MIN_FIT_SCALE = 0.62;
 
 function labelOf(players: TournamentParticipant[], id: string | null) {
   if (!id) return null;
@@ -38,6 +39,11 @@ function photoOf(players: TournamentParticipant[], id: string | null) {
   if (!id) return null;
   const p = players.find((x) => x.id === id);
   return p?.photo_url || p?.club_logo_url || null;
+}
+function userIdOf(players: TournamentParticipant[], id: string | null) {
+  if (!id) return null;
+  const p = players.find((x) => x.id === id);
+  return (p as { user_id?: string | null } | undefined)?.user_id ?? null;
 }
 function roundTitle(roundIndex: number, totalRounds: number): string {
   const fromEnd = totalRounds - (roundIndex + 1);
@@ -83,7 +89,15 @@ function layoutTree(rounds: RoundCol[]) {
   const totalHeight = Math.max(...last.map((c) => c + CARD_H / 2), n0 * unit) + 8;
   return { slots, totalHeight };
 }
-function ConnectorSvg({ rounds, slots, height }: { rounds: RoundCol[]; slots: number[][]; height: number }) {
+function ConnectorSvg({
+  rounds,
+  slots,
+  height,
+}: {
+  rounds: RoundCol[];
+  slots: number[][];
+  height: number;
+}) {
   if (rounds.length < 2) return null;
   const width = rounds.length * (CARD_W + COL_GAP) - COL_GAP + ROUND_PAD_X * 2;
   const paths: string[] = [];
@@ -102,9 +116,22 @@ function ConnectorSvg({ rounds, slots, height }: { rounds: RoundCol[]; slots: nu
     }
   }
   return (
-    <svg className="pointer-events-none absolute left-0 top-0" width={width} height={height} style={{ overflow: "visible" }}>
+    <svg
+      className="pointer-events-none absolute left-0 top-0"
+      width={width}
+      height={height}
+      style={{ overflow: "visible" }}
+    >
       {paths.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="rgba(56,189,248,0.35)" strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          key={i}
+          d={d}
+          fill="none"
+          stroke="rgba(56,189,248,0.35)"
+          strokeWidth={1.25}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       ))}
     </svg>
   );
@@ -127,12 +154,13 @@ function MatchCard({
   const path = isFirstRound ? pathFromPosition(m.position ?? 1, groupCount ?? 4) : null;
   const showHome = revealNames && !!m.home_id;
   const showAway = revealNames && !!m.away_id;
+  // Prefer real names; seed labels only when slot empty (never "A1" + name together)
   const homeName = showHome
-    ? (labelOf(players, m.home_id) ?? path?.home ?? "TBD")
-    : path?.home ?? (isFirstRound ? "TBD" : "Winner");
+    ? (labelOf(players, m.home_id) ?? "TBD")
+    : (path?.home ?? (isFirstRound ? "TBD" : "Winner"));
   const awayName = showAway
-    ? (labelOf(players, m.away_id) ?? path?.away ?? "TBD")
-    : path?.away ?? (isFirstRound ? "TBD" : "Winner");
+    ? (labelOf(players, m.away_id) ?? "TBD")
+    : (path?.away ?? (isFirstRound ? "TBD" : "Winner"));
   const hp = showHome ? photoOf(players, m.home_id) : null;
   const ap = showAway ? photoOf(players, m.away_id) : null;
   const hs = revealNames && m.played && m.home_score != null ? m.home_score : null;
@@ -144,8 +172,8 @@ function MatchCard({
       className={cn(
         "overflow-hidden rounded-md border",
         isFinal
-          ? "border-amber-400/45 bg-gradient-to-br from-amber-500/20 to-[#0c1220]"
-          : "border-white/12 bg-[#0e1524]",
+          ? "border-amber-400/50 bg-gradient-to-br from-amber-500/25 via-[#12182a] to-[#0c1220] shadow-[0_0_12px_rgba(251,191,36,0.12)]"
+          : "border-white/15 bg-gradient-to-b from-[#141c2e] to-[#0c121f] shadow-sm shadow-black/40",
       )}
       style={{ width: CARD_W, height: CARD_H }}
     >
@@ -156,9 +184,23 @@ function MatchCard({
         </div>
       )}
       <div className={cn("flex flex-col", isFinal ? "h-[calc(100%-0.75rem)]" : "h-full")}>
-        <Row name={homeName} photo={hp} score={hs} win={homeWin} ph={!showHome} />
+        <Row
+          name={homeName}
+          photo={hp}
+          score={hs}
+          win={homeWin}
+          ph={!showHome}
+          href={showHome ? userIdOf(players, m.home_id) : null}
+        />
         <div className="border-t border-white/10" />
-        <Row name={awayName} photo={ap} score={ascore} win={awayWin} ph={!showAway} />
+        <Row
+          name={awayName}
+          photo={ap}
+          score={ascore}
+          win={awayWin}
+          ph={!showAway}
+          href={showAway ? userIdOf(players, m.away_id) : null}
+        />
       </div>
     </div>
   );
@@ -169,12 +211,14 @@ function Row({
   score,
   win,
   ph,
+  href,
 }: {
   name: string;
   photo: string | null;
   score: number | null;
   win: boolean;
   ph?: boolean;
+  href?: string | null;
 }) {
   return (
     <div className={cn("flex flex-1 items-center gap-0.5 px-1", win && "bg-emerald-500/15")}>
@@ -189,14 +233,28 @@ function Row({
           {ph ? "•" : name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-[10px] font-semibold leading-none",
-          ph ? "font-bold tracking-wide text-sky-300" : win ? "text-emerald-100" : "text-white/95",
-        )}
-      >
-        {name}
-      </span>
+      {href ? (
+        <Link
+          to="/members/$id"
+          params={{ id: href }}
+          className={cn(
+            "min-w-0 flex-1 truncate text-[10px] font-semibold leading-none hover:underline",
+            ph ? "font-bold tracking-wide text-sky-300" : win ? "text-emerald-100" : "text-white/95",
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {name}
+        </Link>
+      ) : (
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-[10px] font-semibold leading-none",
+            ph ? "font-bold tracking-wide text-sky-300" : win ? "text-emerald-100" : "text-white/95",
+          )}
+        >
+          {name}
+        </span>
+      )}
       <span
         className={cn(
           "w-3.5 shrink-0 text-right text-[10px] font-bold tabular-nums",
@@ -217,8 +275,10 @@ function ThirdPlaceCard({
   players: TournamentParticipant[];
   revealNames: boolean;
 }) {
-  const homeName = revealNames && m.home_id ? (labelOf(players, m.home_id) ?? "TBD") : "SF loser";
-  const awayName = revealNames && m.away_id ? (labelOf(players, m.away_id) ?? "TBD") : "SF loser";
+  const homeName =
+    revealNames && m.home_id ? (labelOf(players, m.home_id) ?? "TBD") : "SF loser";
+  const awayName =
+    revealNames && m.away_id ? (labelOf(players, m.away_id) ?? "TBD") : "SF loser";
   const hs = revealNames && m.played && m.home_score != null ? m.home_score : null;
   const ascore = revealNames && m.played && m.away_score != null ? m.away_score : null;
   return (
@@ -322,6 +382,7 @@ export function BracketTree({
     const apply = () => {
       const w = el.clientWidth - 16;
       if (w <= 0) return;
+      // Never crush cards — allow horizontal scroll instead
       setFitScale(Math.min(1, Math.max(MIN_FIT_SCALE, w / treeWidth)));
     };
     apply();
@@ -389,11 +450,13 @@ export function BracketTree({
       ref={rootRef}
       className={cn(
         "relative overflow-hidden border border-white/10 bg-[#070b14]",
-        fullscreen ? "fixed inset-0 z-[200] rounded-none" : "rounded-2xl",
+        fullscreen
+          ? "fixed inset-0 z-[200] rounded-none"
+          : "rounded-2xl shadow-[0_8px_40px_-12px_rgba(0,0,0,0.7)]",
         locked && "select-none",
       )}
     >
-      {/* banner background removed — was causing ghost double-tree on mobile */}
+      {/* banner disabled — caused ghost double-tree on mobile */}
 
       <div className="relative z-[1] flex flex-col gap-1.5 border-b border-white/10 px-2.5 pb-2.5 pt-3">
         <div className="flex w-full items-center justify-between gap-2">
@@ -422,32 +485,16 @@ export function BracketTree({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={zoomOut}
-              className="rounded border border-white/12 bg-white/5 p-1 text-white/70"
-            >
+            <button type="button" onClick={zoomOut} className="rounded border border-white/12 bg-white/5 p-1 text-white/70">
               <ZoomOut className="h-3 w-3" />
             </button>
-            <button
-              type="button"
-              onClick={zoomReset}
-              className="min-w-[2rem] rounded border border-white/12 bg-white/5 px-1 py-1 text-[8px] font-bold text-white/60"
-            >
+            <button type="button" onClick={zoomReset} className="min-w-[2rem] rounded border border-white/12 bg-white/5 px-1 py-1 text-[8px] font-bold text-white/60">
               {Math.round(zoom * 100)}%
             </button>
-            <button
-              type="button"
-              onClick={zoomIn}
-              className="rounded border border-white/12 bg-white/5 p-1 text-white/70"
-            >
+            <button type="button" onClick={zoomIn} className="rounded border border-white/12 bg-white/5 p-1 text-white/70">
               <ZoomIn className="h-3 w-3" />
             </button>
-            <button
-              type="button"
-              onClick={() => setFullscreen((v) => !v)}
-              className="rounded border border-white/12 bg-white/5 p-1 text-white/70"
-            >
+            <button type="button" onClick={() => setFullscreen((v) => !v)} className="rounded border border-white/12 bg-white/5 p-1 text-white/70">
               {fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
             </button>
           </div>
@@ -463,6 +510,9 @@ export function BracketTree({
         <div className="relative z-[1] px-4 py-8 text-center">
           <Trophy className="mx-auto mb-2 h-7 w-7 text-white/20" />
           <p className="text-sm text-white/60">Bracket will appear when knockout starts</p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Semi-finals and final appear here once knockout fixtures exist.
+          </p>
         </div>
       ) : (
         <div
@@ -495,6 +545,7 @@ export function BracketTree({
                 transform: `scale(${zoom})`,
                 transformOrigin: "top left",
                 isolation: "isolate",
+                willChange: "transform",
               }}
             >
               <div className="absolute left-0 top-0 flex" style={{ width: treeWidth }}>
@@ -564,9 +615,7 @@ export function BracketTree({
 
       {thirdPlace.length > 0 && (
         <div className="relative z-[1] flex flex-col items-center gap-2 border-t border-white/10 px-3 py-3">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-violet-300/80">
-            Bronze match
-          </p>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-violet-300/80">Bronze match</p>
           {thirdPlace.map((m) => (
             <ThirdPlaceCard key={m.id} m={m} players={players} revealNames={revealNames} />
           ))}
@@ -583,9 +632,7 @@ export function BracketTree({
         </button>
         <div className="flex items-center gap-1.5">
           <span className="h-px w-6 bg-gradient-to-r from-transparent to-white/25" />
-          <span className="text-[10px] font-extrabold tracking-[0.18em] text-white/50">
-            NEPARENA
-          </span>
+          <span className="text-[10px] font-extrabold tracking-[0.18em] text-white/50">NEPARENA</span>
           <span className="h-px w-6 bg-gradient-to-l from-transparent to-white/25" />
         </div>
         <p className="text-[7px] text-white/30">Powered by NepARENA</p>
