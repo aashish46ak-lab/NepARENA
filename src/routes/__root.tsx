@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { CookieConsent } from "@/components/CookieConsent";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { registerPWA } from "@/lib/pwa-register";
 import {
@@ -306,6 +307,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ClientErrorBoundary>
+          <CookieConsent />
           <GoogleAnalytics />
           {showSplash && <SplashScreen onDone={finishSplash} />}
           <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
