@@ -4,10 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Loader2, Newspaper, BadgeCheck, MessageCircle } from "lucide-react";
+import { Heart, Loader2, Newspaper, BadgeCheck, MessageCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FeedEmptySuggestions } from "@/components/FeedEmptySuggestions";
+import { isSuperAdminEmail } from "@/lib/organizers";
 
 export type FeedPost = {
   id: string;
@@ -83,7 +84,10 @@ export function SocialFeed({
         setLoading(false);
         return;
       }
-      const rows = (data ?? []) as any[];
+      // Gallery posts stay off main feed + profiles + org Posts tab
+      let rows = ((data ?? []) as any[]).filter(
+        (r) => !String(r.body ?? "").trim().toLowerCase().startsWith("[gallery]"),
+      );
       const authorIds = [...new Set(rows.map((r) => r.author_id as string))];
       const { data: profiles } = authorIds.length
         ? await supabase.from("profiles").select("id, username, full_name, avatar_url, is_verified").in("id", authorIds)
@@ -154,6 +158,18 @@ export function SocialFeed({
     }
   };
 
+  const deletePost = async (p: FeedPost) => {
+    if (!user) return;
+    const isOwner = p.author_id === user.id;
+    const isAdmin = isSuperAdminEmail(user.email);
+    if (!isOwner && !isAdmin) return toast.error("Not allowed");
+    if (!confirm(isAdmin && !isOwner ? "Delete this post (policy)?" : "Delete your post?")) return;
+    const { error } = await supabase.from("posts").delete().eq("id", p.id);
+    if (error) return toast.error(error.message);
+    setPosts((prev) => prev.filter((x) => x.id !== p.id));
+    toast.success("Post deleted");
+  };
+
   const q = (filterQuery ?? "").trim().toLowerCase();
   const filteredPosts = !q
     ? posts
@@ -220,6 +236,20 @@ export function SocialFeed({
                     <MessageCircle className="h-3.5 w-3.5" />
                     {p.comment_count || ""}
                   </Link>
+                  {user && (p.author_id === user.id || isSuperAdminEmail(user.email)) && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void deletePost(p);
+                      }}
+                      className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-neutral-500 hover:bg-rose-500/10 hover:text-rose-300"
+                      title="Delete post"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
