@@ -1,4 +1,4 @@
-/** Organizer public hub — with Request to join on Live cards */
+/** Organizer public hub — home stats, members, community links, Request to join */
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,14 +13,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Loader2, BadgeCheck, MessageCircle, Share2, History, Radio, Home,
-  MoreHorizontal, LayoutDashboard, Flag, Newspaper, Images, Lock, Calendar,
+  MoreHorizontal, LayoutDashboard, Flag, Newspaper, Images, Calendar,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PlatformIcon } from "@/lib/platforms";
 import { SocialFeed } from "@/components/SocialFeed";
 import { OrganizerChat } from "@/components/OrganizerChat";
 import { GalleryBlock } from "@/components/OrganizerGalleryBlock";
+import { SquareCard, Empty } from "@/components/OrganizerSquareCard";
 
 type TabId = "home" | "posts" | "live" | "history" | "message" | "gallery";
 type Tourney = {
@@ -36,128 +38,6 @@ const NAV: { id: TabId; label: string; icon: typeof Home }[] = [
   { id: "message", label: "Message", icon: MessageCircle },
   { id: "gallery", label: "Gallery", icon: Images },
 ];
-
-function Empty({ text }: { text: string }) {
-  return <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-neutral-500">{text}</p>;
-}
-
-function formatShortDate(iso: string | null | undefined) {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
-  } catch {
-    return null;
-  }
-}
-
-function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upcoming" | "history" }) {
-  const locked = t.is_published === false;
-  const start = formatShortDate(t.starts_at);
-  const end = formatShortDate(t.ends_at);
-  const dateLine =
-    variant === "history"
-      ? [start, end].filter(Boolean).join(" → ") || "—"
-      : start || "Date TBA";
-
-  if (locked) {
-    return (
-      <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c0e]">
-        <div
-          className="absolute inset-0 scale-110 bg-cover bg-center blur-xl"
-          style={{
-            backgroundImage: t.banner_url
-              ? `url(${t.banner_url})`
-              : "linear-gradient(135deg,#1e293b,#0a0a0a)",
-          }}
-        />
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5">
-          <div className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-white/10 backdrop-blur-md">
-            <Lock className="h-5 w-5 text-neutral-100" />
-          </div>
-          <span className="text-sm font-semibold tracking-wide text-neutral-100">Not published</span>
-        </div>
-      </div>
-    );
-  }
-
-  const isLive = variant === "live";
-  const isHistory = variant === "history";
-
-  return (
-    <>
-      <Link
-        to="/tournaments/$id"
-        params={{ id: t.id }}
-        className={cn(
-          "group relative block aspect-[16/9] overflow-hidden rounded-2xl border transition duration-300 active:scale-[0.99]",
-          isLive
-            ? "border-rose-500/35 shadow-[0_0_0_1px_rgba(244,63,94,0.12)] hover:border-rose-400/55 hover:shadow-[0_16px_40px_-14px_rgba(244,63,94,0.45)]"
-            : isHistory
-              ? "border-white/10 hover:border-white/20 hover:shadow-[0_12px_32px_-14px_rgba(0,0,0,0.6)]"
-              : "border-white/10 hover:border-sky-400/40 hover:shadow-[0_16px_40px_-14px_rgba(56,189,248,0.35)]",
-        )}
-      >
-        <div
-          className="absolute inset-0 bg-cover bg-center transition duration-700 group-hover:scale-[1.06]"
-          style={{
-            backgroundImage: t.banner_url
-              ? `url(${t.banner_url})`
-              : "linear-gradient(135deg,#1e293b 0%,#0f172a 50%,#0a0a0a 100%)",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/15" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
-        {isLive && <div className="pointer-events-none absolute inset-0 bg-rose-500/[0.07]" />}
-
-        <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-2">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md",
-              isLive
-                ? "bg-rose-500 text-white shadow-lg shadow-rose-500/40"
-                : isHistory
-                  ? "bg-neutral-800/90 text-neutral-300 ring-1 ring-white/10"
-                  : "bg-amber-400 text-black shadow-md shadow-amber-500/25",
-            )}
-          >
-            {isLive && (
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-              </span>
-            )}
-            {isLive ? "LIVE" : isHistory ? "Completed" : String(t.status).replace(/_/g, " ")}
-          </span>
-          {t.game && (
-            <span className="rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-md">
-              {t.game}
-            </span>
-          )}
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
-          <h3 className="line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white drop-shadow-sm sm:text-base">
-            {t.name}
-          </h3>
-          <div className="mt-1.5 flex items-center gap-2 text-[11px] text-neutral-300/90">
-            <Calendar className="h-3 w-3 shrink-0 opacity-70" />
-            <span className="truncate">{dateLine}</span>
-          </div>
-        </div>
-      </Link>
-      {variant !== "history" && (
-        <Link
-          to="/tournaments/$id"
-          params={{ id: t.id }}
-          className="mt-2 flex w-full items-center justify-center rounded-xl border border-sky-500/35 bg-sky-500/15 px-3 py-2.5 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/25"
-        >
-          Request to join
-        </Link>
-      )}
-    </>
-  );
-}
 
 export function OrganizerPublicPage() {
   const { slug } = useParams({ from: "/o/$slug" });
@@ -232,6 +112,21 @@ export function OrganizerPublicPage() {
   const live = useMemo(() => tournaments.filter((t) => ["live", "ongoing", "check_in"].includes(String(t.status))), [tournaments]);
   const upcoming = useMemo(() => tournaments.filter((t) => ["upcoming", "registration_open", "registration_closed", "draft"].includes(String(t.status))), [tournaments]);
   const completed = useMemo(() => tournaments.filter((t) => ["completed", "archived"].includes(String(t.status))), [tournaments]);
+
+  const { data: communityLinks = [] } = useQuery({
+    queryKey: ["org_community_links", organizer?.id],
+    enabled: !!organizer?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("community_links")
+        .select("id, platform, label, url, organizer_id")
+        .eq("organizer_id", organizer!.id)
+        .order("sort_order", { ascending: true })
+        .limit(12);
+      if (error) return [] as { id: string; platform: string; label: string | null; url: string }[];
+      return (data ?? []) as { id: string; platform: string; label: string | null; url: string }[];
+    },
+  });
 
   const { data: galleryItems = [], refetch: refetchGallery } = useQuery({
     queryKey: ["org_gallery", organizer?.id],
@@ -336,6 +231,7 @@ export function OrganizerPublicPage() {
   const banner = (organizer as { cover_url?: string | null }).cover_url || (organizer as { banner_url?: string | null }).banner_url || null;
   const displayName = organizer.name;
   const specialName = organizer.slug;
+  const joinedAt = (organizer as { created_at?: string | null }).created_at || null;
 
   return (
     <PageShell force="platform" hideChrome>
@@ -360,24 +256,24 @@ export function OrganizerPublicPage() {
         </div>
 
         {tab === "home" && (
-          <div className="relative">
+          <div className="relative animate-in fade-in duration-300">
             <div className="relative h-36 w-full sm:h-40" style={{ background: banner ? `url(${banner}) center/cover` : "linear-gradient(135deg, rgba(14,165,233,0.28), #0a0a0a 72%)" }}>
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/45 to-transparent" />
               <button type="button" disabled={followBusy} onClick={() => void toggleFollow()}
-                className={cn("absolute right-3 top-3 z-10 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg", iFollow ? "border border-white/25 bg-black/50 text-white" : "bg-sky-500 text-white")}>
+                className={cn("absolute right-3 top-3 z-10 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg transition active:scale-95", iFollow ? "border border-white/25 bg-black/50 text-white" : "bg-sky-500 text-white hover:bg-sky-400")}>
                 {followBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : iFollow ? "Following" : "Follow"}
               </button>
             </div>
             <div className="mx-auto max-w-lg px-3 sm:max-w-2xl sm:px-4">
               <div className="relative -mt-12 flex items-start gap-3 pl-4 sm:pl-6">
-                <button type="button" onClick={() => organizer.logo_url && setLogoOpen(true)} className="shrink-0 rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-xl">
+                <button type="button" onClick={() => organizer.logo_url && setLogoOpen(true)} className="shrink-0 rounded-2xl ring-[3px] ring-[#0a0a0a] shadow-xl transition hover:scale-[1.02] active:scale-[0.98]">
                   <Avatar className="h-[4.75rem] w-[4.75rem] rounded-2xl sm:h-20 sm:w-20">
                     <AvatarImage src={organizer.logo_url ?? undefined} className="rounded-2xl object-cover" />
                     <AvatarFallback className="rounded-2xl text-lg">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </button>
                 <div className="flex min-w-0 flex-1 items-center gap-5 pt-2 text-xs text-neutral-400">
-                  <Link to="/org-followers/$id" params={{ id: organizer.id }} className="rounded-xl px-1 py-0.5 transition hover:bg-white/[0.06]">
+                  <Link to="/org-followers/$id" params={{ id: organizer.id }} className="rounded-xl px-1 py-0.5 transition hover:bg-white/[0.06] active:scale-[0.98]">
                     <p className="text-base font-bold tabular-nums text-white">{followerCount}</p>
                     <p className="text-[10px] uppercase tracking-wide">Followers</p>
                   </Link>
@@ -385,7 +281,7 @@ export function OrganizerPublicPage() {
                     <p className="text-base font-bold tabular-nums text-white">{postCount}</p>
                     <p className="text-[10px] uppercase tracking-wide">Posts</p>
                   </div>
-                  <button ref={menuBtnRef} type="button" onClick={openMenu} className="ml-auto rounded-full border border-white/12 bg-white/[0.04] p-2 text-neutral-300">
+                  <button ref={menuBtnRef} type="button" onClick={openMenu} className="ml-auto rounded-full border border-white/12 bg-white/[0.04] p-2 text-neutral-300 transition hover:bg-white/[0.08]">
                     <MoreHorizontal className="h-4 w-4" />
                   </button>
                 </div>
@@ -409,18 +305,68 @@ export function OrganizerPublicPage() {
             : cn("px-3 sm:px-4", tab === "home" ? "mt-4" : "mt-3"),
         )}>
           {tab === "home" && (
-            <section className="space-y-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="mb-1 text-[10px] font-semibold uppercase text-neutral-500">About</p>
-                <p className="text-sm text-neutral-300">{organizer.description || "No bio yet"}</p>
+            <section className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/15">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">About</p>
+                <p className="text-sm leading-relaxed text-neutral-300">{organizer.description || "No bio yet"}</p>
               </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/15">
+                <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+                  <Calendar className="h-3 w-3" /> Joined platform
+                </p>
+                <p className="text-sm font-medium text-white">
+                  {joinedAt
+                    ? new Date(joinedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+                    : "—"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/15">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Tournament type</p>
+                <p className="text-sm font-semibold uppercase text-sky-300">
+                  {primaryGame ? String(primaryGame).replace(/_/g, " ") : "Not set"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center transition hover:border-sky-400/30 hover:bg-sky-500/5">
+                  <p className="text-lg font-bold tabular-nums text-white">{tournaments.length}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Organized</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center transition hover:border-rose-400/30 hover:bg-rose-500/5">
+                  <p className="text-lg font-bold tabular-nums text-rose-300">{live.length}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Live</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center transition hover:border-emerald-400/30 hover:bg-emerald-500/5">
+                  <p className="text-lg font-bold tabular-nums text-emerald-300">{completed.length}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Finished</p>
+                </div>
+                <Link
+                  to="/org-followers/$id"
+                  params={{ id: organizer.id }}
+                  className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center transition hover:border-violet-400/40 hover:bg-violet-500/10 active:scale-[0.98]"
+                >
+                  <p className="text-lg font-bold tabular-nums text-violet-200">{followerCount}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Members</p>
+                </Link>
+              </div>
+
               {team.length > 0 && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="mb-2 text-[10px] font-semibold uppercase text-neutral-500">Team</p>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/15">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Team</p>
                   <div className="space-y-2">
                     {team.map((m) => (
-                      <Link key={m.user_id} to="/members/$id" params={{ id: m.user_id }} className="flex items-center gap-2.5 rounded-xl border border-white/8 px-3 py-2 hover:bg-white/[0.05]">
-                        <Avatar className="h-8 w-8"><AvatarImage src={m.avatar_url ?? undefined} /><AvatarFallback>{(m.full_name || m.username || "?").slice(0, 1)}</AvatarFallback></Avatar>
+                      <Link
+                        key={m.user_id}
+                        to="/members/$id"
+                        params={{ id: m.user_id }}
+                        className="flex items-center gap-2.5 rounded-xl border border-white/8 px-3 py-2 transition hover:bg-white/[0.05] active:scale-[0.99]"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={m.avatar_url ?? undefined} />
+                          <AvatarFallback>{(m.full_name || m.username || "?").slice(0, 1)}</AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm text-white">{m.full_name || m.username || "Member"}</p>
                           <p className="text-[10px] uppercase text-neutral-500">{m.role}</p>
@@ -430,6 +376,40 @@ export function OrganizerPublicPage() {
                   </div>
                 </div>
               )}
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/15">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Community links</p>
+                {communityLinks.length === 0 ? (
+                  <p className="text-sm text-neutral-500">No links configured yet</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {communityLinks.map((l) => {
+                      const raw = (l.label || "").trim();
+                      const looksLikeUrl =
+                        !raw ||
+                        /^https?:\/\//i.test(raw) ||
+                        /^www\./i.test(raw) ||
+                        /[/.]/.test(raw);
+                      const display = looksLikeUrl ? (l.platform || "Link") : raw;
+                      return (
+                        <a
+                          key={l.id}
+                          href={l.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={display}
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 transition hover:border-violet-400/40 hover:bg-white/[0.07] active:scale-[0.98]"
+                        >
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.08]">
+                            <PlatformIcon platform={l.platform} className="h-4 w-4" />
+                          </span>
+                          <span className="max-w-[8rem] truncate text-sm font-medium text-white">{display}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
@@ -438,7 +418,7 @@ export function OrganizerPublicPage() {
           )}
 
           {tab === "live" && (
-            <section className="space-y-3">
+            <section className="space-y-3 animate-in fade-in duration-300">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Radio className="h-3.5 w-3.5 text-rose-400" /> Live tournaments</h2>
               {live.length === 0 ? (
                 <Empty text={upcoming[0] ? `Nothing live — next up: ${upcoming[0].name}` : "No live tournaments right now"} />
@@ -455,7 +435,7 @@ export function OrganizerPublicPage() {
           )}
 
           {tab === "history" && (
-            <section className="space-y-3">
+            <section className="space-y-3 animate-in fade-in duration-300">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><History className="h-3.5 w-3.5" /> Tournament history</h2>
               {completed.length === 0 ? (
                 <Empty text={`${organizer.name} is new — no completed tournaments yet`} />
@@ -491,7 +471,7 @@ export function OrganizerPublicPage() {
         </div>
 
         {logoOpen && organizer.logo_url && (
-          <button type="button" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-6" onClick={() => setLogoOpen(false)}>
+          <button type="button" className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-6 animate-in fade-in duration-200" onClick={() => setLogoOpen(false)}>
             <img src={organizer.logo_url} alt={organizer.name} className="max-h-[80vh] max-w-full rounded-2xl object-contain" />
           </button>
         )}
@@ -499,7 +479,7 @@ export function OrganizerPublicPage() {
         {menuOpen && menuPos && createPortal(
           <>
             <div className="fixed inset-0 z-[340]" onClick={() => setMenuOpen(false)} aria-hidden />
-            <div className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl" style={{ top: menuPos.top, right: menuPos.right }}>
+            <div className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl animate-in fade-in zoom-in-95 duration-150" style={{ top: menuPos.top, right: menuPos.right }}>
               {isStaff && (
                 <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]"
                   onClick={() => { setMenuOpen(false); try { localStorage.setItem("neparena-active-organizer-slug", organizer.slug); } catch {} void navigate({ to: "/dashboard" }); }}>
