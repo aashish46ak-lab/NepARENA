@@ -136,6 +136,12 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
     "none" | "pending" | "approved" | "rejected"
   >("none");
 
+  const isRegOpen =
+    !!t.registration_open ||
+    ["registration_open", "open", "registration", "upcoming"].includes(
+      String(t.status || "").toLowerCase(),
+    );
+
   useEffect(() => {
     if (!user) {
       setJoined("none");
@@ -223,7 +229,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
             <Badge className="border-white/10 bg-white/5 text-[10px] capitalize text-neutral-300 sm:text-xs">
               {String(t.status).replace(/_/g, " ")}
             </Badge>
-            {t.registration_open && (
+            {isRegOpen && (
               <Badge className="border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-300 sm:text-xs">
                 Registration open
               </Badge>
@@ -264,7 +270,7 @@ function TournamentCard({ tournament: t }: { tournament: Tournament }) {
             </div>
           ) : joined === "rejected" ? (
             <p className="text-xs text-rose-400">Previous request was rejected</p>
-          ) : t.registration_open ? (
+          ) : isRegOpen ? (
             <Button
               type="button"
               className="w-full bg-neutral-100 text-black hover:bg-white sm:w-auto"
