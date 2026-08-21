@@ -263,102 +263,40 @@ export function SuperAdminPanelImpl() {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {o.status !== "active" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-white/15"
-                      onClick={async () => {
-                        await setOrganizerStatus(o.id, "active");
-                        toast.success("Activated");
-                        void reload();
-                      }}
-                    >
+                    <Button size="sm" variant="outline" className="border-white/15" onClick={async () => { await setOrganizerStatus(o.id, "active"); toast.success("Activated"); void reload(); }}>
                       <CheckCircle className="mr-1 h-3.5 w-3.5" /> Activate
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-white/15"
-                    onClick={async () => {
-                      await setOrganizerVerified(o.id, !o.is_verified);
-                      toast.success(o.is_verified ? "Unverified" : "Verified");
-                      void reload();
-                    }}
-                  >
+                  <Button size="sm" variant="outline" className="border-white/15" onClick={async () => { await setOrganizerVerified(o.id, !o.is_verified); toast.success(o.is_verified ? "Unverified" : "Verified"); void reload(); }}>
                     <BadgeCheck className="mr-1 h-3.5 w-3.5" /> {o.is_verified ? "Unverify" : "Verify"}
                   </Button>
                   {o.status === "active" && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-rose-300"
-                      onClick={async () => {
-                        await setOrganizerStatus(o.id, "suspended");
-                        toast.success("Suspended");
-                        void reload();
-                      }}
-                    >
+                    <Button size="sm" variant="ghost" className="text-rose-300" onClick={async () => { await setOrganizerStatus(o.id, "suspended"); toast.success("Suspended"); void reload(); }}>
                       <Ban className="mr-1 h-3.5 w-3.5" /> Suspend
                     </Button>
                   )}
                   {o.slug !== DEFAULT_ORGANIZER_SLUG && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-rose-400"
-                      onClick={async () => {
-                        if (
-                          !window.confirm(
-                            `Permanently delete organizer "${o.name}"? Public page, URL, and dashboard access will be removed forever.`,
-                          )
-                        )
-                          return;
-                        if (!window.confirm("This cannot be undone. Continue?")) return;
-                        try {
-                          const res = await permanentlyRemoveOrganizer(o.id, {
-                            slug: o.slug,
-                            name: o.name,
-                          });
-                          if (!res.ok) {
-                            toast.error(res.error || "Delete failed");
-                            return;
-                          }
-                          toast.success(
-                            res.mode === "hard"
-                              ? "Organizer permanently deleted"
-                              : "Organizer removed — no longer public or on any dashboard",
-                          );
-                          void reload();
-                        } catch (e) {
-                          toast.error(e instanceof Error ? e.message : "Delete failed");
-                        }
-                      }}
-                    >
+                    <Button size="sm" variant="ghost" className="text-rose-400" onClick={async () => {
+                      if (!window.confirm(`Permanently delete organizer "${o.name}"? Public page, URL, and dashboard access will be removed forever.`)) return;
+                      if (!window.confirm("This cannot be undone. Continue?")) return;
+                      try {
+                        const res = await permanentlyRemoveOrganizer(o.id, { slug: o.slug, name: o.name });
+                        if (!res.ok) { toast.error(res.error || "Delete failed"); return; }
+                        toast.success(res.mode === "hard" ? "Organizer permanently deleted" : "Organizer removed — no longer public or on any dashboard");
+                        void reload();
+                      } catch (e) { toast.error(e instanceof Error ? e.message : "Delete failed"); }
+                    }}>
                       Delete
                     </Button>
                   )}
-                  <Button asChild size="sm" variant="secondary">
-                    <Link to="/o/$slug" params={{ slug: o.slug }}>
-                      Open
-                    </Link>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(`${window.location.origin}/o/${o.slug}`);
-                      toast.success("Copied");
-                    }}
-                  >
+                  <Button asChild size="sm" variant="secondary"><Link to="/o/$slug" params={{ slug: o.slug }}>Open</Link></Button>
+                  <Button size="sm" variant="ghost" onClick={async () => { await navigator.clipboard.writeText(`${window.location.origin}/o/${o.slug}`); toast.success("Copied"); }}>
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
             ))}
-            {!filteredOrgs.length && (
-              <p className="p-6 text-sm text-neutral-500">No organizers match.</p>
-            )}
+            {!filteredOrgs.length && <p className="p-6 text-sm text-neutral-500">No organizers match.</p>}
           </div>
         </div>
       )}
@@ -371,30 +309,17 @@ export function SuperAdminPanelImpl() {
             <div className="space-y-3">
               <Input placeholder="Organizer name" value={name} onChange={(e) => setName(e.target.value)} />
               <Input type="email" placeholder="Gmail" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <Button
-                className="w-full bg-neutral-100 text-black"
-                disabled={busy}
-                onClick={async () => {
-                  if (!user) return;
-                  setBusy(true);
-                  const res = await inviteOrganizer({ email, name, invitedBy: user.id });
-                  setBusy(false);
-                  if (!res.ok) {
-                    toast.error(res.error);
-                    return;
-                  }
-                  setLastInviteLink(`${window.location.origin}/invite/${res.token}`);
-                  toast.success("Invite created");
-                  void reload();
-                }}
-              >
-                {busy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <UserPlus className="mr-2 h-4 w-4" /> Create invite
-                  </>
-                )}
+              <Button className="w-full bg-neutral-100 text-black" disabled={busy} onClick={async () => {
+                if (!user) return;
+                setBusy(true);
+                const res = await inviteOrganizer({ email, name, invitedBy: user.id });
+                setBusy(false);
+                if (!res.ok) { toast.error(res.error); return; }
+                setLastInviteLink(`${window.location.origin}/invite/${res.token}`);
+                toast.success("Invite created");
+                void reload();
+              }}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserPlus className="mr-2 h-4 w-4" /> Create invite</>}
               </Button>
               {lastInviteLink && <p className="break-all text-xs text-neutral-400">{lastInviteLink}</p>}
             </div>
@@ -404,9 +329,7 @@ export function SuperAdminPanelImpl() {
               {(stats?.pendingInvites ?? []).map((inv) => (
                 <li key={inv.id} className="rounded-xl border border-white/5 px-3 py-2.5 text-sm">
                   <p className="font-medium">{inv.email}</p>
-                  <p className="text-[11px] text-neutral-500">
-                    <Clock className="inline h-3 w-3" /> {new Date(inv.created_at).toLocaleString()}
-                  </p>
+                  <p className="text-[11px] text-neutral-500"><Clock className="inline h-3 w-3" /> {new Date(inv.created_at).toLocaleString()}</p>
                 </li>
               ))}
               {!stats?.pendingInvites?.length && <p className="text-sm text-neutral-500">None</p>}
@@ -417,36 +340,24 @@ export function SuperAdminPanelImpl() {
 
       {tab === "users" && (
         <Section title="Users · Verify blue tick">
-          <p className="mb-4 text-sm text-neutral-400">
-            Search any member and grant or remove the verified badge.
-          </p>
+          <p className="mb-4 text-sm text-neutral-400">Search any member and grant or remove the verified badge.</p>
           <UserVerificationPanel />
         </Section>
       )}
 
       {tab === "messages" && (
         <Section title="Platform messages">
-          <p className="mb-3 text-sm text-neutral-400">
-            Direct user → platform admin messages (not organizer chats).
-          </p>
-          <Button
-            variant="outline"
-            className="border-white/15"
-            onClick={() => router.navigate({ to: "/messages" })}
-          >
-            Open messages
-          </Button>
+          <p className="mb-3 text-sm text-neutral-400">Direct user → platform admin messages (not organizer chats).</p>
+          <Button variant="outline" className="border-white/15" onClick={() => router.navigate({ to: "/messages" })}>Open messages</Button>
         </Section>
       )}
 
       {tab === "news" && (
         <Section title="Upload / manage platform news">
-          <p className="text-sm text-neutral-400">
-            Use the News section on the public site or the content admin tools to publish platform-wide news.
+          <p className="mb-3 text-sm text-neutral-400">
+            Publish news shown on /news and the platform. Title, body, cover, featured, draft/published.
           </p>
-          <Button asChild className="mt-3" variant="secondary">
-            <Link to="/news">Open news</Link>
-          </Button>
+          <NewsAdminPanel />
         </Section>
       )}
     </div>
