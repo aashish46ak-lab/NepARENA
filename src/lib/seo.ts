@@ -12,6 +12,8 @@ export const SITE_DESCRIPTION =
 export const SITE_KEYWORDS =
   "NepARENA, esports, multi organizer, tournament platform, competitive gaming, eFootball, online tournaments, gaming community";
 export const SITE_OG_IMAGE = `${SITE_URL}/neparena-logo.png`;
+/** Square brand mark for favicons / JSON-LD (not the landscape banner). */
+export const SITE_LOGO = `${SITE_URL}/apple-touch-icon.png`;
 export const FOUNDER_NAME = "Ashish Khadka";
 
 export type SeoInput = {
@@ -98,7 +100,7 @@ export function organizationJsonLd(): string {
     "@type": "Organization",
     name: SITE_NAME,
     url: SITE_URL,
-    logo: SITE_OG_IMAGE,
+    logo: SITE_LOGO,
     description: SITE_DESCRIPTION,
     foundingDate: "2026",
     founder: {
@@ -130,7 +132,7 @@ export function websiteJsonLd(): string {
       name: SITE_NAME,
       logo: {
         "@type": "ImageObject",
-        url: SITE_OG_IMAGE,
+        url: SITE_LOGO,
       },
     },
     inLanguage: "en",
