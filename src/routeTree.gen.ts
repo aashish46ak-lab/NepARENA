@@ -6,6 +6,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
@@ -40,9 +42,17 @@ import { Route as FeedRouteImport } from './routes/feed'
 import { Route as FollowersIdRouteImport } from './routes/followers.$id'
 import { Route as FollowingPeopleIdRouteImport } from './routes/following-people.$id'
 import { Route as OrgFollowersIdRouteImport } from './routes/org-followers.$id'
+import { Route as RulesRouteImport } from './routes/rules'
+import { Route as NewsRouteImport } from './routes/news'
+import { Route as NewsSlugRouteImport } from './routes/news.$slug'
+import { Route as GuidesRouteImport } from './routes/guides'
+import { Route as GuidesSlugRouteImport } from './routes/guides.$slug'
+import { Route as PostsIdRouteImport } from './routes/posts.$id'
 
 const IndexRoute = IndexRouteImport.update({ id: '/', path: '/', getParentRoute: () => rootRouteImport } as any)
 const AboutRoute = AboutRouteImport.update({ id: '/about', path: '/about', getParentRoute: () => rootRouteImport } as any)
+const PrivacyRoute = PrivacyRouteImport.update({ id: '/privacy', path: '/privacy', getParentRoute: () => rootRouteImport } as any)
+const TermsRoute = TermsRouteImport.update({ id: '/terms', path: '/terms', getParentRoute: () => rootRouteImport } as any)
 const DashboardRoute = DashboardRouteImport.update({ id: '/dashboard', path: '/dashboard', getParentRoute: () => rootRouteImport } as any)
 const GalleryRoute = GalleryRouteImport.update({ id: '/gallery', path: '/gallery', getParentRoute: () => rootRouteImport } as any)
 const HallOfFameRoute = HallOfFameRouteImport.update({ id: '/hall-of-fame', path: '/hall-of-fame', getParentRoute: () => rootRouteImport } as any)
@@ -61,13 +71,13 @@ const OSlugRoute = OSlugRouteImport.update({ id: '/o/$slug', path: '/o/$slug', g
 const InviteTokenRoute = InviteTokenRouteImport.update({ id: '/invite/$token', path: '/invite/$token', getParentRoute: () => rootRouteImport } as any)
 const GamesRoute = GamesRouteImport.update({ id: '/games', path: '/games', getParentRoute: () => rootRouteImport } as any)
 const GamesIndexRoute = GamesIndexRouteImport.update({ id: '/', path: '/', getParentRoute: () => GamesRoute } as any)
-const GamesBlindRankingRoute = GamesBlindRankingRouteImport.update({ id: '/blind-ranking', path: '/blind-ranking', getParentRoute: () => GamesRoute } as any)
-const GamesPenaltyRoute = GamesPenaltyRouteImport.update({ id: '/penalty', path: '/penalty', getParentRoute: () => GamesRoute } as any)
-const GamesHigherLowerRoute = GamesHigherLowerRouteImport.update({ id: '/higher-lower', path: '/higher-lower', getParentRoute: () => GamesRoute } as any)
 const FollowingRoute = FollowingRouteImport.update({ id: '/following', path: '/following', getParentRoute: () => rootRouteImport } as any)
 const OrganizersRoute = OrganizersRouteImport.update({ id: '/organizers', path: '/organizers', getParentRoute: () => rootRouteImport } as any)
 const OwnershipRoute = OwnershipRouteImport.update({ id: '/ownership', path: '/ownership', getParentRoute: () => rootRouteImport } as any)
 const UsersRoute = UsersRouteImport.update({ id: '/users', path: '/users', getParentRoute: () => rootRouteImport } as any)
+const GamesBlindRankingRoute = GamesBlindRankingRouteImport.update({ id: '/games/blind-ranking', path: '/games/blind-ranking', getParentRoute: () => rootRouteImport } as any)
+const GamesPenaltyRoute = GamesPenaltyRouteImport.update({ id: '/games/penalty', path: '/games/penalty', getParentRoute: () => rootRouteImport } as any)
+const GamesHigherLowerRoute = GamesHigherLowerRouteImport.update({ id: '/games/higher-lower', path: '/games/higher-lower', getParentRoute: () => rootRouteImport } as any)
 const VoteGoatRoute = VoteGoatRouteImport.update({ id: '/vote/goat', path: '/vote/goat', getParentRoute: () => rootRouteImport } as any)
 const MusicRoute = MusicRouteImport.update({ id: '/music', path: '/music', getParentRoute: () => rootRouteImport } as any)
 const SettingsRoute = SettingsRouteImport.update({ id: '/settings', path: '/settings', getParentRoute: () => rootRouteImport } as any)
@@ -77,10 +87,18 @@ const FeedRoute = FeedRouteImport.update({ id: '/feed', path: '/feed', getParent
 const FollowersIdRoute = FollowersIdRouteImport.update({ id: '/followers/$id', path: '/followers/$id', getParentRoute: () => rootRouteImport } as any)
 const FollowingPeopleIdRoute = FollowingPeopleIdRouteImport.update({ id: '/following-people/$id', path: '/following-people/$id', getParentRoute: () => rootRouteImport } as any)
 const OrgFollowersIdRoute = OrgFollowersIdRouteImport.update({ id: '/org-followers/$id', path: '/org-followers/$id', getParentRoute: () => rootRouteImport } as any)
+const RulesRoute = RulesRouteImport.update({ id: '/rules', path: '/rules', getParentRoute: () => rootRouteImport } as any)
+const NewsRoute = NewsRouteImport.update({ id: '/news', path: '/news', getParentRoute: () => rootRouteImport } as any)
+const NewsSlugRoute = NewsSlugRouteImport.update({ id: '/news/$slug', path: '/news/$slug', getParentRoute: () => rootRouteImport } as any)
+const GuidesRoute = GuidesRouteImport.update({ id: '/guides', path: '/guides', getParentRoute: () => rootRouteImport } as any)
+const GuidesSlugRoute = GuidesSlugRouteImport.update({ id: '/guides/$slug', path: '/guides/$slug', getParentRoute: () => rootRouteImport } as any)
+const PostsIdRoute = PostsIdRouteImport.update({ id: '/posts/$id', path: '/posts/$id', getParentRoute: () => rootRouteImport } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
@@ -115,10 +133,18 @@ export interface FileRoutesByFullPath {
   '/followers/$id': typeof FollowersIdRoute
   '/following-people/$id': typeof FollowingPeopleIdRoute
   '/org-followers/$id': typeof OrgFollowersIdRoute
+  '/rules': typeof RulesRoute
+  '/news': typeof NewsRoute
+  '/news/$slug': typeof NewsSlugRoute
+  '/guides': typeof GuidesRoute
+  '/guides/$slug': typeof GuidesSlugRoute
+  '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
@@ -135,7 +161,7 @@ export interface FileRoutesByTo {
   '/admin/tournaments/$id': typeof AdminTournamentsIdRoute
   '/o/$slug': typeof OSlugRoute
   '/invite/$token': typeof InviteTokenRoute
-  '/games': typeof GamesIndexRoute
+  '/games': typeof GamesRouteWithChildren
   '/following': typeof FollowingRoute
   '/organizers': typeof OrganizersRoute
   '/ownership': typeof OwnershipRoute
@@ -152,11 +178,19 @@ export interface FileRoutesByTo {
   '/followers/$id': typeof FollowersIdRoute
   '/following-people/$id': typeof FollowingPeopleIdRoute
   '/org-followers/$id': typeof OrgFollowersIdRoute
+  '/rules': typeof RulesRoute
+  '/news': typeof NewsRoute
+  '/news/$slug': typeof NewsSlugRoute
+  '/guides': typeof GuidesRoute
+  '/guides/$slug': typeof GuidesSlugRoute
+  '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/dashboard': typeof DashboardRoute
   '/gallery': typeof GalleryRoute
   '/hall-of-fame': typeof HallOfFameRoute
@@ -191,18 +225,26 @@ export interface FileRoutesById {
   '/followers/$id': typeof FollowersIdRoute
   '/following-people/$id': typeof FollowingPeopleIdRoute
   '/org-followers/$id': typeof OrgFollowersIdRoute
+  '/rules': typeof RulesRoute
+  '/news': typeof NewsRoute
+  '/news/$slug': typeof NewsSlugRoute
+  '/guides': typeof GuidesRoute
+  '/guides/$slug': typeof GuidesSlugRoute
+  '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/dashboard' | '/gallery' | '/hall-of-fame' | '/history' | '/members' | '/profile' | '/reset-password' | '/tournaments' | '/platform' | '/auth/verify' | '/members/$id' | '/tournaments/$id' | '/auth/' | '/admin/tournaments/$id' | '/o/$slug' | '/invite/$token' | '/games' | '/games/' | '/following' | '/organizers' | '/ownership' | '/users' | '/games/blind-ranking' | '/games/penalty' | '/games/higher-lower' | '/vote/goat' | '/music' | '/settings' | '/become-organizer' | '/messages' | '/feed' | '/followers/$id' | '/following-people/$id' | '/org-followers/$id'
+  fullPaths: '/' | '/about' | '/privacy' | '/terms' | '/dashboard' | '/gallery' | '/hall-of-fame' | '/history' | '/members' | '/profile' | '/reset-password' | '/tournaments' | '/platform' | '/auth/verify' | '/members/$id' | '/tournaments/$id' | '/auth/' | '/admin/tournaments/$id' | '/o/$slug' | '/invite/$token' | '/games' | '/games/' | '/following' | '/organizers' | '/ownership' | '/users' | '/games/blind-ranking' | '/games/penalty' | '/games/higher-lower' | '/vote/goat' | '/music' | '/settings' | '/become-organizer' | '/messages' | '/feed' | '/followers/$id' | '/following-people/$id' | '/org-followers/$id' | '/rules' | '/news' | '/news/$slug' | '/guides' | '/guides/$slug' | '/posts/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/dashboard' | '/gallery' | '/hall-of-fame' | '/history' | '/members' | '/profile' | '/reset-password' | '/tournaments' | '/platform' | '/auth/verify' | '/members/$id' | '/tournaments/$id' | '/auth' | '/admin/tournaments/$id' | '/o/$slug' | '/invite/$token' | '/games' | '/following' | '/organizers' | '/ownership' | '/users' | '/games/blind-ranking' | '/games/penalty' | '/games/higher-lower' | '/vote/goat' | '/music' | '/settings' | '/become-organizer' | '/messages' | '/feed' | '/followers/$id' | '/following-people/$id' | '/org-followers/$id'
-  id: '__root__' | '/' | '/about' | '/dashboard' | '/gallery' | '/hall-of-fame' | '/history' | '/members' | '/profile' | '/reset-password' | '/tournaments' | '/platform' | '/auth/verify' | '/members/$id' | '/tournaments/$id' | '/auth/' | '/admin/tournaments/$id' | '/o/$slug' | '/invite/$token' | '/games' | '/games/' | '/following' | '/organizers' | '/ownership' | '/users' | '/games/blind-ranking' | '/games/penalty' | '/games/higher-lower' | '/vote/goat' | '/music' | '/settings' | '/become-organizer' | '/messages' | '/feed' | '/followers/$id' | '/following-people/$id' | '/org-followers/$id'
+  to: '/' | '/about' | '/privacy' | '/terms' | '/dashboard' | '/gallery' | '/hall-of-fame' | '/history' | '/members' | '/profile' | '/reset-password' | '/tournaments' | '/platform' | '/auth/verify' | '/members/$id' | '/tournaments/$id' | '/auth' | '/admin/tournaments/$id' | '/o/$slug' | '/invite/$token' | '/games' | '/following' | '/organizers' | '/ownership' | '/users' | '/games/blind-ranking' | '/games/penalty' | '/games/higher-lower' | '/vote/goat' | '/music' | '/settings' | '/become-organizer' | '/messages' | '/feed' | '/followers/$id' | '/following-people/$id' | '/org-followers/$id' | '/rules' | '/news' | '/news/$slug' | '/guides' | '/guides/$slug' | '/posts/$id'
+  id: '__root__' | '/' | '/about' | '/privacy' | '/terms' | '/dashboard' | '/gallery' | '/hall-of-fame' | '/history' | '/members' | '/profile' | '/reset-password' | '/tournaments' | '/platform' | '/auth/verify' | '/members/$id' | '/tournaments/$id' | '/auth/' | '/admin/tournaments/$id' | '/o/$slug' | '/invite/$token' | '/games' | '/games/' | '/following' | '/organizers' | '/ownership' | '/users' | '/games/blind-ranking' | '/games/penalty' | '/games/higher-lower' | '/vote/goat' | '/music' | '/settings' | '/become-organizer' | '/messages' | '/feed' | '/followers/$id' | '/following-people/$id' | '/org-followers/$id' | '/rules' | '/news' | '/news/$slug' | '/guides' | '/guides/$slug' | '/posts/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   DashboardRoute: typeof DashboardRoute
   GalleryRoute: typeof GalleryRoute
   HallOfFameRoute: typeof HallOfFameRoute
@@ -231,12 +273,23 @@ export interface RootRouteChildren {
   FollowersIdRoute: typeof FollowersIdRoute
   FollowingPeopleIdRoute: typeof FollowingPeopleIdRoute
   OrgFollowersIdRoute: typeof OrgFollowersIdRoute
+  RulesRoute: typeof RulesRoute
+  NewsRoute: typeof NewsRoute
+  NewsSlugRoute: typeof NewsSlugRoute
+  GuidesRoute: typeof GuidesRoute
+  GuidesSlugRoute: typeof GuidesSlugRoute
+  PostsIdRoute: typeof PostsIdRoute
+  GamesBlindRankingRoute: typeof GamesBlindRankingRoute
+  GamesPenaltyRoute: typeof GamesPenaltyRoute
+  GamesHigherLowerRoute: typeof GamesHigherLowerRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': { id: '/'; path: '/'; fullPath: '/'; preLoaderRoute: typeof IndexRouteImport; parentRoute: typeof rootRouteImport }
     '/about': { id: '/about'; path: '/about'; fullPath: '/about'; preLoaderRoute: typeof AboutRouteImport; parentRoute: typeof rootRouteImport }
+    '/privacy': { id: '/privacy'; path: '/privacy'; fullPath: '/privacy'; preLoaderRoute: typeof PrivacyRouteImport; parentRoute: typeof rootRouteImport }
+    '/terms': { id: '/terms'; path: '/terms'; fullPath: '/terms'; preLoaderRoute: typeof TermsRouteImport; parentRoute: typeof rootRouteImport }
     '/dashboard': { id: '/dashboard'; path: '/dashboard'; fullPath: '/dashboard'; preLoaderRoute: typeof DashboardRouteImport; parentRoute: typeof rootRouteImport }
     '/gallery': { id: '/gallery'; path: '/gallery'; fullPath: '/gallery'; preLoaderRoute: typeof GalleryRouteImport; parentRoute: typeof rootRouteImport }
     '/hall-of-fame': { id: '/hall-of-fame'; path: '/hall-of-fame'; fullPath: '/hall-of-fame'; preLoaderRoute: typeof HallOfFameRouteImport; parentRoute: typeof rootRouteImport }
@@ -254,14 +307,13 @@ declare module '@tanstack/react-router' {
     '/o/$slug': { id: '/o/$slug'; path: '/o/$slug'; fullPath: '/o/$slug'; preLoaderRoute: typeof OSlugRouteImport; parentRoute: typeof rootRouteImport }
     '/invite/$token': { id: '/invite/$token'; path: '/invite/$token'; fullPath: '/invite/$token'; preLoaderRoute: typeof InviteTokenRouteImport; parentRoute: typeof rootRouteImport }
     '/games': { id: '/games'; path: '/games'; fullPath: '/games'; preLoaderRoute: typeof GamesRouteImport; parentRoute: typeof rootRouteImport }
-    '/games/': { id: '/games/'; path: '/'; fullPath: '/games/'; preLoaderRoute: typeof GamesIndexRouteImport; parentRoute: typeof GamesRoute }
     '/following': { id: '/following'; path: '/following'; fullPath: '/following'; preLoaderRoute: typeof FollowingRouteImport; parentRoute: typeof rootRouteImport }
     '/organizers': { id: '/organizers'; path: '/organizers'; fullPath: '/organizers'; preLoaderRoute: typeof OrganizersRouteImport; parentRoute: typeof rootRouteImport }
     '/ownership': { id: '/ownership'; path: '/ownership'; fullPath: '/ownership'; preLoaderRoute: typeof OwnershipRouteImport; parentRoute: typeof rootRouteImport }
     '/users': { id: '/users'; path: '/users'; fullPath: '/users'; preLoaderRoute: typeof UsersRouteImport; parentRoute: typeof rootRouteImport }
-    '/games/blind-ranking': { id: '/games/blind-ranking'; path: '/blind-ranking'; fullPath: '/games/blind-ranking'; preLoaderRoute: typeof GamesBlindRankingRouteImport; parentRoute: typeof GamesRoute }
-    '/games/penalty': { id: '/games/penalty'; path: '/penalty'; fullPath: '/games/penalty'; preLoaderRoute: typeof GamesPenaltyRouteImport; parentRoute: typeof GamesRoute }
-    '/games/higher-lower': { id: '/games/higher-lower'; path: '/higher-lower'; fullPath: '/games/higher-lower'; preLoaderRoute: typeof GamesHigherLowerRouteImport; parentRoute: typeof GamesRoute }
+    '/games/blind-ranking': { id: '/games/blind-ranking'; path: '/games/blind-ranking'; fullPath: '/games/blind-ranking'; preLoaderRoute: typeof GamesBlindRankingRouteImport; parentRoute: typeof rootRouteImport }
+    '/games/penalty': { id: '/games/penalty'; path: '/games/penalty'; fullPath: '/games/penalty'; preLoaderRoute: typeof GamesPenaltyRouteImport; parentRoute: typeof rootRouteImport }
+    '/games/higher-lower': { id: '/games/higher-lower'; path: '/games/higher-lower'; fullPath: '/games/higher-lower'; preLoaderRoute: typeof GamesHigherLowerRouteImport; parentRoute: typeof rootRouteImport }
     '/vote/goat': { id: '/vote/goat'; path: '/vote/goat'; fullPath: '/vote/goat'; preLoaderRoute: typeof VoteGoatRouteImport; parentRoute: typeof rootRouteImport }
     '/music': { id: '/music'; path: '/music'; fullPath: '/music'; preLoaderRoute: typeof MusicRouteImport; parentRoute: typeof rootRouteImport }
     '/settings': { id: '/settings'; path: '/settings'; fullPath: '/settings'; preLoaderRoute: typeof SettingsRouteImport; parentRoute: typeof rootRouteImport }
@@ -271,34 +323,25 @@ declare module '@tanstack/react-router' {
     '/followers/$id': { id: '/followers/$id'; path: '/followers/$id'; fullPath: '/followers/$id'; preLoaderRoute: typeof FollowersIdRouteImport; parentRoute: typeof rootRouteImport }
     '/following-people/$id': { id: '/following-people/$id'; path: '/following-people/$id'; fullPath: '/following-people/$id'; preLoaderRoute: typeof FollowingPeopleIdRouteImport; parentRoute: typeof rootRouteImport }
     '/org-followers/$id': { id: '/org-followers/$id'; path: '/org-followers/$id'; fullPath: '/org-followers/$id'; preLoaderRoute: typeof OrgFollowersIdRouteImport; parentRoute: typeof rootRouteImport }
+    '/rules': { id: '/rules'; path: '/rules'; fullPath: '/rules'; preLoaderRoute: typeof RulesRouteImport; parentRoute: typeof rootRouteImport }
+    '/news': { id: '/news'; path: '/news'; fullPath: '/news'; preLoaderRoute: typeof NewsRouteImport; parentRoute: typeof rootRouteImport }
+    '/news/$slug': { id: '/news/$slug'; path: '/news/$slug'; fullPath: '/news/$slug'; preLoaderRoute: typeof NewsSlugRouteImport; parentRoute: typeof rootRouteImport }
+    '/guides': { id: '/guides'; path: '/guides'; fullPath: '/guides'; preLoaderRoute: typeof GuidesRouteImport; parentRoute: typeof rootRouteImport }
+    '/guides/$slug': { id: '/guides/$slug'; path: '/guides/$slug'; fullPath: '/guides/$slug'; preLoaderRoute: typeof GuidesSlugRouteImport; parentRoute: typeof rootRouteImport }
+    '/posts/$id': { id: '/posts/$id'; path: '/posts/$id'; fullPath: '/posts/$id'; preLoaderRoute: typeof PostsIdRouteImport; parentRoute: typeof rootRouteImport }
+    '/games/': { id: '/games/'; path: '/'; fullPath: '/games/'; preLoaderRoute: typeof GamesIndexRouteImport; parentRoute: typeof GamesRoute }
   }
 }
 
-interface MembersRouteChildren { MembersIdRoute: typeof MembersIdRoute }
-const MembersRouteChildren: MembersRouteChildren = { MembersIdRoute: MembersIdRoute }
-const MembersRouteWithChildren = MembersRoute._addFileChildren(MembersRouteChildren)
-
-interface TournamentsRouteChildren { TournamentsIdRoute: typeof TournamentsIdRoute }
-const TournamentsRouteChildren: TournamentsRouteChildren = { TournamentsIdRoute: TournamentsIdRoute }
-const TournamentsRouteWithChildren = TournamentsRoute._addFileChildren(TournamentsRouteChildren)
-
-interface GamesRouteChildren {
-  GamesIndexRoute: typeof GamesIndexRoute
-  GamesBlindRankingRoute: typeof GamesBlindRankingRoute
-  GamesPenaltyRoute: typeof GamesPenaltyRoute
-  GamesHigherLowerRoute: typeof GamesHigherLowerRoute
-}
-const GamesRouteChildren: GamesRouteChildren = {
-  GamesIndexRoute: GamesIndexRoute,
-  GamesBlindRankingRoute: GamesBlindRankingRoute,
-  GamesPenaltyRoute: GamesPenaltyRoute,
-  GamesHigherLowerRoute: GamesHigherLowerRoute,
-}
-const GamesRouteWithChildren = GamesRoute._addFileChildren(GamesRouteChildren)
+const MembersRouteWithChildren = MembersRoute._addFileChildren({ MembersIdRoute })
+const TournamentsRouteWithChildren = TournamentsRoute._addFileChildren({ TournamentsIdRoute })
+const GamesRouteWithChildren = GamesRoute._addFileChildren({ GamesIndexRoute })
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute,
   AboutRoute,
+  PrivacyRoute,
+  TermsRoute,
   DashboardRoute,
   GalleryRoute,
   HallOfFameRoute,
@@ -327,6 +370,15 @@ const rootRouteChildren: RootRouteChildren = {
   FollowersIdRoute,
   FollowingPeopleIdRoute,
   OrgFollowersIdRoute,
+  RulesRoute,
+  NewsRoute,
+  NewsSlugRoute,
+  GuidesRoute,
+  GuidesSlugRoute,
+  PostsIdRoute,
+  GamesBlindRankingRoute,
+  GamesPenaltyRoute,
+  GamesHigherLowerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
