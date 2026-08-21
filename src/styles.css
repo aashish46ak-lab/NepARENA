@@ -168,7 +168,6 @@
   padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
-
 /* Motion polish */
 @media (prefers-reduced-motion: no-preference) {
   a, button {
@@ -199,7 +198,43 @@
   to { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .na-fade-up {
+  .na-fade-up,
+  .animate-na-fade-up {
     animation: na-fade-up 0.35s ease both;
+  }
+}
+
+/* Onboarding step motion */
+@keyframes na-pop {
+  0% { opacity: 0; transform: scale(0.86); }
+  70% { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes na-slide-next {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes na-slide-prev {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-na-pop {
+  animation: na-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-na-slide-next {
+  animation: na-slide-next 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-na-slide-prev {
+  animation: na-slide-prev 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-na-pop,
+  .animate-na-slide-next,
+  .animate-na-slide-prev,
+  .animate-na-fade-up,
+  .na-fade-up {
+    animation: none !important;
   }
 }
