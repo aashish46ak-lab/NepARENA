@@ -260,15 +260,6 @@ export function TournamentDetailPage() {
         </div>
 
         <div className="mx-auto max-w-lg px-3 pt-4 sm:max-w-2xl sm:px-4">
-          {registrationOpen && !myPart && user && (
-            <div className="mb-3 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-center">
-              <p className="text-sm font-semibold text-white">Registration is open</p>
-              <p className="mt-0.5 text-xs text-neutral-400">Request to join this tournament from My Matches.</p>
-              <button type="button" className="mt-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black" onClick={() => setTab("my_matches")}>
-                Request to join
-              </button>
-            </div>
-          )}
           {tab === "my_matches" && (
             <MyMatchesPanel userId={user?.id} tournamentId={id} myPart={myPart} registrationOpen={registrationOpen} registrationClosed={registrationClosed && !myPart} pendingItems={pendingItems} matches={data.matches} participants={data.participants} onDone={() => { void refetchPending(); void qc.invalidateQueries({ queryKey: ["tournament", id] }); }} />
           )}
