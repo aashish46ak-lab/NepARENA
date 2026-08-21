@@ -9,7 +9,17 @@ export function Footer({ mode = "organizer" }: { mode?: "platform" | "organizer"
   if (mode === "platform") {
     return (
       <footer className="mt-16 border-t border-white/10">
-        <div className="py-6 text-center text-xs text-neutral-500">
+        <div className="mx-auto flex max-w-md flex-wrap justify-center gap-x-4 gap-y-2 px-4 pt-6 text-xs text-neutral-400">
+          <Link to="/about" className="hover:text-white">About</Link>
+          <Link to="/rules" className="hover:text-white">Rules</Link>
+          <Link to="/news" className="hover:text-white">News</Link>
+          <Link to="/guides" className="hover:text-white">Guides</Link>
+          <Link to="/privacy" className="hover:text-white">Privacy</Link>
+          <Link to="/terms" className="hover:text-white">Terms</Link>
+          <Link to="/ownership" className="hover:text-white">Contact</Link>
+          <a href="/ads.txt" className="hover:text-white">Ads</a>
+        </div>
+        <div className="py-4 text-center text-xs text-neutral-500">
           © {PLATFORM_NAME}. All Rights Reserved.
         </div>
       </footer>
@@ -63,47 +73,56 @@ function OrganizerFooter() {
               </Link>
             </li>
             <li>
-              <Link to="/history" className="hover:text-foreground">
-                Tournament History
+              <Link to="/privacy" className="hover:text-foreground">
+                Privacy
               </Link>
             </li>
             <li>
-              <Link to="/gallery" className="hover:text-foreground">
-                Gallery
+              <Link to="/terms" className="hover:text-foreground">
+                Terms
               </Link>
             </li>
             <li>
-              <Link to="/members" className="hover:text-foreground">
-                Members
+              <Link to="/about" className="hover:text-foreground">
+                About NepARENA
               </Link>
             </li>
           </ul>
         </div>
         <div>
           <div className="mb-2 text-sm font-semibold">Community</div>
-          <ul className="space-y-1 text-sm text-muted-foreground">
+          <ul className="space-y-2 text-sm text-muted-foreground">
             {activeLinks.map((l) => (
               <li key={l.id}>
                 <a
                   href={l.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => track(l.id)}
                   className="inline-flex items-center gap-2 hover:text-foreground"
+                  onClick={() => track(l.id)}
                 >
-                  <PlatformIcon platform={l.platform} className="h-4 w-4" /> {l.label}
+                  <PlatformIcon platform={l.platform} className="h-4 w-4" />
+                  {l.label || l.platform}
                 </a>
               </li>
             ))}
-            {activeLinks.length === 0 && (
-              <li className="opacity-60">No community links yet</li>
-            )}
+            {!activeLinks.length && <li className="text-xs">No links yet</li>}
           </ul>
         </div>
       </div>
-      <div className="border-t border-border/60 py-4 text-center text-xs text-muted-foreground">
-        {settings?.footer_text ??
-          `© ${new Date().getFullYear()} ${settings?.site_name ?? "Organizer"}. All rights reserved.`}
+      <div className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
+        Powered by{" "}
+        <Link to="/" className="hover:text-foreground">
+          {PLATFORM_NAME}
+        </Link>
+        ·{" "}
+        <Link to="/privacy" className="hover:text-foreground">
+          Privacy
+        </Link>
+        ·{" "}
+        <Link to="/terms" className="hover:text-foreground">
+          Terms
+        </Link>
       </div>
     </footer>
   );
