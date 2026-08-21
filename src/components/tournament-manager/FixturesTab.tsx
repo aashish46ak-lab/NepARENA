@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   ChevronLeft,
   ChevronRight,
+  Download,
   Loader2,
   Plus,
   Save,
@@ -187,7 +188,9 @@ export function FixturesTab({ tournament, data }: Props) {
       const changed = await migrateLegacyMatchdayNames(tournament.id, data.matchdays, data.matches);
       if (changed && !cancelled) data.reload();
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, data.matchdays.length]);
 
@@ -202,7 +205,13 @@ export function FixturesTab({ tournament, data }: Props) {
     const map = new Map<string, Match[]>();
     for (const m of activeMatches) {
       const raw = (m as { group_key?: string | null }).group_key?.trim() || "";
-      const key = !raw ? "" : raw.length === 1 ? `Group ${raw}` : raw.startsWith("Group") ? raw : `Group ${raw}`;
+      const key = !raw
+        ? ""
+        : raw.length === 1
+          ? `Group ${raw}`
+          : raw.startsWith("Group")
+            ? raw
+            : `Group ${raw}`;
       const list = map.get(key) ?? [];
       list.push(m);
       map.set(key, list);
@@ -220,27 +229,50 @@ export function FixturesTab({ tournament, data }: Props) {
 
   const selectMatchday = (name: string) => {
     setSelected(name);
-    tabRefs.current.get(name)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    tabRefs.current
+      .get(name)
+      ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   };
-  const prevMatchday = () => { if (activeIdx > 0) selectMatchday(groups[activeIdx - 1]!.name); };
-  const nextMatchday = () => { if (activeIdx < groups.length - 1) selectMatchday(groups[activeIdx + 1]!.name); };
+  const prevMatchday = () => {
+    if (activeIdx > 0) selectMatchday(groups[activeIdx - 1]!.name);
+  };
+  const nextMatchday = () => {
+    if (activeIdx < groups.length - 1) selectMatchday(groups[activeIdx + 1]!.name);
+  };
 
   const generate = async () => {
     if (approved.length < 2) return toast.error("Need at least 2 approved players");
-    if (data.matches.length > 0 && !confirm("Regenerating clears all existing fixtures and results. Continue?")) return;
+    if (
+      data.matches.length > 0 &&
+      !confirm("Regenerating clears all existing fixtures and results. Continue?")
+    )
+      return;
     setBusy(true);
     try {
       await supabase.from("matches").delete().eq("tournament_id", tournament.id);
       await supabase.from("matchdays").delete().eq("tournament_id", tournament.id);
-      const specs = generateFixturesForTournament(tournament, approved.map((p) => p.id));
+      const specs = generateFixturesForTournament(
+        tournament,
+        approved.map((p) => p.id),
+      );
       for (const s of specs) s.matchday = normalizeMatchdayLabel(s.matchday);
       const names = [...new Set(specs.map((s) => s.matchday))];
       const { data: mdRows, error: mdErr } = await supabase
         .from("matchdays")
-        .insert(names.map((name, i) => ({ tournament_id: tournament.id, name, sort_order: i, is_published: false, notify_enabled: false })))
+        .insert(
+          names.map((name, i) => ({
+            tournament_id: tournament.id,
+            name,
+            sort_order: i,
+            is_published: false,
+            notify_enabled: false,
+          })),
+        )
         .select();
       if (mdErr) throw mdErr;
-      const mdId = new Map((mdRows ?? []).map((r: { id: string; name: string }) => [r.name, r.id]));
+      const mdId = new Map(
+        (mdRows ?? []).map((r: { id: string; name: string }) => [r.name, r.id]),
+      );
       const payload = specs.map((s, i) => ({
         tournament_id: tournament.id,
         matchday_id: mdId.get(s.matchday) ?? null,
@@ -259,7 +291,10 @@ export function FixturesTab({ tournament, data }: Props) {
       const { error } = await supabase.from("matches").insert(payload);
       if (error) throw error;
       toast.success(payload.length + " fixtures generated");
-      void logActivity("fixtures.generate", { tournament: tournament.name, matches: payload.length });
+      void logActivity("fixtures.generate", {
+        tournament: tournament.name,
+        matches: payload.length,
+      });
       setSelected(null);
       data.reload();
     } catch (e) {
@@ -281,7 +316,8 @@ export function FixturesTab({ tournament, data }: Props) {
       tournament_id: tournament.id,
       matchday_id: activeMdId,
       round: maxRound || 1,
-      position: data.matches.filter((m) => m.round === (maxRound || 1)).length + 1,
+      position:
+        data.matches.filter((m) => m.round === (maxRound || 1)).length + 1,
       home_id: null,
       away_id: null,
       played: false,
@@ -298,8 +334,18 @@ export function FixturesTab({ tournament, data }: Props) {
     }
     setToggling(true);
     try {
-      const n = await publishAndNotify(tournament, activeMdId, activeName, on, data.matches);
-      toast.success(on ? activeName + " published" + (n ? " (" + n + ")" : "") : activeName + " unpublished");
+      const n = await publishAndNotify(
+        tournament,
+        activeMdId,
+        activeName,
+        on,
+        data.matches,
+      );
+      toast.success(
+        on
+          ? activeName + " published" + (n ? " (" + n + ")" : "")
+          : activeName + " unpublished",
+      );
       data.reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Publish failed");
@@ -308,8 +354,13 @@ export function FixturesTab({ tournament, data }: Props) {
     }
   };
 
-  const [draftScores, setDraftScores] = useState<Record<string, { hs: string; as: string }>>({});
+  const [draftScores, setDraftScores] = useState<
+    Record<string, { hs: string; as: string }>
+  >({});
   const [savingMd, setSavingMd] = useState(false);
+  const [savingOne, setSavingOne] = useState<string | null>(null);
+  const [dlBusy, setDlBusy] = useState(false);
+  const matchdayCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const next: Record<string, { hs: string; as: string }> = {};
@@ -321,7 +372,10 @@ export function FixturesTab({ tournament, data }: Props) {
     }
     setDraftScores(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeName, activeMatches.map((m) => `${m.id}:${m.home_score}:${m.away_score}`).join("|")]);
+  }, [
+    activeName,
+    activeMatches.map((m) => `${m.id}:${m.home_score}:${m.away_score}`).join("|"),
+  ]);
 
   const setDraft = (id: string, side: "hs" | "as", value: string) => {
     const clean = value.replace(/[^0-9]/g, "").slice(0, 3);
@@ -348,22 +402,107 @@ export function FixturesTab({ tournament, data }: Props) {
         const played = hs !== "" && ascore !== "";
         const homeNum = hs === "" ? null : Number(hs);
         const awayNum = ascore === "" ? null : Number(ascore);
-        if (played && (!Number.isFinite(homeNum!) || !Number.isFinite(awayNum!))) continue;
+        if (played && (!Number.isFinite(homeNum!) || !Number.isFinite(awayNum!))) {
+          continue;
+        }
         const { error } = await supabase
           .from("matches")
-          .update({ home_score: homeNum, away_score: awayNum, status: played ? "finished" : "scheduled", played })
+          .update({
+            home_score: homeNum,
+            away_score: awayNum,
+            status: played ? "finished" : "scheduled",
+            played,
+          })
           .eq("id", m.id);
         if (error) throw error;
         n++;
       }
       await recomputeStandings(tournament.id);
-      toast.success(n ? `${activeName} saved · ${n} match(es) · standings updated` : "Nothing to save");
-      void logActivity("result.save_matchday", { tournament: tournament.name, matchday: activeName, count: n });
+      toast.success(
+        n
+          ? `${activeName} saved · ${n} match(es) · standings updated`
+          : "Nothing to save",
+      );
+      void logActivity("result.save_matchday", {
+        tournament: tournament.name,
+        matchday: activeName,
+        count: n,
+      });
       data.reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSavingMd(false);
+    }
+  };
+
+  const saveOneMatch = async (m: Match) => {
+    if (!m.home_id || !m.away_id) return toast.error("Both sides required");
+    const d = draftScores[m.id] ?? { hs: "", as: "" };
+    const hs = d.hs.trim();
+    const ascore = d.as.trim();
+    if (hs === "" || ascore === "") return toast.error("Enter both scores");
+    const homeNum = Number(hs);
+    const awayNum = Number(ascore);
+    if (!Number.isFinite(homeNum) || !Number.isFinite(awayNum)) {
+      return toast.error("Invalid scores");
+    }
+    setSavingOne(m.id);
+    try {
+      const { error } = await supabase
+        .from("matches")
+        .update({
+          home_score: homeNum,
+          away_score: awayNum,
+          status: "finished",
+          played: true,
+        })
+        .eq("id", m.id);
+      if (error) throw error;
+      await recomputeStandings(tournament.id);
+      toast.success("Result saved — standings updated");
+      void logActivity("result.save", {
+        tournament: tournament.name,
+        match: m.id,
+      });
+      data.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingOne(null);
+    }
+  };
+
+  const downloadMatchdayPng = async () => {
+    const el = matchdayCardRef.current;
+    if (!el) return toast.error("Nothing to download");
+    setDlBusy(true);
+    try {
+      const mod = await import("html2canvas").catch(() => null);
+      if (!mod?.default) {
+        toast.error("Download not available");
+        return;
+      }
+      const canvas = await mod.default(el, {
+        backgroundColor: "#070b14",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const a = document.createElement("a");
+      const slug = (activeName || "matchday")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .toLowerCase();
+      a.download = `${(tournament.name || "tournament")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .toLowerCase()}-${slug}-fixtures.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+      toast.success("Fixture PNG downloaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setDlBusy(false);
     }
   };
 
@@ -377,36 +516,88 @@ export function FixturesTab({ tournament, data }: Props) {
     const draft = draftScores[m.id] ?? { hs: "", as: "" };
     const disabled = !m.home_id || !m.away_id;
     return (
-      <div key={m.id} className="space-y-2 rounded-xl border border-border/60 px-3 py-2.5">
+      <div
+        key={m.id}
+        className="space-y-2 rounded-xl border border-border/60 px-3 py-2.5"
+      >
         <div className="flex items-center gap-2">
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
-            <span className="max-w-[100px] truncate text-right text-xs font-semibold">{homeLabel}</span>
+            <span className="max-w-[100px] truncate text-right text-xs font-semibold">
+              {homeLabel}
+            </span>
             <Avatar className="h-7 w-7 shrink-0">
               <AvatarImage src={homePhoto ?? undefined} />
-              <AvatarFallback className="bg-secondary text-[9px]">{homeLabel.slice(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-secondary text-[9px]">
+                {homeLabel.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <Input className="h-8 w-11 px-0 text-center text-sm font-bold" inputMode="numeric" maxLength={3} placeholder="–" value={draft.hs} disabled={disabled || savingMd} onChange={(e) => setDraft(m.id, "hs", e.target.value)} />
+            <Input
+              className="h-8 w-11 px-0 text-center text-sm font-bold"
+              inputMode="numeric"
+              maxLength={3}
+              placeholder="–"
+              value={draft.hs}
+              disabled={disabled || savingMd}
+              onChange={(e) => setDraft(m.id, "hs", e.target.value)}
+            />
             <span className="text-xs font-bold text-muted-foreground">-</span>
-            <Input className="h-8 w-11 px-0 text-center text-sm font-bold" inputMode="numeric" maxLength={3} placeholder="–" value={draft.as} disabled={disabled || savingMd} onChange={(e) => setDraft(m.id, "as", e.target.value)} />
+            <Input
+              className="h-8 w-11 px-0 text-center text-sm font-bold"
+              inputMode="numeric"
+              maxLength={3}
+              placeholder="–"
+              value={draft.as}
+              disabled={disabled || savingMd}
+              onChange={(e) => setDraft(m.id, "as", e.target.value)}
+            />
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <Avatar className="h-7 w-7 shrink-0">
               <AvatarImage src={awayPhoto ?? undefined} />
-              <AvatarFallback className="bg-secondary text-[9px]">{awayLabel.slice(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-secondary text-[9px]">
+                {awayLabel.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
-            <span className="max-w-[100px] truncate text-xs font-semibold">{awayLabel}</span>
+            <span className="max-w-[100px] truncate text-xs font-semibold">
+              {awayLabel}
+            </span>
           </div>
-          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground" onClick={() => void removeMatch(m)} title="Remove match">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 shrink-0 text-muted-foreground"
+            onClick={() => void removeMatch(m)}
+            title="Remove match"
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-        {m.played ? (
-          <p className="text-center text-[10px] font-medium text-emerald-400">Played</p>
-        ) : disabled ? (
-          <p className="text-center text-[10px] text-muted-foreground">TBD sides</p>
-        ) : null}
+        <div className="flex items-center justify-between border-t border-border/30 pt-1.5">
+          <div>
+            {m.played ? (
+              <span className="text-[10px] font-medium text-emerald-400">Played</span>
+            ) : disabled ? (
+              <span className="text-[10px] text-muted-foreground">TBD sides</span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Scheduled</span>
+            )}
+          </div>
+          <Button
+            size="sm"
+            className="h-7 gap-1 bg-gradient-brand px-3 text-xs font-medium text-primary-foreground"
+            disabled={disabled || savingOne === m.id || savingMd}
+            onClick={() => void saveOneMatch(m)}
+          >
+            {savingOne === m.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Save className="h-3 w-3" />
+            )}
+            Save
+          </Button>
+        </div>
       </div>
     );
   };
@@ -414,8 +605,16 @@ export function FixturesTab({ tournament, data }: Props) {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={generate} disabled={busy} className="bg-gradient-brand text-primary-foreground">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4 mr-1.5" />}
+        <Button
+          onClick={generate}
+          disabled={busy}
+          className="bg-gradient-brand text-primary-foreground"
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Shuffle className="h-4 w-4 mr-1.5" />
+          )}
           {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
         </Button>
         {canStartKnockout && (
@@ -432,18 +631,37 @@ export function FixturesTab({ tournament, data }: Props) {
         )}
         {canStartKnockout && knockoutStarted && (
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-xs font-semibold">
-            <Switch checked={knockoutStarted} disabled={busy} onCheckedChange={(on) => { if (!on) void setKnockoutStarted(false); }} />
+            <Switch
+              checked={knockoutStarted}
+              disabled={busy}
+              onCheckedChange={(on) => {
+                if (!on) void setKnockoutStarted(false);
+              }}
+            />
             <span className="text-emerald-300">Knockout live</span>
           </label>
         )}
-        <Button type="button" variant="outline" disabled={busy || data.matches.length === 0} onClick={() => { setBusy(true); void advanceKnockoutWinners(tournament, data).catch((e) => toast.error(e instanceof Error ? e.message : "Advance failed")).finally(() => setBusy(false)); }}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy || data.matches.length === 0}
+          onClick={() => {
+            setBusy(true);
+            void advanceKnockoutWinners(tournament, data)
+              .catch((e) =>
+                toast.error(e instanceof Error ? e.message : "Advance failed"),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
           Advance KO winners
         </Button>
         <Button variant="secondary" onClick={addMatch} disabled={!activeMdId}>
           <Plus className="h-4 w-4 mr-1.5" /> Add match
         </Button>
         <span className="ml-auto text-xs text-muted-foreground">
-          Format: {bracketLabel(tournament.bracket_type)} · {approved.length} players · {groups.length} matchdays
+          Format: {bracketLabel(tournament.bracket_type)} · {approved.length}{" "}
+          players · {groups.length} matchdays
         </span>
       </div>
 
@@ -454,7 +672,13 @@ export function FixturesTab({ tournament, data }: Props) {
       ) : (
         <>
           <div className="mx-auto flex max-w-[420px] items-center gap-1.5">
-            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" disabled={activeIdx <= 0} onClick={prevMatchday}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0"
+              disabled={activeIdx <= 0}
+              onClick={prevMatchday}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="flex flex-1 gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1">
@@ -463,43 +687,110 @@ export function FixturesTab({ tournament, data }: Props) {
                 const isActive = g.name === activeName;
                 const pub = !!data.matchdays.find((d) => d.id === g.id)?.is_published;
                 return (
-                  <button key={g.name} ref={(el) => { if (el) tabRefs.current.set(g.name, el); else tabRefs.current.delete(g.name); }} type="button" onClick={() => selectMatchday(g.name)} className={cn("flex min-w-[100px] shrink-0 snap-center flex-col items-center rounded-xl border px-3 py-2 text-center transition", isActive ? "border-brand bg-brand/15" : "border-border/60 bg-secondary/30 hover:bg-secondary/50")}>
-                    <div className={cn("w-full truncate text-xs font-semibold", isActive && "text-brand-glow")}>{g.name}</div>
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">{played}/{g.matches.length}{pub ? " · Live" : " · Draft"}</div>
+                  <button
+                    key={g.name}
+                    ref={(el) => {
+                      if (el) tabRefs.current.set(g.name, el);
+                      else tabRefs.current.delete(g.name);
+                    }}
+                    type="button"
+                    onClick={() => selectMatchday(g.name)}
+                    className={cn(
+                      "flex min-w-[100px] shrink-0 snap-center flex-col items-center rounded-xl border px-3 py-2 text-center transition",
+                      isActive
+                        ? "border-brand bg-brand/15"
+                        : "border-border/60 bg-secondary/30 hover:bg-secondary/50",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "w-full truncate text-xs font-semibold",
+                        isActive && "text-brand-glow",
+                      )}
+                    >
+                      {g.name}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                      {played}/{g.matches.length}
+                      {pub ? " · Live" : " · Draft"}
+                    </div>
                   </button>
                 );
               })}
             </div>
-            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" disabled={activeIdx >= groups.length - 1} onClick={nextMatchday}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0"
+              disabled={activeIdx >= groups.length - 1}
+              onClick={nextMatchday}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
           {activeName && (
-            <div className="glass mx-auto w-full max-w-[420px] space-y-3 rounded-2xl p-4">
+            <div
+              ref={matchdayCardRef}
+              className="glass mx-auto w-full max-w-[420px] space-y-3 rounded-2xl p-4"
+            >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
                 <h3 className="truncate text-sm font-semibold">{activeName}</h3>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" className="h-8 gap-1 bg-gradient-brand px-3 text-xs font-semibold text-primary-foreground" disabled={savingMd || activeMatches.length === 0} onClick={() => void saveMatchday()}>
-                    {savingMd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1 bg-gradient-brand px-3 text-xs font-semibold text-primary-foreground"
+                    disabled={savingMd || activeMatches.length === 0}
+                    onClick={() => void saveMatchday()}
+                  >
+                    {savingMd ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
                     Save matchday
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1 px-3 text-xs font-semibold"
+                    disabled={dlBusy || activeMatches.length === 0}
+                    onClick={() => void downloadMatchdayPng()}
+                  >
+                    {dlBusy ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    Download PNG
+                  </Button>
                   <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-                    <Switch checked={isPublished} disabled={toggling || !activeMdId} onCheckedChange={(on) => void onPublishToggle(on)} />
+                    <Switch
+                      checked={isPublished}
+                      disabled={toggling || !activeMdId}
+                      onCheckedChange={(on) => void onPublishToggle(on)}
+                    />
                     {isPublished ? "Published" : "Publish"}
                   </label>
                 </div>
               </div>
               <div className="space-y-2">
                 {activeMatches.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">No matches in this matchday.</p>
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    No matches in this matchday.
+                  </p>
                 ) : (
                   activeMatchesByGroup.flatMap(([gKey, gMatches]) => [
                     ...(gKey
                       ? [
-                          <div key={`g-${gKey}`} className="flex items-center gap-2 pt-2 first:pt-0">
+                          <div
+                            key={`g-${gKey}`}
+                            className="flex items-center gap-2 pt-2 first:pt-0"
+                          >
                             <span className="h-px flex-1 bg-border/50" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-glow">{gKey}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-glow">
+                              {gKey}
+                            </span>
                             <span className="h-px flex-1 bg-border/50" />
                           </div>,
                         ]
@@ -507,6 +798,14 @@ export function FixturesTab({ tournament, data }: Props) {
                     ...gMatches.map((m) => renderMatchRow(m)),
                   ])
                 )}
+              </div>
+              <div className="flex flex-col items-center gap-0.5 border-t border-border/40 pt-2">
+                <span className="text-[9px] font-extrabold tracking-[0.18em] text-muted-foreground/70">
+                  NEPARENA
+                </span>
+                <span className="text-[7px] text-muted-foreground/50">
+                  Powered by NepARENA
+                </span>
               </div>
             </div>
           )}
