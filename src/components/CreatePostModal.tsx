@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePlus, Loader2, Send, Video, X } from "lucide-react";
 import { toast } from "sonner";
+import { assertCleanText } from "@/lib/profanity";
 
 type Props = {
   open: boolean;
@@ -46,6 +47,11 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
 
   const createPost = async () => {
     if (!user || posting || (!body.trim() && !images.length && !video)) return;
+    const clean = assertCleanText(body);
+    if (!clean.ok) {
+      toast.error(clean.error);
+      return;
+    }
     setPosting(true);
     try {
       const urls: string[] = [];
@@ -92,15 +98,8 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
         }
       >
         <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-          <DialogTitle className="text-base font-semibold text-white">
-            Create post
-          </DialogTitle>
-          <button
-            type="button"
-            onClick={close}
-            className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-90"
-            aria-label="Close"
-          >
+          <DialogTitle className="text-base font-semibold text-white">Create post</DialogTitle>
+          <button type="button" onClick={close} className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-90" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -116,10 +115,7 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
           {previews.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {previews.map((src, i) => (
-                <div
-                  key={i}
-                  className="relative h-24 w-24 overflow-hidden rounded-xl ring-1 ring-white/10"
-                >
+                <div key={i} className="relative h-24 w-24 overflow-hidden rounded-xl ring-1 ring-white/10">
                   <img src={src} alt="" className="h-full w-full object-cover" />
                   <button
                     type="button"
@@ -167,9 +163,7 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
                   if (!e.target.files?.length) return;
                   const list = Array.from(e.target.files).slice(0, 4 - images.length);
                   setImages((prev) => [...prev, ...list].slice(0, 4));
-                  setPreviews((prev) =>
-                    [...prev, ...list.map((f) => URL.createObjectURL(f))].slice(0, 4),
-                  );
+                  setPreviews((prev) => [...prev, ...list.map((f) => URL.createObjectURL(f))].slice(0, 4));
                 }}
               />
               <input
@@ -189,32 +183,15 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
                   setVideoPreview(URL.createObjectURL(f));
                 }}
               />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8"
-              >
+              <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8">
                 <ImagePlus className="h-4 w-4 text-sky-400" /> Photo
               </button>
-              <button
-                type="button"
-                onClick={() => videoRef.current?.click()}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8"
-              >
+              <button type="button" onClick={() => videoRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8">
                 <Video className="h-4 w-4 text-violet-400" /> Video
               </button>
             </div>
-            <Button
-              size="sm"
-              disabled={posting || (!body.trim() && !images.length && !video)}
-              onClick={() => void createPost()}
-              className="rounded-full bg-sky-500 px-5 text-white hover:bg-sky-400"
-            >
-              {posting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="mr-1.5 h-3.5 w-3.5" />
-              )}
+            <Button size="sm" disabled={posting || (!body.trim() && !images.length && !video)} onClick={() => void createPost()} className="rounded-full bg-sky-500 px-5 text-white hover:bg-sky-400">
+              {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
               Post
             </Button>
           </div>
