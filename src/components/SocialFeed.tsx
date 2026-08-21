@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FeedEmptySuggestions } from "@/components/FeedEmptySuggestions";
 import { isSuperAdminEmail } from "@/lib/organizers";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 export type FeedPost = {
   id: string;
@@ -53,6 +54,7 @@ export function SocialFeed({
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const load = useCallback(
     async (reset = false) => {
@@ -162,10 +164,19 @@ export function SocialFeed({
     if (!user) return;
     const isOwner = p.author_id === user.id;
     const isAdmin = isSuperAdminEmail(user.email);
-    if (!isOwner && !isAdmin) return toast.error("Not allowed");
+    if (!isOwner && !isAdmin) {
+      toast.error("Not allowed");
+      return;
+    }
     if (!confirm(isAdmin && !isOwner ? "Delete this post (policy)?" : "Delete your post?")) return;
+    // Remove dependents first so FK does not block delete
+    await supabase.from("post_likes").delete().eq("post_id", p.id);
+    await supabase.from("post_comments").delete().eq("post_id", p.id);
     const { error } = await supabase.from("posts").delete().eq("id", p.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message || "Could not delete post");
+      return;
+    }
     setPosts((prev) => prev.filter((x) => x.id !== p.id));
     toast.success("Post deleted");
   };
@@ -202,16 +213,18 @@ export function SocialFeed({
                   </Link>
                 )}
                 {urls.length === 1 && (
-                  <Link to="/posts/$id" params={{ id: p.id }}>
-                    <img src={urls[0]} alt="" className="mt-2 max-h-80 w-full rounded-xl object-cover" />
-                  </Link>
+                  <button type="button" className="mt-2 block w-full" onClick={() => setLightbox(urls[0]!)}>
+                    <img src={urls[0]} alt="" className="max-h-80 w-full rounded-xl object-cover" />
+                  </button>
                 )}
                 {urls.length > 1 && (
-                  <Link to="/posts/$id" params={{ id: p.id }} className="mt-2 grid grid-cols-2 gap-1">
+                  <div className="mt-2 grid grid-cols-2 gap-1">
                     {urls.slice(0, 4).map((u, i) => (
-                      <img key={i} src={u} alt="" className="max-h-40 w-full rounded-lg object-cover" />
+                      <button key={i} type="button" onClick={() => setLightbox(u)}>
+                        <img src={u} alt="" className="max-h-40 w-full rounded-lg object-cover" />
+                      </button>
                     ))}
-                  </Link>
+                  </div>
                 )}
                 <div className="mt-3 flex items-center gap-1">
                   <button
@@ -280,6 +293,7 @@ export function SocialFeed({
           </Button>
         </div>
       )}
+      <PhotoLightbox src={lightbox} open={!!lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }
