@@ -369,7 +369,9 @@ function DashboardPage() {
                 organizerMeta={orgMeta ? { name: orgMeta.name, logo_url: orgMeta.logo_url, slug: orgMeta.slug || "" } : undefined}
               />
             )}
-            {active === "messages" && <MessagesInbox />}
+            {active === "messages" && orgId && (
+              <MessagesInbox mode="organizer" organizerId={orgId} />
+            )}
             {active === "tournaments" && <TournamentsPanel />}
             {active === "players" && isOrgOwner && <UsersPanel />}
             {active === "reports" && <ReportsPanel />}
