@@ -12,16 +12,17 @@ import {
 import { parseFormatConfig, hasGroupStage } from "@/lib/tournament-format";
 import { seedKnockoutFromGroups, advanceKnockoutWinners } from "@/lib/seed-knockout";
 import { logActivity } from "@/lib/activity";
-import { ResultsTab } from "./ResultsTab";
-import { StartKnockoutSwitch } from "./StartKnockoutSwitch";
+import { SubmissionsReview } from "./ResultsTab";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   ChevronLeft,
   ChevronRight,
   Loader2,
   Plus,
+  Save,
   Shuffle,
   Trash2,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import {
   matchdayName,
   normalizeMatchdayLabel,
   migrateLegacyMatchdayNames,
+  recomputeStandings,
   type TournamentData,
 } from "./shared";
 import { cn } from "@/lib/utils";
@@ -60,14 +62,6 @@ function sidePhoto(
   if (p.photo_url) return p.photo_url;
   if (p.user_id) return data.profiles.get(p.user_id)?.avatar_url ?? null;
   return null;
-}
-
-function scoreText(m: Match): string {
-  if (!m.played) return "";
-  const hs = Number(m.home_score);
-  const ascore = Number(m.away_score);
-  if (!Number.isFinite(hs) || !Number.isFinite(ascore)) return "";
-  return String(hs) + "-" + String(ascore);
 }
 
 async function publishAndNotify(
@@ -123,6 +117,30 @@ export function FixturesTab({ tournament, data }: Props) {
   const [busy, setBusy] = useState(false);
   const [toggling, setToggling] = useState(false);
   const approved = data.players.filter((p) => p.status === "approved");
+  const fmtCfg = useMemo(
+    () => parseFormatConfig(tournament.format_config, tournament.bracket_type),
+    [tournament.format_config, tournament.bracket_type],
+  );
+  const canStartKnockout = hasGroupStage(fmtCfg);
+  const knockoutStarted = !!fmtCfg.knockoutStarted;
+
+  const setKnockoutStarted = async (on: boolean) => {
+    setBusy(true);
+    try {
+      const next = { ...fmtCfg, knockoutStarted: on };
+      const { error } = await supabase
+        .from("tournaments")
+        .update({ format_config: next })
+        .eq("id", tournament.id);
+      if (error) throw error;
+      toast.success(on ? "Knockout started — bracket is now public" : "Knockout hidden from public");
+      data.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const groups = useMemo(() => {
     type G = { id: string | null; name: string; matches: Match[]; sort: number };
@@ -285,13 +303,7 @@ export function FixturesTab({ tournament, data }: Props) {
       }));
       const { error } = await supabase.from("matches").insert(payload);
       if (error) throw error;
-      const fmt = parseFormatConfig(tournament.format_config, tournament.bracket_type);
-      toast.success(
-        payload.length +
-          " fixtures (" +
-          bracketLabel(tournament.bracket_type ?? fmt.preset) +
-          "). Tabs: Matchday 1, 2… then R16/QF/SF/Final.",
-      );
+      toast.success(payload.length + " fixtures generated");
       void logActivity("fixtures.generate", {
         tournament: tournament.name,
         matches: payload.length,
@@ -355,6 +367,82 @@ export function FixturesTab({ tournament, data }: Props) {
     }
   };
 
+  const [draftScores, setDraftScores] = useState<
+    Record<string, { hs: string; as: string }>
+  >({});
+  const [savingMd, setSavingMd] = useState(false);
+
+  useEffect(() => {
+    const next: Record<string, { hs: string; as: string }> = {};
+    for (const m of activeMatches) {
+      next[m.id] = {
+        hs: m.home_score != null ? String(m.home_score) : "",
+        as: m.away_score != null ? String(m.away_score) : "",
+      };
+    }
+    setDraftScores(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeName, activeMatches.map((m) => `${m.id}:${m.home_score}:${m.away_score}`).join("|")]);
+
+  const setDraft = (id: string, side: "hs" | "as", value: string) => {
+    const clean = value.replace(/[^0-9]/g, "").slice(0, 3);
+    setDraftScores((prev) => ({
+      ...prev,
+      [id]: {
+        hs: side === "hs" ? clean : (prev[id]?.hs ?? ""),
+        as: side === "as" ? clean : (prev[id]?.as ?? ""),
+      },
+    }));
+  };
+
+  const saveMatchday = async () => {
+    if (!activeMatches.length) return toast.error("No matches in this matchday");
+    setSavingMd(true);
+    try {
+      let n = 0;
+      for (const m of activeMatches) {
+        if (!m.home_id || !m.away_id) continue;
+        const d = draftScores[m.id] ?? { hs: "", as: "" };
+        const hs = d.hs.trim();
+        const ascore = d.as.trim();
+        if (hs === "" && ascore === "" && !m.played) continue;
+        const played = hs !== "" && ascore !== "";
+        const homeNum = hs === "" ? null : Number(hs);
+        const awayNum = ascore === "" ? null : Number(ascore);
+        if (played && (!Number.isFinite(homeNum!) || !Number.isFinite(awayNum!))) {
+          continue;
+        }
+        const { error } = await supabase
+          .from("matches")
+          .update({
+            home_score: homeNum,
+            away_score: awayNum,
+            status: played ? "finished" : "scheduled",
+            played,
+          })
+          .eq("id", m.id);
+        if (error) throw error;
+        n++;
+      }
+      await recomputeStandings(tournament.id);
+      toast.success(
+        n
+          ? `${activeName} saved · ${n} match(es) · standings updated`
+          : "Nothing to save",
+      );
+      void logActivity("result.save_matchday", {
+        tournament: tournament.name,
+        matchday: activeName,
+        count: n,
+      });
+      data.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingMd(false);
+    }
+  };
+
   const renderMatchRow = (m: Match) => {
     const homeP = getPlayer(data, m.home_id);
     const awayP = getPlayer(data, m.away_id);
@@ -362,45 +450,71 @@ export function FixturesTab({ tournament, data }: Props) {
     const awayLabel = sideLabel(awayP);
     const homePhoto = sidePhoto(data, homeP);
     const awayPhoto = sidePhoto(data, awayP);
-    const score = scoreText(m);
+    const draft = draftScores[m.id] ?? { hs: "", as: "" };
+    const disabled = !m.home_id || !m.away_id;
     return (
       <div
         key={m.id}
-        className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2.5"
+        className="space-y-2 rounded-xl border border-border/60 px-3 py-2.5"
       >
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-          <span className="max-w-[120px] truncate text-right text-sm font-semibold">
-            {homeLabel}
-          </span>
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarImage src={homePhoto ?? undefined} />
-            <AvatarFallback className="bg-secondary text-[10px]">
-              {homeLabel.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+        <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+            <span className="max-w-[100px] truncate text-right text-xs font-semibold">
+              {homeLabel}
+            </span>
+            <Avatar className="h-7 w-7 shrink-0">
+              <AvatarImage src={homePhoto ?? undefined} />
+              <AvatarFallback className="bg-secondary text-[9px]">
+                {homeLabel.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Input
+              className="h-8 w-11 px-0 text-center text-sm font-bold"
+              inputMode="numeric"
+              maxLength={3}
+              placeholder="–"
+              value={draft.hs}
+              disabled={disabled || savingMd}
+              onChange={(e) => setDraft(m.id, "hs", e.target.value)}
+            />
+            <span className="text-xs font-bold text-muted-foreground">-</span>
+            <Input
+              className="h-8 w-11 px-0 text-center text-sm font-bold"
+              inputMode="numeric"
+              maxLength={3}
+              placeholder="–"
+              value={draft.as}\n              disabled={disabled || savingMd}
+              onChange={(e) => setDraft(m.id, "as", e.target.value)}
+            />
+          </div>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <Avatar className="h-7 w-7 shrink-0">
+              <AvatarImage src={awayPhoto ?? undefined} />
+              <AvatarFallback className="bg-secondary text-[9px]">
+                {awayLabel.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="max-w-[100px] truncate text-xs font-semibold">
+              {awayLabel}
+            </span>
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 shrink-0 text-muted-foreground"
+            onClick={() => void removeMatch(m)}
+            title="Remove match"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
         </div>
-        <div className="w-14 shrink-0 text-center text-sm font-bold text-brand-glow">
-          {score || "\u00A0"}
-        </div>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarImage src={awayPhoto ?? undefined} />
-            <AvatarFallback className="bg-secondary text-[10px]">
-              {awayLabel.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <span className="max-w-[120px] truncate text-sm font-semibold">
-            {awayLabel}
-          </span>
-        </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 shrink-0 text-muted-foreground"
-          onClick={() => removeMatch(m)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        {m.played ? (
+          <p className="text-center text-[10px] font-medium text-emerald-400">Played</p>
+        ) : disabled ? (
+          <p className="text-center text-[10px] text-muted-foreground">TBD sides</p>
+        ) : null}
       </div>
     );
   };
@@ -420,14 +534,23 @@ export function FixturesTab({ tournament, data }: Props) {
           )}
           {data.matches.length ? "Regenerate fixtures" : "Generate fixtures"}
         </Button>
-        <StartKnockoutSwitch tournament={tournament} data={data} />
-        {hasGroupStage(
-          parseFormatConfig(tournament.format_config, tournament.bracket_type),
-        ) && (
+        {canStartKnockout && (
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-xs font-semibold">
+            <Switch
+              checked={knockoutStarted}
+              disabled={busy || data.matches.length === 0}
+              onCheckedChange={(on) => void setKnockoutStarted(on)}
+            />
+            <span className={knockoutStarted ? "text-emerald-300" : "text-muted-foreground"}>
+              Start knockout
+            </span>
+          </label>
+        )}
+        {canStartKnockout && (
           <Button
             type="button"
             variant="outline"
-            disabled={busy || data.matches.length === 0}
+            disabled={busy || data.matches.length === 0 || !knockoutStarted}
             onClick={() => {
               setBusy(true);
               void seedKnockoutFromGroups(tournament, data)
@@ -526,14 +649,29 @@ export function FixturesTab({ tournament, data }: Props) {
             <div className="glass mx-auto w-full max-w-[420px] space-y-3 rounded-2xl p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
                 <h3 className="truncate text-sm font-semibold">{activeName}</h3>
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-                  <Switch
-                    checked={isPublished}
-                    disabled={toggling || !activeMdId}
-                    onCheckedChange={(on) => void onPublishToggle(on)}
-                  />
-                  {isPublished ? "Published" : "Publish"}
-                </label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1 bg-gradient-brand px-3 text-xs font-semibold text-primary-foreground"
+                    disabled={savingMd || activeMatches.length === 0}
+                    onClick={() => void saveMatchday()}
+                  >
+                    {savingMd ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
+                    Save matchday
+                  </Button>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs">
+                    <Switch
+                      checked={isPublished}
+                      disabled={toggling || !activeMdId}
+                      onCheckedChange={(on) => void onPublishToggle(on)}
+                    />
+                    {isPublished ? "Published" : "Publish"}
+                  </label>
+                </div>
               </div>
               <div className="space-y-2">
                 {activeMatches.length === 0 ? (
@@ -563,8 +701,7 @@ export function FixturesTab({ tournament, data }: Props) {
       )}
 
       <div className="mt-6 space-y-2 border-t border-border/50 pt-4">
-        <h3 className="text-sm font-semibold">Manual results</h3>
-        <ResultsTab tournament={tournament} data={data} />
+        <SubmissionsReview tournament={tournament} data={data} />
       </div>
     </div>
   );
