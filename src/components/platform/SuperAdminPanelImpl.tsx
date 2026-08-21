@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   DEFAULT_ORGANIZER_SLUG,
   inviteOrganizer,
-  loadPlatformAdminStats,
+  getPlatformStats,
   setOrganizerStatus,
   setOrganizerVerified,
 } from "@/lib/organizers";
@@ -54,7 +54,7 @@ export function SuperAdminPanelImpl() {
   const { user } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overview");
-  const [stats, setStats] = useState<Awaited<ReturnType<typeof loadPlatformAdminStats>> | null>(null);
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof getPlatformStats>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
@@ -66,7 +66,7 @@ export function SuperAdminPanelImpl() {
   const reload = async () => {
     setLoading(true);
     try {
-      const s = await loadPlatformAdminStats();
+      const s = await getPlatformStats();
       setStats(s);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load");
