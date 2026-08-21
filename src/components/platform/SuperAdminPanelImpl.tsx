@@ -141,6 +141,20 @@ export function SuperAdminPanelImpl() {
             {unread} unread
           </span>
         )}
+        {user && (
+          <Button asChild size="sm" variant="secondary" className="ml-auto gap-1.5">
+            <Link to="/members/$id" params={{ id: user.id }}>
+              <User className="h-3.5 w-3.5" />
+              Switch to profile
+            </Link>
+          </Button>
+        )}
+        <Button asChild size="sm" variant="outline" className="border-white/15 gap-1.5">
+          <Link to="/">
+            <Home className="h-3.5 w-3.5" />
+            Home
+          </Link>
+        </Button>
       </div>
 
       <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
