@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,14 @@ export function MyMatchesPanel({
 }) {
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    const pending = participants.some(
+      (p) => String(p.user_id) === String(userId) && String(p.status) === "pending",
+    );
+    if (pending) setJoinPending(true);
+  }, [userId, participants]);
 
   const requestJoin = async () => {
     if (!userId || !tournamentId) return;
@@ -333,7 +341,26 @@ export function StandingsTable({
             {rows.map((r, i) => (
               <tr key={r.participant_id} className={cn("border-t border-white/5", i < 2 && "bg-emerald-500/[0.06]")}>
                 <td className="px-2 py-2 text-xs text-muted-foreground">{i + 1}</td>
-                <td className="px-2 py-2 font-medium text-white">{nameOf(r.participant_id)}</td>
+                <td className="px-2 py-2 font-medium text-white">
+                  {(() => {
+                    const part = participants.find((x) => String(x.id) === String(r.participant_id));
+                    const uid = part?.user_id ? String(part.user_id) : null;
+                    const label = nameOf(r.participant_id);
+                    const photo = photoOf(participants, r.participant_id);
+                    const inner = (
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        <Avatar className="h-7 w-7 shrink-0 rounded-full ring-1 ring-white/10">
+                          <AvatarImage src={photo ?? undefined} className="object-cover" />
+                          <AvatarFallback className="bg-white/10 text-[9px] font-bold">{label.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{label}</span>
+                      </span>
+                    );
+                    return uid ? (
+                      <Link to="/members/$id" params={{ id: uid }} className="hover:text-sky-300 hover:underline">{inner}</Link>
+                    ) : inner;
+                  })()}
+                </td>
                 <td className="px-1 py-2 text-center tabular-nums">{r.played}</td>
                 <td className="px-1 py-2 text-center tabular-nums">{r.won}</td>
                 <td className="px-1 py-2 text-center tabular-nums">{r.drawn}</td>
@@ -373,9 +400,27 @@ export function PlayersList({ participants }: { participants: Record<string, unk
     <ul className="space-y-2">
       {participants.map((p) => {
         const pname = String(p.player_name || p.club || "Player");
+        const photo = (p.photo_url as string | null) ?? null;
+        const uid = p.user_id ? String(p.user_id) : null;
         return (
           <li key={String(p.id)} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2.5 text-sm">
-            <span className="font-semibold text-white">{pname}</span>
+            {uid ? (
+              <Link to="/members/$id" params={{ id: uid }} className="flex min-w-0 items-center gap-2.5 hover:text-sky-300">
+                <Avatar className="h-8 w-8 rounded-full ring-1 ring-white/10">
+                  <AvatarImage src={photo ?? undefined} className="object-cover" />
+                  <AvatarFallback className="bg-white/10 text-[10px] font-bold">{pname.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="truncate font-semibold text-white">{pname}</span>
+              </Link>
+            ) : (
+              <span className="flex min-w-0 items-center gap-2.5">
+                <Avatar className="h-8 w-8 rounded-full ring-1 ring-white/10">
+                  <AvatarImage src={photo ?? undefined} className="object-cover" />
+                  <AvatarFallback className="bg-white/10 text-[10px] font-bold">{pname.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="truncate font-semibold text-white">{pname}</span>
+              </span>
+            )}
             <Badge variant="outline" className="capitalize">{String(p.status ?? "")}</Badge>
           </li>
         );
