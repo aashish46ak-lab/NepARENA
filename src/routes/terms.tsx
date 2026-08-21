@@ -1,3 +1,4 @@
+/** AdSense-ready legal page */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
