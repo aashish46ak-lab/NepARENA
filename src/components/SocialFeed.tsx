@@ -8,6 +8,7 @@ import { Heart, Loader2, Newspaper, BadgeCheck, MessageCircle, Trash2 } from "lu
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FeedEmptySuggestions } from "@/components/FeedEmptySuggestions";
+import { HomeInfoGrid } from "@/components/HomeInfoGrid";
 import { isSuperAdminEmail } from "@/lib/organizers";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 
@@ -49,7 +50,6 @@ export function SocialFeed({
   organizerMeta?: { name: string; logo_url?: string | null; slug?: string | null } | null;
   filterQuery?: string;
   emptyLabel?: string;
-  /** Parent can hide Learn more when feed has posts. */
   onPostsChange?: (count: number) => void;
 }) {
   const { user } = useAuth();
@@ -281,11 +281,14 @@ export function SocialFeed({
       )}
       {!loading && filteredPosts.length === 0 && (
         authorId || organizerId ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 px-4 py-10 text-center">
-            <Newspaper className="h-8 w-8 text-neutral-600" />
-            <p className="text-sm font-medium text-neutral-300">
-              {emptyLabel || (organizerMeta?.name ? `${organizerMeta.name} is yet to post` : "No posts yet")}
-            </p>
+          <div className="space-y-3">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 px-4 py-10 text-center">
+              <Newspaper className="h-8 w-8 text-neutral-600" />
+              <p className="text-sm font-medium text-neutral-300">
+                {emptyLabel || (organizerMeta?.name ? `${organizerMeta.name} is yet to post` : "No posts yet")}
+              </p>
+            </div>
+            {authorId && !organizerId && <HomeInfoGrid />}
           </div>
         ) : (
           <FeedEmptySuggestions mode={mode} />
