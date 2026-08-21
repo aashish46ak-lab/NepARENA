@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, Loader2, Shield, Trophy, Users, UserPlus, Ban, CheckCircle,
-  LayoutDashboard, Activity, MessageSquare, RefreshCw, Search,
+  LayoutDashboard, Activity, MessageSquare, RefreshCw, Search, Newspaper,
   Copy, BadgeCheck, Clock, MoreVertical, User, Home,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,12 +28,13 @@ import { MessagesInbox } from "@/components/MessagesInbox";
 import { OrganizerRequestsPanel } from "@/components/platform/OrganizerRequestsPanel";
 import { GaAnalyticsDashboard } from "@/components/platform/GaAnalyticsDashboard";
 import { UserVerificationPanel } from "@/components/platform/UserVerificationPanel";
+import { NewsAdminPanel } from "@/components/platform/NewsAdminPanel";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from "recharts";
 
-type Tab = "overview" | "messages" | "requests" | "organizers" | "invites" | "users";
+type Tab = "overview" | "messages" | "requests" | "organizers" | "invites" | "users" | "news";
 const PIE_COLORS = ["#38bdf8", "#a78bfa", "#f472b6", "#34d399", "#fbbf24"];
 
 export function SuperAdminPanelImpl() {
@@ -148,6 +149,7 @@ export function SuperAdminPanelImpl() {
     { id: "organizers", label: "Organizers", icon: Building2 },
     { id: "invites", label: "Invites", icon: UserPlus },
     { id: "users", label: "Users", icon: Users },
+    { id: "news", label: "Upload news", icon: Newspaper },
   ];
 
   return (
@@ -396,6 +398,15 @@ export function SuperAdminPanelImpl() {
               Search any member and grant or remove the verified badge.
             </p>
             <UserVerificationPanel />
+          </Section>
+        )}
+
+        {tab === "news" && (
+          <Section title="Upload / manage news">
+            <p className="mb-4 text-sm text-neutral-400">
+              Publish platform news shown on the home News section and /news page.
+            </p>
+            <NewsAdminPanel />
           </Section>
         )}
       </div>
