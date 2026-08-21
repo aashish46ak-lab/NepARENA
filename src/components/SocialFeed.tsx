@@ -37,6 +37,7 @@ export function SocialFeed({
   organizerMeta,
   filterQuery,
   emptyLabel,
+  onPostsChange,
 }: {
   authorId?: string;
   mode?: "for_you" | "following";
@@ -48,6 +49,8 @@ export function SocialFeed({
   organizerMeta?: { name: string; logo_url?: string | null; slug?: string | null } | null;
   filterQuery?: string;
   emptyLabel?: string;
+  /** Parent can hide Learn more when feed has posts. */
+  onPostsChange?: (count: number) => void;
 }) {
   const { user } = useAuth();
   const [posts, setPosts] = useState<FeedPost[]>([]);
@@ -55,6 +58,10 @@ export function SocialFeed({
   const [more, setMore] = useState(false);
   const [cursor, setCursor] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+
+  useEffect(() => {
+    onPostsChange?.(posts.length);
+  }, [posts.length, onPostsChange]);
 
   const load = useCallback(
     async (reset = false) => {
@@ -86,7 +93,6 @@ export function SocialFeed({
         setLoading(false);
         return;
       }
-      // Gallery posts stay off main feed + profiles + org Posts tab
       let rows = ((data ?? []) as any[]).filter(
         (r) => !String(r.body ?? "").trim().toLowerCase().startsWith("[gallery]"),
       );
@@ -169,7 +175,6 @@ export function SocialFeed({
       return;
     }
     if (!confirm(isAdmin && !isOwner ? "Delete this post (policy)?" : "Delete your post?")) return;
-    // Remove dependents first so FK does not block delete
     await supabase.from("post_likes").delete().eq("post_id", p.id);
     await supabase.from("post_comments").delete().eq("post_id", p.id);
     const { error } = await supabase.from("posts").delete().eq("id", p.id);
