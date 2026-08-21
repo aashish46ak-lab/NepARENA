@@ -120,9 +120,9 @@ export function PlatformHomePage() {
         <HomeTournamentStrip />
       </div>
 
-      <HomeInfoGrid />
-
       {user && <PendingMatchesPanel />}
+
+      <HomeInfoGrid />
 
       <section className="border-b border-white/5" data-onboard="feed">
         <div className="mx-auto max-w-md px-3 pb-8 pt-4">
