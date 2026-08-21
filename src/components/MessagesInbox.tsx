@@ -28,14 +28,17 @@ type Msg = {
 };
 
 export function MessagesInbox({
-  mode,
+  mode: modeProp,
   organizerId,
   onUnreadChange,
 }: {
-  mode: "platform" | "organizer";
+  mode?: "platform" | "organizer";
   organizerId?: string;
   onUnreadChange?: (n: number) => void;
 }) {
+  const mode: "platform" | "organizer" =
+    modeProp ?? (organizerId ? "organizer" : "platform");
+
   const { user, profile } = useAuth();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [active, setActive] = useState<string | null>(null);
@@ -45,6 +48,37 @@ export function MessagesInbox({
   const [photo, setPhoto] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [threadNotes, setThreadNotes] = useState<Record<string, string>>(() => {
+    try {
+      const key =
+        mode === "organizer" && organizerId
+          ? `org-msg-notes:${organizerId}`
+          : "platform-msg-notes";
+      return JSON.parse(localStorage.getItem(key) || "{}") as Record<string, string>;
+    } catch {
+      return {};
+    }
+  });
+  const [noteEditId, setNoteEditId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+
+  const saveThreadNote = (uid: string, note: string) => {
+    const next = { ...threadNotes };
+    if (note.trim()) next[uid] = note.trim().slice(0, 60);
+    else delete next[uid];
+    setThreadNotes(next);
+    try {
+      const key =
+        mode === "organizer" && organizerId
+          ? `org-msg-notes:${organizerId}`
+          : "platform-msg-notes";
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      /* */
+    }
+    setNoteEditId(null);
+    setNoteDraft("");
+  };
 
   const myName =
     profile?.full_name || profile?.username || user?.email?.split("@")[0] || "Admin";
@@ -61,11 +95,13 @@ export function MessagesInbox({
         const map = new Map<string, Thread>();
         for (const row of data ?? []) {
           const uid = row.user_id as string;
+          const bodyStr = String(row.body || "");
+          if (bodyStr.startsWith("[org:")) continue;
           if (!map.has(uid)) {
             map.set(uid, {
               user_id: uid,
               sender_name: (row.sender_name as string) || null,
-              last_body: (row.body as string) || null,
+              last_body: bodyStr || null,
               last_at: row.created_at as string,
               unread: 0,
             });
@@ -120,6 +156,32 @@ export function MessagesInbox({
             map.get(uid)!.unread += 1;
           }
         }
+        // Recover messages that fell back to platform_messages with [org:id] prefix
+        try {
+          const { data: plat } = await supabase
+            .from("platform_messages")
+            .select("user_id, body, created_at, is_from_admin, read_by_admin, sender_name")
+            .ilike("body", `[org:${organizerId}]%`)
+            .order("created_at", { ascending: false })
+            .limit(200);
+          for (const row of plat ?? []) {
+            const uid = row.user_id as string;
+            if (!map.has(uid)) {
+              map.set(uid, {
+                user_id: uid,
+                sender_name: (row.sender_name as string) || null,
+                last_body: String(row.body || "").replace(`[org:${organizerId}] `, ""),
+                last_at: row.created_at as string,
+                unread: 0,
+              });
+            }
+            if (!row.is_from_admin && !row.read_by_admin) {
+              map.get(uid)!.unread += 1;
+            }
+          }
+        } catch {
+          /* optional */
+        }
         const ids = [...map.keys()];
         if (ids.length) {
           const { data: profiles } = await supabase
@@ -169,15 +231,17 @@ export function MessagesInbox({
             read_by_user: boolean | null;
             read_by_admin: boolean | null;
           }[]) ?? []
-        ).map((m) => ({
-          id: m.id,
-          body: m.body,
-          image_url: m.image_url,
-          is_from_side: m.is_from_admin,
-          created_at: m.created_at,
-          sender_name: m.sender_name,
-          seen_by_other: m.is_from_admin ? !!m.read_by_user : !!m.read_by_admin,
-        })),
+        )
+          .filter((m) => !String(m.body || "").startsWith("[org:"))
+          .map((m) => ({
+            id: m.id,
+            body: m.body,
+            image_url: m.image_url,
+            is_from_side: m.is_from_admin,
+            created_at: m.created_at,
+            sender_name: m.sender_name,
+            seen_by_other: m.is_from_admin ? !!m.read_by_user : !!m.read_by_admin,
+          })),
       );
       setThreads((prev) => {
         const next = prev.map((t) =>
@@ -207,7 +271,7 @@ export function MessagesInbox({
         .eq("user_id", uid)
         .order("created_at", { ascending: true })
         .limit(120);
-      setMsgs(
+      const fromOrg =
         (
           (data as {
             id: string;
@@ -229,8 +293,50 @@ export function MessagesInbox({
           seen_by_other: m.is_from_organizer
             ? !!m.read_by_user
             : !!m.read_by_organizer,
-        })),
+        }));
+
+      // Merge recovered platform fallbacks for this user
+      let recovered: Msg[] = [];
+      try {
+        const { data: plat } = await supabase
+          .from("platform_messages")
+          .select(
+            "id, body, image_url, is_from_admin, created_at, sender_name, read_by_user, read_by_admin",
+          )
+          .eq("user_id", uid)
+          .ilike("body", `[org:${organizerId}]%`)
+          .order("created_at", { ascending: true })
+          .limit(120);
+        recovered = ((data as unknown as null) && []) ||
+          (
+            (plat as {
+              id: string;
+              body: string | null;
+              image_url: string | null;
+              is_from_admin: boolean;
+              created_at: string;
+              sender_name: string | null;
+              read_by_user: boolean | null;
+              read_by_admin: boolean | null;
+            }[]) ?? []
+          ).map((m) => ({
+            id: m.id,
+            body: String(m.body || "").replace(`[org:${organizerId}] `, ""),
+            image_url: m.image_url,
+            is_from_side: m.is_from_admin,
+            created_at: m.created_at,
+            sender_name: m.sender_name,
+            seen_by_other: m.is_from_admin ? !!m.read_by_user : !!m.read_by_admin,
+          }));
+      } catch {
+        /* */
+      }
+
+      const merged = [...fromOrg, ...recovered].sort((a, b) =>
+        a.created_at < b.created_at ? -1 : 1,
       );
+      setMsgs(merged);
+
       setThreads((prev) => {
         const next = prev.map((t) =>
           t.user_id === uid ? { ...t, unread: 0 } : t,
@@ -272,7 +378,7 @@ export function MessagesInbox({
       if (mode === "platform") {
         const payload: Record<string, unknown> = {
           user_id: active,
-          body: body || (image_url ? "Photo" : null),
+          body: body || (image_url ? "📷 Photo" : null),
           is_from_admin: true,
           read_by_admin: true,
           read_by_user: false,
@@ -344,7 +450,42 @@ export function MessagesInbox({
       </div>
 
       {!active ? (
-        <div className="max-h-[420px] overflow-y-auto">
+        <div className="max-h-[480px] overflow-y-auto">
+          {!loading && threads.length > 0 && (
+            <div className="flex gap-3 overflow-x-auto border-b border-white/5 px-3 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none]">
+              {threads.slice(0, 16).map((th) => (
+                <button
+                  key={`head-${th.user_id}`}
+                  type="button"
+                  onClick={() => setActive(th.user_id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setNoteEditId(th.user_id);
+                    setNoteDraft(threadNotes[th.user_id] || "");
+                  }}
+                  className="relative flex w-14 shrink-0 flex-col items-center gap-1"
+                >
+                  <div className="relative">
+                    <div className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-white/10 text-xs font-bold ring-2 ring-white/10">
+                      {th.avatar_url ? (
+                        <img src={th.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        (th.sender_name || "?")[0]?.toUpperCase()
+                      )}
+                    </div>
+                    {th.unread > 0 && (
+                      <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-0.5 text-[9px] font-bold text-white">
+                        {th.unread > 9 ? "9+" : th.unread}
+                      </span>
+                    )}
+                  </div>
+                  <span className="w-full truncate text-center text-[10px] text-neutral-400">
+                    {threadNotes[th.user_id] || th.sender_name || "Member"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           {loading && (
             <div className="grid place-items-center py-12 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -353,30 +494,33 @@ export function MessagesInbox({
           {!loading && threads.length === 0 && (
             <p className="py-12 text-center text-sm text-muted-foreground">No messages yet</p>
           )}
-          {threads.map((t) => (
+          {threads.map((th) => (
             <button
-              key={t.user_id}
+              key={th.user_id}
               type="button"
-              onClick={() => setActive(t.user_id)}
+              onClick={() => setActive(th.user_id)}
               className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 text-left hover:bg-white/[0.04]"
             >
               <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-white/10 text-xs font-bold">
-                {t.avatar_url ? (
-                  <img src={t.avatar_url} alt="" className="h-full w-full object-cover" />
+                {th.avatar_url ? (
+                  <img src={th.avatar_url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  (t.sender_name || "?")[0]?.toUpperCase()
+                  (th.sender_name || "?")[0]?.toUpperCase()
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-medium">{t.sender_name || "Member"}</p>
-                  {t.unread > 0 && (
+                  <p className="truncate text-sm font-medium">{th.sender_name || "Member"}</p>
+                  {th.unread > 0 && (
                     <span className="grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                      {t.unread}
+                      {th.unread}
                     </span>
                   )}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">{t.last_body || "Photo"}</p>
+                {threadNotes[th.user_id] && (
+                  <p className="truncate text-[10px] text-sky-400/90">{threadNotes[th.user_id]}</p>
+                )}
+                <p className="truncate text-xs text-muted-foreground">{th.last_body || "Photo"}</p>
               </div>
             </button>
           ))}
@@ -385,6 +529,18 @@ export function MessagesInbox({
         <div className="flex h-[420px] flex-col">
           <div className="border-b border-white/10 px-4 py-2 text-sm font-medium">
             {activeThread?.sender_name || "Conversation"}
+            {active && (
+              <button
+                type="button"
+                className="ml-2 text-[10px] font-normal text-sky-400 hover:underline"
+                onClick={() => {
+                  setNoteEditId(active);
+                  setNoteDraft(threadNotes[active] || "");
+                }}
+              >
+                Note
+              </button>
+            )}
           </div>
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {msgs.map((m) => (
@@ -465,11 +621,48 @@ export function MessagesInbox({
                     void send();
                   }
                 }}
-                placeholder="Message\u2026"
+                placeholder="Message…"
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/25"
               />
               <Button size="sm" disabled={busy} onClick={() => void send()}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {noteEditId && (
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setNoteEditId(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/12 bg-[#161618] p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold text-white">Chat note</h3>
+            <p className="mt-1 text-[11px] text-neutral-500">
+              Shown under chat head (private, this device)
+            </p>
+            <input
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              maxLength={60}
+              placeholder="e.g. Top player / pending refund"
+              className="mt-3 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/40"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={() => setNoteEditId(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-sky-500 text-white"
+                onClick={() => saveThreadNote(noteEditId, noteDraft)}
+              >
+                Save
               </Button>
             </div>
           </div>
