@@ -2,6 +2,12 @@
 User-agent: *
 Allow: /
 
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: AdsBot-Google
+Allow: /
+
 # Private / app areas
 Disallow: /dashboard
 Disallow: /platform
