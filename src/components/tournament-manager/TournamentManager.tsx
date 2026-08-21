@@ -4,6 +4,7 @@ import { useTournamentData } from "./shared";
 import { OverviewTab } from "./OverviewTab";
 import { PlayersTab } from "./PlayersTab";
 import { FixturesTab } from "./FixturesTab";
+import { ManagerBracketTab } from "./ManagerBracketTab";
 import { StandingsTab } from "./StandingsTab";
 import { SettingsTab } from "./SettingsTab";
 import { VerificationsTab } from "./VerificationsTab";
@@ -108,9 +109,7 @@ export function TournamentManager({ tournament: initial }: Props) {
         </div>
       </div>
 
-      {data.loading &&
-      data.matches.length === 0 &&
-      data.players.length === 0 ? (
+      {data.loading && data.matches.length === 0 && data.players.length === 0 ? (
         <div className="grid min-h-[30vh] place-items-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -119,26 +118,15 @@ export function TournamentManager({ tournament: initial }: Props) {
           {tab === "overview" && (
             <OverviewTab tournament={tournament} data={data} goTab={setTab} />
           )}
-          {tab === "players" && (
-            <PlayersTab tournament={tournament} data={data} />
-          )}
+          {tab === "players" && <PlayersTab tournament={tournament} data={data} />}
           {tab === "groups" && (
-            <GroupsTab
-              tournament={tournament}
-              data={data}
-              onPatched={setTournament}
-            />
+            <GroupsTab tournament={tournament} data={data} onPatched={setTournament} />
           )}
           {tab === "rounds" && br && <BrRoundsTab tournament={tournament} />}
-          {(tab === "fixtures" || tab === "bracket") && (
-            <FixturesTab tournament={tournament} data={data} />
-          )}
-          {tab === "verify" && (
-            <VerificationsTab tournament={tournament} data={data} />
-          )}
-          {tab === "standings" && (
-            <StandingsTab tournament={tournament} data={data} />
-          )}
+          {tab === "fixtures" && <FixturesTab tournament={tournament} data={data} />}
+          {tab === "bracket" && <ManagerBracketTab tournament={tournament} data={data} />}
+          {tab === "verify" && <VerificationsTab tournament={tournament} data={data} />}
+          {tab === "standings" && <StandingsTab tournament={tournament} data={data} />}
           {tab === "settings" && (
             <SettingsTab tournament={tournament} onPatched={setTournament} />
           )}
