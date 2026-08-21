@@ -1,5 +1,6 @@
 /**
  * X-style post detail — body + nested comments/replies.
+ * Comment composer sits under Comments header (not over bottom nav).
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -240,7 +241,7 @@ function PostDetailPage() {
 
   return (
     <PageShell force="platform" hideChrome>
-      <div className="mx-auto max-w-lg px-3 pb-28 pt-3">
+      <div className="mx-auto max-w-lg px-3 pb-24 pt-3">
         <Button size="sm" variant="ghost" className="-ml-2 mb-3 rounded-full" onClick={() => window.history.back()}>
           <ArrowLeft className="mr-1 h-4 w-4" /> Back
         </Button>
@@ -279,37 +280,47 @@ function PostDetailPage() {
 
         <section className="mt-4">
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">Comments</h2>
+
+          <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+            {replyTo && (
+              <div className="mb-2 flex items-center justify-between text-[11px] text-sky-300">
+                <span>Replying to {replyTo.author_name}</span>
+                <button type="button" className="text-neutral-400" onClick={() => setReplyTo(null)}>Cancel</button>
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <Textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder={replyTo ? "Write a reply…" : "Post your reply"}
+                rows={2}
+                className="min-h-[44px] flex-1 resize-none border-white/10 bg-black/30 text-sm"
+                onFocus={() => {
+                  requestAnimationFrame(() => {
+                    document.getElementById("post-comment-composer")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                  });
+                }}
+              />
+              <Button
+                size="icon"
+                className="mb-0.5 h-10 w-10 shrink-0 rounded-full bg-sky-500"
+                disabled={busy || !body.trim()}
+                onClick={() => void submit()}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+          <div id="post-comment-composer" className="h-0" aria-hidden />
+
           {roots.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-neutral-500">
+            <p className="rounded-xl border border-dashed border-white/10 py-6 text-center text-sm text-neutral-500">
               No comments yet — be the first
             </p>
           ) : (
             <div>{roots.map((c) => renderThread(c, 0))}</div>
           )}
         </section>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0a0a0a]/95 px-3 py-2 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-lg flex-col gap-1.5">
-          {replyTo && (
-            <div className="flex items-center justify-between text-[11px] text-sky-300">
-              <span>Replying to {replyTo.author_name}</span>
-              <button type="button" className="text-neutral-400" onClick={() => setReplyTo(null)}>Cancel</button>
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={replyTo ? "Write a reply…" : "Post your reply"}
-              rows={1}
-              className="min-h-[40px] resize-none border-white/10 bg-white/[0.05]"
-            />
-            <Button size="icon" className="shrink-0 rounded-full bg-sky-500" disabled={busy || !body.trim()} onClick={() => void submit()}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
       </div>
     </PageShell>
   );
