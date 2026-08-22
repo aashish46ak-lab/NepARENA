@@ -63,7 +63,7 @@ function statusTag(status: string): { label: string; tone: string; pulse?: boole
 }
 
 export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upcoming" | "history" }) {
-  const locked = t.is_published === false;
+  const unpublished = t.is_published === false;
   const start = formatShortDate(t.starts_at);
   const end = formatShortDate(t.ends_at);
   const dateLine =
@@ -71,7 +71,9 @@ export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upco
       ? [start, end].filter(Boolean).join(" → ") || "—"
       : start || "Date TBA";
 
-  if (locked) {
+  // Live/Upcoming: always show the card (tag DRAFT if unpublished) so Live tab is never blank
+  // History: keep hard lock for unpublished
+  if (unpublished && variant === "history") {
     return (
       <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-white/10 bg-[#0c0c0e]">
         <div
@@ -93,8 +95,10 @@ export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upco
     );
   }
 
-  const tag = statusTag(t.status);
-  const isLive = isLiveStatus(t.status);
+  const tag = unpublished
+    ? { label: "DRAFT", tone: "bg-neutral-700 text-neutral-200 ring-1 ring-white/15", pulse: false as boolean | undefined }
+    : statusTag(t.status);
+  const isLive = !unpublished && isLiveStatus(t.status);
   const isHistory = variant === "history";
 
   return (
