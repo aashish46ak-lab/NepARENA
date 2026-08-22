@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { BottomNav } from "./BottomNav";
+import { ThemeChooser } from "./ThemeChooser";
 import { isPlatformPath } from "@/lib/shell-mode";
 import {
   applyOrganizerThemeVars,
@@ -46,7 +47,6 @@ export function PageShell({
     }
   }, [mode, pathname]);
 
-  // BottomNav always mounts; it self-hides on auth/dashboard and uses island on deep pages
   const showBottomNav = true;
   const padBottom =
     showBottomNav &&
@@ -57,16 +57,13 @@ export function PageShell({
 
   return (
     <div
-      className={`min-h-screen flex flex-col ${
-        mode === "platform"
-          ? "bg-[#0a0a0a] text-neutral-100"
-          : "bg-[image:var(--org-page-bg)] bg-[#0a0a0a] text-neutral-100"
+      className={`min-h-screen flex flex-col bg-background text-foreground ${
+        mode === "organizer" ? "bg-[image:var(--org-page-bg)]" : ""
       }`}
       style={
         mode === "organizer"
           ? {
               backgroundImage: "var(--org-page-bg)",
-              backgroundColor: "#0a0a0a",
             }
           : undefined
       }
@@ -75,6 +72,7 @@ export function PageShell({
       <main className={`flex-1 ${padBottom ? "pb-20" : ""}`}>{children}</main>
       {!hideChrome && <Footer mode={mode} />}
       {showBottomNav && <BottomNav />}
+      <ThemeChooser />
     </div>
   );
 }
