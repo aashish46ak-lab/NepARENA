@@ -22,12 +22,6 @@ import { toast } from "sonner";
 import { archiveTournamentToHistory } from "./shared";
 import { notifyTournamentPlayers } from "@/lib/matches-pending";
 import {
-  TournamentThemeBuilder,
-  parseTournamentTheme,
-  serializeTheme,
-  type TournamentTheme,
-} from "@/components/TournamentThemeBuilder";
-import {
   parseFormatConfig,
   bracketTypeFromPreset,
   type FormatConfig,
@@ -72,30 +66,7 @@ export function SettingsTab({
   );
   const [rulesText, setRulesText] = useState(tournament.rules_text ?? "");
   const [rulesUrl, setRulesUrl] = useState(tournament.rules_url ?? "");
-  const [theme, setTheme] = useState<TournamentTheme>(() =>
-    parseTournamentTheme(tournament.theme_color),
-  );
   const [saving, setSaving] = useState(false);
-  const [themeSaving, setThemeSaving] = useState(false);
-
-  const saveTheme = async () => {
-    setThemeSaving(true);
-    const { data: row, error } = await supabase
-      .from("tournaments")
-      .update({ theme_color: serializeTheme(theme) })
-      .eq("id", tournament.id)
-      .select()
-      .single();
-    setThemeSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Theme saved — applied on tournament page");
-    qc.invalidateQueries({ queryKey: ["tournament", tournament.id] });
-    qc.invalidateQueries({ queryKey: ["tournaments"] });
-    if (row) onPatched(row as Tournament);
-  };
 
   const save = async () => {
     setSaving(true);
@@ -238,19 +209,41 @@ export function SettingsTab({
 
   return (
     <div className="pt-4 max-w-2xl space-y-5">
+      <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-xs text-sky-100/90">
+        <p className="font-semibold text-sky-200">Quick setup</p>
+        <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-neutral-300">
+          <li>Set <strong>Tournament status</strong> (e.g. Registration Open)</li>
+          <li>Pick a simple format below (or leave default)</li>
+          <li>Save — then generate fixtures on the Fixtures tab</li>
+        </ol>
+      </div>
+      <div className="glass rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Competition format
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
+          Start simple: Groups + Knockout is fine for most events. Advanced options stay optional.
+        </p>
+        <FormatBuilder value={format} onChange={setFormat} />
+        <p className="text-[11px] text-muted-foreground">
+          Existing fixtures are not changed until you regenerate them on the
+          Fixtures tab. League formats stay fully supported.
+        </p>
+      </div>
+
       <div className="glass rounded-2xl p-5 space-y-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Lifecycle
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Status</label>
+            <label className="text-sm font-medium">Tournament status</label>
             <Select
               value={status}
               onValueChange={(v) => setStatus(v as TournamentStatus)}
             >
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Choose status…" />
               </SelectTrigger>
               <SelectContent>
                 {STATUSES.map((s) => (
@@ -287,13 +280,6 @@ export function SettingsTab({
             />
           </div>
         </div>
-      </div>
-
-      <div className="glass rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Competition format
-        </h3>
-        <FormatBuilder value={format} onChange={setFormat} />
       </div>
 
       <div className="glass rounded-2xl p-5 space-y-3">
@@ -360,13 +346,6 @@ export function SettingsTab({
           />
         </div>
       </div>
-
-      <TournamentThemeBuilder
-        value={theme}
-        onChange={setTheme}
-        onSave={() => void saveTheme()}
-        saving={themeSaving}
-      />
 
       <Button
         onClick={save}

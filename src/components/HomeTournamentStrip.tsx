@@ -30,13 +30,15 @@ type Row = {
   } | null;
 };
 
-const LIVE = new Set(["live", "ongoing", "in_progress"]);
+const LIVE = new Set(["live", "ongoing", "in_progress", "check_in"]);
 const UPCOMING = new Set([
   "upcoming",
   "registration_open",
   "registration_closed",
   "draft",
   "scheduled",
+  "open",
+  "registration",
 ]);
 
 function statusLabel(status: string) {
@@ -50,8 +52,6 @@ function statusLabel(status: string) {
 function statusTone(status: string) {
   const s = String(status).toLowerCase();
   if (LIVE.has(s)) return "bg-rose-500/90 text-white";
-  if (s === "registration_open" || s === "open" || s === "registration")
-    return "bg-emerald-500/90 text-white";
   if (UPCOMING.has(s)) return "bg-sky-500/90 text-white";
   return "bg-neutral-600/90 text-white";
 }
@@ -127,6 +127,7 @@ export function HomeTournamentStrip() {
           return LIVE.has(s) || UPCOMING.has(s);
         });
 
+        // Followed organizers first, then the rest
         const followed = active.filter(
           (t) => t.organizer_id && followedIds.has(t.organizer_id),
         );
@@ -196,9 +197,6 @@ export function HomeTournamentStrip() {
         {rows.map((t) => {
           const org = t.organizers;
           const banner = t.banner_url || t.logo_url || null;
-          const regOpen = ["registration_open", "open", "registration", "upcoming"].includes(
-            String(t.status).toLowerCase(),
-          );
           return (
             <Link
               key={t.id}
@@ -253,7 +251,9 @@ export function HomeTournamentStrip() {
                     </span>
                   </div>
                 )}
-                {regOpen && (
+                {["registration_open", "open", "registration", "upcoming"].includes(
+                  String(t.status).toLowerCase(),
+                ) && (
                   <span className="mt-0.5 inline-flex w-full items-center justify-center rounded-lg bg-sky-500/90 px-2 py-1.5 text-[10px] font-bold text-white shadow-sm shadow-sky-500/20">
                     Request to join
                   </span>
