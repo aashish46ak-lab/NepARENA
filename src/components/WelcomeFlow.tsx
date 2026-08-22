@@ -1,52 +1,58 @@
 /**
- * First-open welcome:
- * 1) Story slides (Next)
- * 2) Theme select
- * 3) Login (if guest)
- * 4) Profile setup (if logged-in)
+ * First-open welcome (dark only):
+ * 1) Story slides (Next / Skip)
+ * 2) Login (if guest)
+ * 3) Profile setup (if logged-in)
  */
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
-import { applyTheme, type ThemeMode } from "@/components/ThemeChooser";
 import { cn } from "@/lib/utils";
 import {
   Trophy,
   Users,
   Gamepad2,
   MessageCircle,
-  Moon,
-  Sun,
   ChevronRight,
   User,
+  Swords,
 } from "lucide-react";
 
-const WELCOME_KEY = "neparena_welcome_v1";
+const WELCOME_KEY = "neparena_welcome_v2";
 
 const SLIDES = [
   {
-    title: "Your esports home",
-    text: "Follow organizers, join live cups, and track results — all in one arena.",
+    title: "Welcome to NepARENA",
+    text: "One home for multi-organizer esports — follow cups, results, and the community worldwide.",
     icon: Trophy,
-    accent: "from-red-500/30 to-blue-600/30",
+    accent: "from-sky-500/25 to-violet-500/20",
   },
   {
-    title: "Organizers & community",
-    text: "Discover verified organizers, follow the ones you love, and never miss a tournament.",
+    title: "Join live tournaments",
+    text: "Browse organizers, register for upcoming cups, and track fixtures as matches go live.",
+    icon: Swords,
+    accent: "from-red-500/20 to-orange-500/15",
+  },
+  {
+    title: "Organizers & players",
+    text: "Follow your favourite orgs, build your profile, and stay connected with DMs.",
     icon: Users,
-    accent: "from-blue-500/25 to-cyan-500/20",
+    accent: "from-emerald-500/20 to-sky-500/15",
   },
   {
-    title: "Play & chat",
-    text: "Mini-games for fun, DMs with players and orgs, and a feed that keeps you in the loop.",
+    title: "Play & stay in the loop",
+    text: "Mini-games for fun, news from organizers, and a feed that keeps you ready for the next match.",
     icon: Gamepad2,
-    accent: "from-violet-500/25 to-red-500/20",
+    accent: "from-violet-500/20 to-sky-500/15",
   },
 ] as const;
 
 export function isWelcomeDone(): boolean {
   try {
-    return localStorage.getItem(WELCOME_KEY) === "1";
+    return (
+      localStorage.getItem(WELCOME_KEY) === "1" ||
+      localStorage.getItem("neparena_welcome_v1") === "1"
+    );
   } catch {
     return true;
   }
@@ -55,12 +61,13 @@ export function isWelcomeDone(): boolean {
 export function markWelcomeDone() {
   try {
     localStorage.setItem(WELCOME_KEY, "1");
+    localStorage.setItem("neparena_welcome_v1", "1");
   } catch {
     /* ignore */
   }
 }
 
-type Step = "slides" | "theme" | "login" | "profile";
+type Step = "slides" | "login" | "profile";
 
 export function WelcomeFlow({ enabled }: { enabled: boolean }) {
   const { user } = useAuth();
@@ -68,7 +75,6 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("slides");
   const [slide, setSlide] = useState(0);
-  const [theme, setTheme] = useState<ThemeMode>("dark");
 
   useEffect(() => {
     if (!enabled) return;
@@ -84,18 +90,13 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
     setOpen(false);
   };
 
-  const afterTheme = () => {
+  const afterSlides = () => {
     if (!user) setStep("login");
     else setStep("profile");
   };
 
-  const pickTheme = (mode: ThemeMode) => {
-    setTheme(mode);
-    applyTheme(mode);
-  };
-
   return (
-    <div className="fixed inset-0 z-[9990] flex flex-col bg-background text-foreground">
+    <div className="fixed inset-0 z-[9990] flex flex-col bg-[#0a0a0a] text-white">
       <div className="relative flex flex-1 flex-col items-center justify-center px-6 pt-12">
         <div
           className={cn(
@@ -105,18 +106,15 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
         />
 
         {step === "slides" && (
-          <div
-            key={slide}
-            className="relative z-10 flex max-w-sm flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4 duration-400"
-          >
-            <div className="mb-8 grid h-28 w-28 place-items-center rounded-[2rem] border border-border bg-card shadow-xl">
+          <div key={slide} className="relative z-10 flex max-w-sm flex-col items-center text-center">
+            <div className="mb-8 grid h-28 w-28 place-items-center rounded-[2rem] border border-white/12 bg-white/[0.04] shadow-xl">
               {(() => {
                 const Icon = SLIDES[slide].icon;
-                return <Icon className="h-12 w-12 text-foreground" strokeWidth={1.5} />;
+                return <Icon className="h-12 w-12 text-white" strokeWidth={1.5} />;
               })()}
             </div>
             <h2 className="text-2xl font-bold tracking-tight">{SLIDES[slide].title}</h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-[15px] leading-relaxed text-neutral-400">
               {SLIDES[slide].text}
             </p>
             <div className="mt-8 flex gap-2">
@@ -125,7 +123,7 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
                   key={i}
                   className={cn(
                     "h-1.5 rounded-full transition-all duration-300",
-                    i === slide ? "w-6 bg-foreground" : "w-1.5 bg-muted-foreground/40",
+                    i === slide ? "w-6 bg-white" : "w-1.5 bg-white/25",
                   )}
                 />
               ))}
@@ -133,69 +131,26 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
           </div>
         )}
 
-        {step === "theme" && (
-          <div className="relative z-10 w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-400">
-            <h2 className="text-center text-2xl font-bold">Choose your look</h2>
-            <p className="mt-2 text-center text-sm text-muted-foreground">
-              Change anytime in Settings
-            </p>
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => pickTheme("dark")}
-                className={cn(
-                  "flex flex-col items-center gap-3 rounded-2xl border px-3 py-6 transition active:scale-[0.98]",
-                  theme === "dark"
-                    ? "border-sky-500/50 bg-[#0a0a0a] ring-2 ring-sky-500/30"
-                    : "border-border bg-card",
-                )}
-              >
-                <span className="grid h-12 w-12 place-items-center rounded-full bg-neutral-800">
-                  <Moon className="h-6 w-6 text-neutral-100" />
-                </span>
-                <span className="text-sm font-semibold">Dark</span>
-                <span className="text-[10px] text-muted-foreground">Black & silver</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => pickTheme("light")}
-                className={cn(
-                  "flex flex-col items-center gap-3 rounded-2xl border px-3 py-6 transition active:scale-[0.98]",
-                  theme === "light"
-                    ? "border-teal-600/40 bg-[#eef2ef] ring-2 ring-teal-600/25"
-                    : "border-border bg-card",
-                )}
-              >
-                <span className="grid h-12 w-12 place-items-center rounded-full bg-[#2f4a4a]">
-                  <Sun className="h-6 w-6 text-[#f7faf8]" />
-                </span>
-                <span className="text-sm font-semibold text-[#15201c]">Light</span>
-                <span className="text-[10px] text-[#5a6b64]">Sage & teal</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         {step === "login" && (
-          <div className="relative z-10 max-w-sm text-center animate-in fade-in slide-in-from-bottom-4 duration-400">
-            <div className="mx-auto mb-6 grid h-24 w-24 place-items-center rounded-[2rem] border border-border bg-card">
-              <MessageCircle className="h-11 w-11 text-foreground" strokeWidth={1.5} />
+          <div className="relative z-10 max-w-sm text-center">
+            <div className="mx-auto mb-6 grid h-24 w-24 place-items-center rounded-[2rem] border border-white/12 bg-white/[0.04]">
+              <MessageCircle className="h-11 w-11 text-white" strokeWidth={1.5} />
             </div>
             <h2 className="text-2xl font-bold">Sign in to continue</h2>
-            <p className="mt-3 text-[15px] text-muted-foreground">
-              Save your progress, message organizers, and join tournaments.
+            <p className="mt-3 text-[15px] text-neutral-400">
+              Save progress, message organizers, and join tournaments.
             </p>
             <Link
               to="/auth"
               onClick={finish}
-              className="mt-8 flex h-12 w-full items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background transition active:scale-[0.98]"
+              className="mt-8 flex h-12 w-full items-center justify-center rounded-full bg-white text-sm font-semibold text-black transition active:scale-[0.98]"
             >
               Continue to login
             </Link>
             <button
               type="button"
               onClick={finish}
-              className="mt-3 text-sm text-muted-foreground underline-offset-2 hover:underline"
+              className="mt-3 text-sm text-neutral-500 underline-offset-2 hover:underline"
             >
               Skip for now
             </button>
@@ -203,12 +158,12 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
         )}
 
         {step === "profile" && (
-          <div className="relative z-10 max-w-sm text-center animate-in fade-in slide-in-from-bottom-4 duration-400">
-            <div className="mx-auto mb-6 grid h-24 w-24 place-items-center rounded-[2rem] border border-border bg-card">
-              <User className="h-11 w-11 text-foreground" strokeWidth={1.5} />
+          <div className="relative z-10 max-w-sm text-center">
+            <div className="mx-auto mb-6 grid h-24 w-24 place-items-center rounded-[2rem] border border-white/12 bg-white/[0.04]">
+              <User className="h-11 w-11 text-white" strokeWidth={1.5} />
             </div>
             <h2 className="text-2xl font-bold">Setup your profile</h2>
-            <p className="mt-3 text-[15px] text-muted-foreground">
+            <p className="mt-3 text-[15px] text-neutral-400">
               Add a photo, name, and country so organizers and players know you.
             </p>
             <button
@@ -219,14 +174,14 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
                   void navigate({ to: "/members/$id", params: { id: user.id } });
                 }
               }}
-              className="mt-8 flex h-12 w-full items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background transition active:scale-[0.98]"
+              className="mt-8 flex h-12 w-full items-center justify-center rounded-full bg-white text-sm font-semibold text-black transition active:scale-[0.98]"
             >
               Open profile
             </button>
             <button
               type="button"
               onClick={finish}
-              className="mt-3 text-sm text-muted-foreground underline-offset-2 hover:underline"
+              className="mt-3 text-sm text-neutral-500 underline-offset-2 hover:underline"
             >
               Later
             </button>
@@ -236,27 +191,26 @@ export function WelcomeFlow({ enabled }: { enabled: boolean }) {
 
       <div className="px-6 pb-8 pt-2">
         {step === "slides" && (
-          <button
-            type="button"
-            onClick={() => {
-              if (slide < SLIDES.length - 1) setSlide((s) => s + 1);
-              else setStep("theme");
-            }}
-            className="flex h-12 w-full items-center justify-center gap-1 rounded-full bg-foreground text-sm font-semibold text-background transition active:scale-[0.98]"
-          >
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        )}
-        {step === "theme" && (
-          <button
-            type="button"
-            onClick={afterTheme}
-            className="flex h-12 w-full items-center justify-center gap-1 rounded-full bg-foreground text-sm font-semibold text-background transition active:scale-[0.98]"
-          >
-            Continue
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={finish}
+              className="h-12 flex-1 rounded-full border border-white/15 text-sm font-medium text-neutral-400 transition active:scale-[0.98]"
+            >
+              Skip
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (slide < SLIDES.length - 1) setSlide((s) => s + 1);
+                else afterSlides();
+              }}
+              className="flex h-12 flex-[1.4] items-center justify-center gap-1 rounded-full bg-white text-sm font-semibold text-black transition active:scale-[0.98]"
+            >
+              {slide < SLIDES.length - 1 ? "Next" : "Continue"}
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>
