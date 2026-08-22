@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 
 type Tourney = {
   id: string; name: string; status: string; starts_at: string | null;
-  ends_at: string | null; game?: string | null; banner_url?: string | null; is_published?: boolean; registration_open?: boolean;
+  ends_at: string | null; game?: string | null; banner_url?: string | null;
+  logo_url?: string | null; is_published?: boolean; registration_open?: boolean;
 };
 
 export function Empty({ text }: { text: string }) {
@@ -62,7 +63,16 @@ function statusTag(status: string): { label: string; tone: string; pulse?: boole
   return { label: s.replace(/_/g, " ") || "OPEN", tone: "bg-amber-400 text-black shadow-md shadow-amber-500/25" };
 }
 
-export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upcoming" | "history" }) {
+export function SquareCard({
+  t,
+  variant,
+  orgLogo,
+}: {
+  t: Tourney;
+  variant: "live" | "upcoming" | "history";
+  /** Organizer logo used when tournament has no banner */
+  orgLogo?: string | null;
+}) {
   const unpublished = t.is_published === false;
   const start = formatShortDate(t.starts_at);
   const end = formatShortDate(t.ends_at);
@@ -70,6 +80,7 @@ export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upco
     variant === "history"
       ? [start, end].filter(Boolean).join(" → ") || "—"
       : start || "Date TBA";
+  const cover = t.banner_url || t.logo_url || orgLogo || null;
 
   // Live/Upcoming: always show the card (tag DRAFT if unpublished) so Live tab is never blank
   // History: keep hard lock for unpublished
@@ -79,8 +90,8 @@ export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upco
         <div
           className="absolute inset-0 scale-110 bg-cover bg-center blur-xl"
           style={{
-            backgroundImage: t.banner_url
-              ? `url(${t.banner_url})`
+            backgroundImage: cover
+              ? `url(${cover})`
               : "linear-gradient(135deg,#1e293b,#0a0a0a)",
           }}
         />
@@ -118,8 +129,8 @@ export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upco
         <div
           className="absolute inset-0 bg-cover bg-center transition duration-700 group-hover:scale-[1.06]"
           style={{
-            backgroundImage: t.banner_url
-              ? `url(${t.banner_url})`
+            backgroundImage: cover
+              ? `url(${cover})`
               : "linear-gradient(135deg,#1e293b 0%,#0f172a 50%,#0a0a0a 100%)",
           }}
         />
