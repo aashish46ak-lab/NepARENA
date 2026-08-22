@@ -85,9 +85,17 @@
   --sidebar-accent-foreground: #f5f5f5;
   --sidebar-border: #2a2a2a;
   --sidebar-ring: #e8e8e8;
+  /* Bottom liquid nav */
+  --bnav-bg: #1a1b24;
+  --bnav-circle: #ffffff;
+  --bnav-circle-border: #0a0a0c;
+  --bnav-icon: rgba(255, 255, 255, 0.55);
+  --bnav-icon-active: #1a1b24;
+  --bnav-label: #ffffff;
+  --bnav-shadow: 0 15px 25px rgba(0, 0, 0, 0.35);
 }
 
-/* Light — Warm cream / off-white (no pure white) */
+/* Light — Warm cream + soft teal accents */
 .light {
   --background: #f3efe6;
   --foreground: #14120f;
@@ -123,6 +131,14 @@
   --sidebar-accent-foreground: #1a1814;
   --sidebar-border: #d9cfbc;
   --sidebar-ring: #8a7f6c;
+  /* Bottom liquid nav — soft teal bar, cream disc */
+  --bnav-bg: #2f4a4a;
+  --bnav-circle: #f7f3ea;
+  --bnav-circle-border: #f3efe6;
+  --bnav-icon: rgba(247, 243, 234, 0.7);
+  --bnav-icon-active: #1a2e2e;
+  --bnav-label: #f7f3ea;
+  --bnav-shadow: 0 12px 28px rgba(40, 60, 55, 0.28);
 }
 
 @layer base {
@@ -168,7 +184,6 @@
   padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
-/* Motion polish */
 @media (prefers-reduced-motion: no-preference) {
   a, button {
     transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.2s ease;
@@ -192,7 +207,6 @@
   display: none;
 }
 
-/* Feed / list entrance */
 @keyframes na-fade-up {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -204,7 +218,6 @@
   }
 }
 
-/* Onboarding step motion */
 @keyframes na-pop {
   0% { opacity: 0; transform: scale(0.86); }
   70% { opacity: 1; transform: scale(1.04); }
