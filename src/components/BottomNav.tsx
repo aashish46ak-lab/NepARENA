@@ -1,6 +1,6 @@
 /**
  * Classic liquid navigation.
- * White circle slides tab→tab without resetting to Home on every navigation.
+ * Smooth tab→tab circle slide; active icon optically centered in the white disc.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -41,11 +41,15 @@ const TABS = [
 
 const BAR_H = 70;
 const CIRCLE = 58;
+/** Lift icon so its visual center sits in the circle center (circle center ≈ bar top) */
+const ICON_LIFT = 37;
 const PAGE_BG = "#0a0a0c";
 const NAV_BG = "#1a1b24";
-const EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
+/** Smooth, no-overshoot ease — avoids sticky feel */
+const EASE = "cubic-bezier(0.25, 0.1, 0.25, 1)";
+const DURATION_MS = 480;
 
-/** Survives React remounts within the SPA session — stops “jump to Home” */
+/** Survives remounts — prevents jump-to-Home */
 let cachedCircleLeft: number | null = null;
 let cachedActiveIndex = 0;
 
@@ -69,9 +73,9 @@ function LiquidNavBar({
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [circleLeft, setCircleLeft] = useState(() => cachedCircleLeft ?? 0);
   const [positioned, setPositioned] = useState(() => cachedCircleLeft != null);
-  /** Animate only after we already had a real position (never from phantom Home/0) */
   const [animate, setAnimate] = useState(() => cachedCircleLeft != null);
   const activeIndex = resolveActiveIndex(pathname);
+  const lastLeft = useRef(cachedCircleLeft ?? 0);
 
   const measure = () => {
     const track = trackRef.current;
@@ -81,6 +85,11 @@ function LiquidNavBar({
     const r = el.getBoundingClientRect();
     if (r.width < 1) return false;
     const next = r.left - t.left + r.width / 2 - CIRCLE / 2;
+    // Skip tiny updates that restart CSS transitions (jank source)
+    if (Math.abs(next - lastLeft.current) < 0.75 && positioned) {
+      return true;
+    }
+    lastLeft.current = next;
     cachedCircleLeft = next;
     cachedActiveIndex = activeIndex;
     setCircleLeft(next);
@@ -89,16 +98,10 @@ function LiquidNavBar({
   };
 
   useLayoutEffect(() => {
-    // If we already know a position, keep animation on for this tab change
     const hadPrior = cachedCircleLeft != null;
+    // Enable animation BEFORE writing the new left so the browser interpolates
     setAnimate(hadPrior);
     measure();
-    const id = requestAnimationFrame(() => {
-      measure();
-      // Ensure future tab changes animate
-      setAnimate(true);
-    });
-    return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, activeIndex]);
 
@@ -106,7 +109,7 @@ function LiquidNavBar({
     const onResize = () => {
       setAnimate(false);
       measure();
-      requestAnimationFrame(() => setAnimate(true));
+      window.setTimeout(() => setAnimate(true), 50);
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -121,7 +124,7 @@ function LiquidNavBar({
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute z-[1] will-change-transform"
+        className="pointer-events-none absolute z-[1]"
         style={{
           width: CIRCLE,
           height: CIRCLE,
@@ -129,7 +132,10 @@ function LiquidNavBar({
           left: 0,
           transform: `translate3d(${circleLeft}px, 0, 0)`,
           opacity: positioned ? 1 : 0,
-          transition: animate ? `transform 0.5s ${EASE}` : "none",
+          transition: animate
+            ? `transform ${DURATION_MS}ms ${EASE}`
+            : "none",
+          willChange: animate ? "transform" : "auto",
         }}
       >
         <div
@@ -198,21 +204,27 @@ function LiquidNavBar({
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             <span
-              className="relative flex items-center justify-center will-change-transform"
+              className="absolute left-1/2 flex items-center justify-center"
               style={{
                 width: 28,
                 height: 28,
-                transform: active ? "translateY(-32px)" : "translateY(0)",
-                transition: `transform 0.5s ${EASE}`,
+                top: "50%",
+                marginTop: -14,
+                marginLeft: -14,
+                transform: active
+                  ? `translate3d(0, -${ICON_LIFT}px, 0)`
+                  : "translate3d(0, 0, 0)",
+                transition: `transform ${DURATION_MS}ms ${EASE}`,
+                willChange: "transform",
               }}
             >
               <Icon
-                className="transition-colors duration-300"
                 style={{
                   width: 22,
                   height: 22,
                   strokeWidth: active ? 2.35 : 2,
                   color: active ? NAV_BG : "rgba(255,255,255,0.55)",
+                  transition: `color ${DURATION_MS}ms ${EASE}`,
                 }}
               />
               {"badge" in tab && tab.badge && msgUnread > 0 && (
@@ -223,13 +235,13 @@ function LiquidNavBar({
             </span>
 
             <span
-              className="absolute text-[10px] font-medium leading-none will-change-transform"
+              className="absolute text-[10px] font-medium leading-none"
               style={{
                 bottom: 10,
                 color: active ? "#ffffff" : "transparent",
                 opacity: active ? 1 : 0,
-                transform: active ? "translateY(0)" : "translateY(6px)",
-                transition: `opacity 0.4s ${EASE}, transform 0.4s ${EASE}, color 0.3s ease`,
+                transform: active ? "translateY(0)" : "translateY(4px)",
+                transition: `opacity ${DURATION_MS}ms ${EASE}, transform ${DURATION_MS}ms ${EASE}`,
               }}
             >
               {tab.label}
