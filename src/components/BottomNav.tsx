@@ -39,11 +39,11 @@ const TABS = [
 ] as const;
 
 const N = TABS.length;
-const BAR_H = 70;
-const CIRCLE = 58;
-const ICON_LIFT = 37;
-const EASE = "cubic-bezier(0.25, 0.1, 0.25, 1)";
-const DURATION = "0.42s";
+const BAR_H = 72;
+const CIRCLE = 62;
+const ICON_LIFT = 38;
+const EASE = "cubic-bezier(0.34, 1.2, 0.64, 1)";
+const DURATION = "0.48s";
 
 function resolveActiveIndex(pathname: string): number {
   const idx = TABS.findIndex((t) => t.match(pathname));
@@ -84,32 +84,32 @@ function LiquidNavBar({
           className="absolute inset-0 rounded-full"
           style={{
             background: "var(--bnav-circle)",
-            border: `6px solid var(--bnav-circle-border)`,
-            boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
+            border: `7px solid var(--bnav-circle-border)`,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.04)",
           }}
         />
         <span
           className="absolute"
           style={{
-            top: "48%",
-            left: -20,
-            width: 20,
-            height: 20,
+            top: "50%",
+            left: -22,
+            width: 22,
+            height: 22,
             background: "transparent",
-            borderTopRightRadius: 20,
-            boxShadow: `1px -10px 0 0 var(--bnav-circle-border)`,
+            borderTopRightRadius: 22,
+            boxShadow: `2px -11px 0 0 var(--bnav-circle-border)`,
           }}
         />
         <span
           className="absolute"
           style={{
-            top: "48%",
-            right: -20,
-            width: 20,
-            height: 20,
+            top: "50%",
+            right: -22,
+            width: 22,
+            height: 22,
             background: "transparent",
-            borderTopLeftRadius: 20,
-            boxShadow: `-1px -10px 0 0 var(--bnav-circle-border)`,
+            borderTopLeftRadius: 22,
+            boxShadow: `-2px -11px 0 0 var(--bnav-circle-border)`,
           }}
         />
       </div>
@@ -321,8 +321,13 @@ export function BottomNav() {
             </button>
           ) : (
             <div
-              className="w-[min(100vw-1.5rem,22rem)] overflow-visible rounded-[18px] animate-in fade-in zoom-in-95 duration-200"
-              style={shellStyle}
+              className="w-[min(100vw-1.5rem,22rem)] overflow-visible rounded-[22px] ring-1 ring-black/10 animate-in fade-in zoom-in-95 duration-200"
+              style={{
+                ...shellStyle,
+                backgroundImage:
+                  "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
+                backgroundColor: "var(--bnav-bg)",
+              }}
             >
               <LiquidNavBar
                 pathname={pathname}
@@ -347,7 +352,15 @@ export function BottomNav() {
       data-onboard="bottom-nav"
     >
       <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
-        <div className="overflow-visible rounded-[18px]" style={shellStyle}>
+        <div
+          className="overflow-visible rounded-[22px] ring-1 ring-black/10"
+          style={{
+            ...shellStyle,
+            backgroundImage:
+              "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
+            backgroundColor: "var(--bnav-bg)",
+          }}
+        >
           <LiquidNavBar
             pathname={pathname}
             userId={user?.id}
