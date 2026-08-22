@@ -1,6 +1,6 @@
 /**
- * Classic liquid navigation (Ilmah / CodingLab style).
- * White circle sits on the bar with curved notches; active icon lifts into the circle.
+ * Classic liquid navigation.
+ * White circle slides tab→tab without resetting to Home on every navigation.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -39,13 +39,20 @@ const TABS = [
   },
 ] as const;
 
-/** Matches reference: ~70px bar, ~70px circle, top -50% */
 const BAR_H = 70;
 const CIRCLE = 58;
-/** Page / shell background — used for circle border + notch curves */
 const PAGE_BG = "#0a0a0c";
 const NAV_BG = "#1a1b24";
 const EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
+
+/** Survives React remounts within the SPA session — stops “jump to Home” */
+let cachedCircleLeft: number | null = null;
+let cachedActiveIndex = 0;
+
+function resolveActiveIndex(pathname: string): number {
+  const idx = TABS.findIndex((t) => t.match(pathname));
+  return idx >= 0 ? idx : cachedActiveIndex;
+}
 
 function LiquidNavBar({
   pathname,
@@ -60,37 +67,47 @@ function LiquidNavBar({
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const [circleLeft, setCircleLeft] = useState(0);
-  const [ready, setReady] = useState(false);
-
-  const activeIndex = Math.max(
-    0,
-    TABS.findIndex((t) => t.match(pathname)),
-  );
+  const [circleLeft, setCircleLeft] = useState(() => cachedCircleLeft ?? 0);
+  const [positioned, setPositioned] = useState(() => cachedCircleLeft != null);
+  /** Animate only after we already had a real position (never from phantom Home/0) */
+  const [animate, setAnimate] = useState(() => cachedCircleLeft != null);
+  const activeIndex = resolveActiveIndex(pathname);
 
   const measure = () => {
     const track = trackRef.current;
     const el = itemRefs.current[activeIndex];
-    if (!track || !el) return;
+    if (!track || !el) return false;
     const t = track.getBoundingClientRect();
     const r = el.getBoundingClientRect();
-    const center = r.left - t.left + r.width / 2;
-    setCircleLeft(center - CIRCLE / 2);
-    setReady(true);
+    if (r.width < 1) return false;
+    const next = r.left - t.left + r.width / 2 - CIRCLE / 2;
+    cachedCircleLeft = next;
+    cachedActiveIndex = activeIndex;
+    setCircleLeft(next);
+    setPositioned(true);
+    return true;
   };
 
   useLayoutEffect(() => {
+    // If we already know a position, keep animation on for this tab change
+    const hadPrior = cachedCircleLeft != null;
+    setAnimate(hadPrior);
     measure();
     const id = requestAnimationFrame(() => {
       measure();
-      requestAnimationFrame(measure);
+      // Ensure future tab changes animate
+      setAnimate(true);
     });
     return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, activeIndex]);
 
   useEffect(() => {
-    const onResize = () => measure();
+    const onResize = () => {
+      setAnimate(false);
+      measure();
+      requestAnimationFrame(() => setAnimate(true));
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,10 +119,6 @@ function LiquidNavBar({
       className="relative flex w-full items-center justify-center overflow-visible"
       style={{ height: BAR_H }}
     >
-      {/*
-        Liquid indicator — white circle + side notches (box-shadow curves).
-        top: -50% of circle height so it rests half above the bar (classic look).
-      */}
       <div
         aria-hidden
         className="pointer-events-none absolute z-[1] will-change-transform"
@@ -115,13 +128,10 @@ function LiquidNavBar({
           top: -CIRCLE / 2,
           left: 0,
           transform: `translate3d(${circleLeft}px, 0, 0)`,
-          opacity: ready ? 1 : 0,
-          transition: ready
-            ? `transform 0.5s ${EASE}, opacity 0.2s ease`
-            : "none",
+          opacity: positioned ? 1 : 0,
+          transition: animate ? `transform 0.5s ${EASE}` : "none",
         }}
       >
-        {/* White disc */}
         <div
           className="absolute inset-0 rounded-full bg-white"
           style={{
@@ -129,7 +139,6 @@ function LiquidNavBar({
             boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
           }}
         />
-        {/* Left notch curve */}
         <span
           className="absolute"
           style={{
@@ -142,7 +151,6 @@ function LiquidNavBar({
             boxShadow: `1px -10px 0 0 ${PAGE_BG}`,
           }}
         />
-        {/* Right notch curve */}
         <span
           className="absolute"
           style={{
@@ -189,7 +197,6 @@ function LiquidNavBar({
             className="relative z-10 flex h-full flex-1 flex-col items-center justify-center"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            {/* Icon — lifts into white circle when active */}
             <span
               className="relative flex items-center justify-center will-change-transform"
               style={{
@@ -215,7 +222,6 @@ function LiquidNavBar({
               )}
             </span>
 
-            {/* Label — only fully visible when active (reference style) */}
             <span
               className="absolute text-[10px] font-medium leading-none will-change-transform"
               style={{
