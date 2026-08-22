@@ -243,20 +243,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <HeadContent />
         <style
           dangerouslySetInnerHTML={{
             __html:
               "html,body{margin:0;min-height:100%;background:#0a0a0a;color:#f5f5f5}" +
-              "html.neparena-splash-pending [data-neparena-app]{visibility:hidden!important}" +
-              "html.light,html.light body{background:#eef2ef;color:#15201c}",
+              "html.neparena-splash-pending [data-neparena-app]{visibility:hidden!important}",
           }}
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('neparena-theme');var r=document.documentElement;if(t==='light'){r.classList.add('light');r.classList.remove('dark');r.style.colorScheme='light';}else{r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';}var k='neparena_splash_seen_v4';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
+            __html: `(function(){try{var r=document.documentElement;r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';try{localStorage.setItem('neparena-theme','dark');}catch(_){}var k='neparena_splash_seen_v5';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
           }}
         />
       </head>
