@@ -1,6 +1,5 @@
 /**
- * First-visit theme picker + reusable applyTheme helper.
- * Dark (black/silver) or Light (cream + soft teal accents).
+ * Theme helper + fallback chooser (WelcomeFlow handles first pick).
  */
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
@@ -38,13 +37,18 @@ export function readTheme(): ThemeMode | null {
   return null;
 }
 
-/** Full-screen chooser shown once when no theme is saved */
+/** Fallback if welcome finished but theme never set */
 export function ThemeChooser() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      if (readTheme() == null) setOpen(true);
+      try {
+        const welcomeDone = localStorage.getItem("neparena_welcome_v1") === "1";
+        if (welcomeDone && readTheme() == null) setOpen(true);
+      } catch {
+        if (readTheme() == null) setOpen(true);
+      }
     }, 400);
     return () => clearTimeout(id);
   }, []);
