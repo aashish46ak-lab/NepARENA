@@ -22,7 +22,13 @@ import { PlatformIcon } from "@/lib/platforms";
 import { SocialFeed } from "@/components/SocialFeed";
 import { OrganizerChat } from "@/components/OrganizerChat";
 import { GalleryBlock } from "@/components/OrganizerGalleryBlock";
-import { SquareCard, Empty } from "@/components/OrganizerSquareCard";
+import {
+  SquareCard,
+  Empty,
+  isLiveStatus,
+  isUpcomingStatus,
+  isHistoryStatus,
+} from "@/components/OrganizerSquareCard";
 
 type TabId = "home" | "posts" | "live" | "history" | "message" | "gallery";
 type Tourney = {
@@ -109,9 +115,26 @@ export function OrganizerPublicPage() {
     },
   });
 
-  const live = useMemo(() => tournaments.filter((t) => ["live", "ongoing", "check_in"].includes(String(t.status))), [tournaments]);
-  const upcoming = useMemo(() => tournaments.filter((t) => ["upcoming", "registration_open", "registration_closed", "draft"].includes(String(t.status))), [tournaments]);
-  const completed = useMemo(() => tournaments.filter((t) => ["completed", "archived"].includes(String(t.status))), [tournaments]);
+  // Live tab = live + upcoming (with LIVE / UPCOMING / REG OPEN tags)
+  // History tab = completed / archived only
+  const liveAndUpcoming = useMemo(() => {
+    const rows = tournaments.filter((t) => {
+      const s = String(t.status || "");
+      return isLiveStatus(s) || isUpcomingStatus(s);
+    });
+    return rows.sort((a, b) => {
+      const aLive = isLiveStatus(a.status) ? 0 : 1;
+      const bLive = isLiveStatus(b.status) ? 0 : 1;
+      if (aLive !== bLive) return aLive - bLive;
+      const at = a.starts_at ? new Date(a.starts_at).getTime() : 0;
+      const bt = b.starts_at ? new Date(b.starts_at).getTime() : 0;
+      return at - bt;
+    });
+  }, [tournaments]);
+  const completed = useMemo(
+    () => tournaments.filter((t) => isHistoryStatus(String(t.status || ""))),
+    [tournaments],
+  );
 
   const { data: communityLinks = [] } = useQuery({
     queryKey: ["org_community_links", organizer?.id],
@@ -335,7 +358,9 @@ export function OrganizerPublicPage() {
                   <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Organized</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center transition hover:border-rose-400/30 hover:bg-rose-500/5">
-                  <p className="text-lg font-bold tabular-nums text-rose-300">{live.length}</p>
+                  <p className="text-lg font-bold tabular-nums text-rose-300">
+                    {tournaments.filter((t) => isLiveStatus(t.status)).length}
+                  </p>
                   <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Live</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center transition hover:border-emerald-400/30 hover:bg-emerald-500/5">
@@ -419,16 +444,20 @@ export function OrganizerPublicPage() {
 
           {tab === "live" && (
             <section className="space-y-3 animate-in fade-in duration-300">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-white"><Radio className="h-3.5 w-3.5 text-rose-400" /> Live tournaments</h2>
-              {live.length === 0 ? (
-                <Empty text={upcoming[0] ? `Nothing live — next up: ${upcoming[0].name}` : "No live tournaments right now"} />
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
+                <Radio className="h-3.5 w-3.5 text-rose-400" /> Live & Upcoming
+              </h2>
+              {liveAndUpcoming.length === 0 ? (
+                <Empty text="No live or upcoming tournaments right now" />
               ) : (
-                <div className="space-y-3">{live.map((t) => <SquareCard key={t.id} t={t} variant="live" />)}</div>
-              )}
-              {upcoming.length > 0 && (
-                <div className="pt-2">
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Upcoming</h3>
-                  <div className="space-y-3">{upcoming.slice(0, 8).map((t) => <SquareCard key={t.id} t={t} variant="upcoming" />)}</div>
+                <div className="space-y-3">
+                  {liveAndUpcoming.map((t) => (
+                    <SquareCard
+                      key={t.id}
+                      t={t}
+                      variant={isLiveStatus(t.status) ? "live" : "upcoming"}
+                    />
+                  ))}
                 </div>
               )}
             </section>
