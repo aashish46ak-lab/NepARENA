@@ -1,5 +1,5 @@
 /**
- * User settings — theme switch (dark / light) + basic account links.
+ * User settings — account links (dark only).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -7,23 +7,21 @@ import { PageShell } from "@/components/PageShell";
 import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { useAuth } from "@/hooks/useAuth";
 import { buildSeoHead } from "@/lib/seo";
-import { Moon, Sun, ArrowLeft, User, LogOut, Sparkles } from "lucide-react";
+import { ArrowLeft, User, LogOut, Sparkles } from "lucide-react";
 import { requestOnboardingReplay, resetOnboarding } from "@/components/OnboardingTour";
 import {
   listSavedAccounts,
   removeSavedAccount,
   type SavedAccount,
 } from "@/lib/account-switcher";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { applyTheme, type ThemeMode } from "@/components/ThemeChooser";
 
 export const Route = createFileRoute("/settings")({
   ssr: false,
   head: () => ({
     ...buildSeoHead({
       title: "Settings — NepARENA",
-      description: "Account and appearance settings",
+      description: "Account settings",
       path: "/settings",
     }),
   }),
@@ -32,30 +30,11 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
-  const [theme, setTheme] = useState<ThemeMode>("dark");
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
 
   useEffect(() => {
     setAccounts(listSavedAccounts());
   }, [user?.id]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("neparena-theme") as ThemeMode | null;
-      if (saved === "light" || saved === "dark") {
-        setTheme(saved);
-        applyTheme(saved);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const pickTheme = (mode: ThemeMode) => {
-    setTheme(mode);
-    applyTheme(mode);
-    toast.success(mode === "dark" ? "Dark theme on" : "Light theme on");
-  };
 
   return (
     <PageShell force="platform" hideChrome>
@@ -68,43 +47,6 @@ function SettingsPage() {
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </Link>
-
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <h2 className="mb-3 text-sm font-semibold text-white">Appearance</h2>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => pickTheme("dark")}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-xl border px-3 py-4 transition",
-                theme === "dark"
-                  ? "border-sky-400/50 bg-sky-500/10 text-white"
-                  : "border-white/10 bg-white/[0.02] text-neutral-400 hover:bg-white/[0.05]",
-              )}
-            >
-              <Moon className="h-5 w-5" />
-              <span className="text-xs font-semibold">Dark</span>
-              <span className="text-[10px] opacity-60">Black & silver</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => pickTheme("light")}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-xl border px-3 py-4 transition",
-                theme === "light"
-                  ? "border-sky-400/50 bg-sky-500/10 text-white"
-                  : "border-white/10 bg-white/[0.02] text-neutral-400 hover:bg-white/[0.05]",
-              )}
-            >
-              <Sun className="h-5 w-5" />
-              <span className="text-xs font-semibold">Light</span>
-              <span className="text-[10px] opacity-60">Cream & teal</span>
-            </button>
-          </div>
-          <p className="mt-3 text-[11px] text-neutral-500">
-            Platform appearance. Change anytime here. Organizer pages keep their own brand colors.
-          </p>
-        </section>
 
         {user && (
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
