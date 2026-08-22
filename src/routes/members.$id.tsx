@@ -222,6 +222,10 @@ function MemberProfilePage() {
                 onClick={() => { closeMenu(); setEditOpen(true); }}>
                 <Settings className="h-4 w-4 shrink-0 text-neutral-400" /> Edit profile
               </button>
+              <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
+                onClick={() => { closeMenu(); void navigate({ to: "/settings" }); }}>
+                <Settings className="h-4 w-4 shrink-0 text-neutral-400" /> Appearance & settings
+              </button>
               {(hasOrgMembership || isAdmin) && (
                 <button type="button" role="menuitem" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.08]"
                   onClick={() => { closeMenu(); void navigate({ to: "/dashboard" }); }}>
