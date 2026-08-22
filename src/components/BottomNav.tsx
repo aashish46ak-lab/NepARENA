@@ -1,6 +1,6 @@
 /**
- * Liquid floating-circle bottom nav.
- * Circle slides tab→tab with a wave arc; small air gap above the bar.
+ * Classic liquid navigation (Ilmah / CodingLab style).
+ * White circle sits on the bar with curved notches; active icon lifts into the circle.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -39,20 +39,13 @@ const TABS = [
   },
 ] as const;
 
-const BAR_H = 68;
-const CIRCLE = 54;
-/** Air gap between circle bottom and bar top — floating feel */
-const AIR_GAP = 8;
-/** Circle top = -(circle + gap) so it sits fully above the bar with space */
-const CIRCLE_TOP = -(CIRCLE + AIR_GAP);
-/**
- * Icon lift: from resting position up into circle center.
- * Circle center Y relative to bar top = CIRCLE_TOP + CIRCLE/2
- */
-const ICON_LIFT = 38;
-
-/** Wave horizontal ease — overshoot then settle */
-const EASE_X = "cubic-bezier(0.34, 1.4, 0.64, 1)";
+/** Matches reference: ~70px bar, ~70px circle, top -50% */
+const BAR_H = 70;
+const CIRCLE = 58;
+/** Page / shell background — used for circle border + notch curves */
+const PAGE_BG = "#0a0a0c";
+const NAV_BG = "#1a1b24";
+const EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
 
 function LiquidNavBar({
   pathname,
@@ -69,8 +62,6 @@ function LiquidNavBar({
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   const [circleLeft, setCircleLeft] = useState(0);
   const [ready, setReady] = useState(false);
-  const [waveUp, setWaveUp] = useState(false);
-  const prevIndex = useRef(-1);
 
   const activeIndex = Math.max(
     0,
@@ -89,18 +80,6 @@ function LiquidNavBar({
   };
 
   useLayoutEffect(() => {
-    if (prevIndex.current >= 0 && prevIndex.current !== activeIndex) {
-      setWaveUp(true);
-      const t = window.setTimeout(() => setWaveUp(false), 320);
-      prevIndex.current = activeIndex;
-      measure();
-      const id = requestAnimationFrame(measure);
-      return () => {
-        clearTimeout(t);
-        cancelAnimationFrame(id);
-      };
-    }
-    prevIndex.current = activeIndex;
     measure();
     const id = requestAnimationFrame(() => {
       measure();
@@ -120,30 +99,63 @@ function LiquidNavBar({
   return (
     <div
       ref={trackRef}
-      className="navigation relative flex w-full items-stretch overflow-visible px-1.5"
+      className="relative flex w-full items-center justify-center overflow-visible"
       style={{ height: BAR_H }}
     >
-      {/* Floating white circle — slides from previous tab, waves up mid-travel */}
+      {/*
+        Liquid indicator — white circle + side notches (box-shadow curves).
+        top: -50% of circle height so it rests half above the bar (classic look).
+      */}
       <div
         aria-hidden
-        className={cn(
-          "indicator pointer-events-none absolute z-[2] rounded-full bg-white",
-          "border-[5px] border-[#0a0a0c]",
-          "shadow-[0_10px_28px_rgba(0,0,0,0.45),0_2px_6px_rgba(0,0,0,0.2)]",
-          "will-change-transform",
-        )}
+        className="pointer-events-none absolute z-[1] will-change-transform"
         style={{
           width: CIRCLE,
           height: CIRCLE,
-          top: CIRCLE_TOP,
+          top: -CIRCLE / 2,
           left: 0,
-          transform: `translate3d(${circleLeft}px, ${waveUp ? -10 : 0}px, 0)`,
+          transform: `translate3d(${circleLeft}px, 0, 0)`,
           opacity: ready ? 1 : 0,
           transition: ready
-            ? [`transform 0.55s ${EASE_X}`, `opacity 0.2s ease`].join(", ")
+            ? `transform 0.5s ${EASE}, opacity 0.2s ease`
             : "none",
         }}
-      />
+      >
+        {/* White disc */}
+        <div
+          className="absolute inset-0 rounded-full bg-white"
+          style={{
+            border: `6px solid ${PAGE_BG}`,
+            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+          }}
+        />
+        {/* Left notch curve */}
+        <span
+          className="absolute"
+          style={{
+            top: "48%",
+            left: -20,
+            width: 20,
+            height: 20,
+            background: "transparent",
+            borderTopRightRadius: 20,
+            boxShadow: `1px -10px 0 0 ${PAGE_BG}`,
+          }}
+        />
+        {/* Right notch curve */}
+        <span
+          className="absolute"
+          style={{
+            top: "48%",
+            right: -20,
+            width: 20,
+            height: 20,
+            background: "transparent",
+            borderTopLeftRadius: 20,
+            boxShadow: `-1px -10px 0 0 ${PAGE_BG}`,
+          }}
+        />
+      </div>
 
       {TABS.map((tab, i) => {
         const active = i === activeIndex;
@@ -174,31 +186,26 @@ function LiquidNavBar({
             {...(href as { to: string; params?: { id: string } })}
             data-onboard={onboard}
             onClick={() => onNavigate?.()}
-            className={cn(
-              "relative z-10 flex flex-1 flex-col items-center justify-end",
-              "pb-2.5 transition-colors duration-300",
-            )}
+            className="relative z-10 flex h-full flex-1 flex-col items-center justify-center"
+            style={{ WebkitTapHighlightColor: "transparent" }}
           >
+            {/* Icon — lifts into white circle when active */}
             <span
               className="relative flex items-center justify-center will-change-transform"
               style={{
                 width: 28,
                 height: 28,
-                transform: active
-                  ? `translate3d(0, -${ICON_LIFT}px, 0)`
-                  : "translate3d(0, 0, 0)",
-                transition: `transform 0.55s ${EASE_X}`,
+                transform: active ? "translateY(-32px)" : "translateY(0)",
+                transition: `transform 0.5s ${EASE}`,
               }}
             >
               <Icon
-                className={cn(
-                  "icon transition-colors duration-300",
-                  active ? "text-[#141724]" : "text-neutral-500",
-                )}
+                className="transition-colors duration-300"
                 style={{
                   width: 22,
                   height: 22,
-                  strokeWidth: active ? 2.4 : 2,
+                  strokeWidth: active ? 2.35 : 2,
+                  color: active ? NAV_BG : "rgba(255,255,255,0.55)",
                 }}
               />
               {"badge" in tab && tab.badge && msgUnread > 0 && (
@@ -208,11 +215,16 @@ function LiquidNavBar({
               )}
             </span>
 
+            {/* Label — only fully visible when active (reference style) */}
             <span
-              className={cn(
-                "mt-0.5 text-[10px] font-medium leading-none transition-colors duration-300",
-                active ? "text-white" : "text-neutral-500",
-              )}
+              className="absolute text-[10px] font-medium leading-none will-change-transform"
+              style={{
+                bottom: 10,
+                color: active ? "#ffffff" : "transparent",
+                opacity: active ? 1 : 0,
+                transform: active ? "translateY(0)" : "translateY(6px)",
+                transition: `opacity 0.4s ${EASE}, transform 0.4s ${EASE}, color 0.3s ease`,
+              }}
             >
               {tab.label}
             </span>
@@ -312,11 +324,11 @@ export function BottomNav() {
       pathname.startsWith("/about"));
 
   const bottomPad =
-    "pb-[calc(0.85rem+12px+env(safe-area-inset-bottom,0px))]";
+    "pb-[calc(0.75rem+10px+env(safe-area-inset-bottom,0px))]";
 
   const shellClass =
-    "overflow-visible rounded-[28px] border border-white/10 " +
-    "bg-[#141724] shadow-[0_12px_36px_rgba(0,0,0,0.55)]";
+    "overflow-visible rounded-[18px] " +
+    "shadow-[0_15px_25px_rgba(0,0,0,0.35)]";
 
   if (useIsland) {
     return (
@@ -334,15 +346,13 @@ export function BottomNav() {
             onClick={() => setIslandOpen(false)}
           />
         )}
-        <div className="pointer-events-auto relative z-50 pt-12">
+        <div className="pointer-events-auto relative z-50 pt-10">
           {!islandOpen ? (
             <button
               type="button"
               onClick={() => setIslandOpen(true)}
-              className={cn(
-                "grid h-12 w-12 place-items-center rounded-full transition hover:scale-105 active:scale-95",
-                "border border-white/15 bg-[#141724] shadow-[0_8px_28px_rgba(0,0,0,0.55)]",
-              )}
+              className="grid h-12 w-12 place-items-center rounded-full border border-white/10 transition hover:scale-105 active:scale-95"
+              style={{ background: NAV_BG }}
               aria-label="Open navigation"
             >
               <span className="flex gap-1">
@@ -357,6 +367,7 @@ export function BottomNav() {
                 "w-[min(100vw-1.5rem,22rem)] animate-in fade-in zoom-in-95 duration-200",
                 shellClass,
               )}
+              style={{ background: NAV_BG }}
             >
               <LiquidNavBar
                 pathname={pathname}
@@ -380,8 +391,8 @@ export function BottomNav() {
       aria-label="Main"
       data-onboard="bottom-nav"
     >
-      <div className={cn("pointer-events-auto w-full max-w-[22rem] pt-12")}>
-        <div className={shellClass}>
+      <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
+        <div className={shellClass} style={{ background: NAV_BG }}>
           <LiquidNavBar
             pathname={pathname}
             userId={user?.id}
