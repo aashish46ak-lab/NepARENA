@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Mail, Lock, User, Loader2, ArrowRight, Eye, EyeOff, LogIn, UserPlus,
+  Mail, Lock, User, Loader2, Eye, EyeOff, LogIn, UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/auth/")({
   ssr: false,
@@ -21,6 +20,7 @@ export const Route = createFileRoute("/auth/")({
     meta: [
       { title: "Sign in — NepARENA" },
       { name: "description", content: "Sign in or create your NepARENA account to join tournaments and communities." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: AuthPage,
@@ -87,8 +87,18 @@ function AuthPage() {
     });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Check your email to confirm your account.");
-    setMode("login");
+    try {
+      sessionStorage.setItem("neparena-email", parsed.data);
+      sessionStorage.setItem("neparena-otp-type", "signup");
+      sessionStorage.setItem("neparena-fullname", name.trim());
+    } catch {
+      /* private mode */
+    }
+    toast.success("Check your email for the 6-digit code.");
+    void router.navigate({
+      to: "/auth/verify",
+      search: { email: parsed.data, type: "signup" },
+    });
   };
 
   if (loading) {
