@@ -20,6 +20,48 @@ function formatShortDate(iso: string | null | undefined) {
   }
 }
 
+/** Statuses for Live tab cards */
+const LIVE_STATUSES = new Set(["live", "ongoing", "check_in", "in_progress"]);
+const UPCOMING_STATUSES = new Set([
+  "upcoming",
+  "registration_open",
+  "registration_closed",
+  "draft",
+  "scheduled",
+  "open",
+  "registration",
+]);
+const HISTORY_STATUSES = new Set(["completed", "archived"]);
+
+export function isLiveStatus(status: string) {
+  return LIVE_STATUSES.has(String(status || "").toLowerCase());
+}
+
+export function isUpcomingStatus(status: string) {
+  return UPCOMING_STATUSES.has(String(status || "").toLowerCase());
+}
+
+export function isHistoryStatus(status: string) {
+  return HISTORY_STATUSES.has(String(status || "").toLowerCase());
+}
+
+function statusTag(status: string): { label: string; tone: string; pulse?: boolean } {
+  const s = String(status || "").toLowerCase();
+  if (LIVE_STATUSES.has(s)) {
+    return { label: "LIVE", tone: "bg-rose-500 text-white shadow-lg shadow-rose-500/40", pulse: true };
+  }
+  if (s === "registration_open" || s === "open" || s === "registration") {
+    return { label: "REG OPEN", tone: "bg-emerald-500 text-white shadow-md shadow-emerald-500/30" };
+  }
+  if (UPCOMING_STATUSES.has(s)) {
+    return { label: "UPCOMING", tone: "bg-sky-500 text-white shadow-md shadow-sky-500/30" };
+  }
+  if (HISTORY_STATUSES.has(s)) {
+    return { label: "Completed", tone: "bg-neutral-800/90 text-neutral-300 ring-1 ring-white/10" };
+  }
+  return { label: s.replace(/_/g, " ") || "OPEN", tone: "bg-amber-400 text-black shadow-md shadow-amber-500/25" };
+}
+
 export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upcoming" | "history" }) {
   const locked = t.is_published === false;
   const start = formatShortDate(t.starts_at);
@@ -51,7 +93,8 @@ export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upco
     );
   }
 
-  const isLive = variant === "live";
+  const tag = statusTag(t.status);
+  const isLive = isLiveStatus(t.status);
   const isHistory = variant === "history";
 
   return (
@@ -84,20 +127,16 @@ export function SquareCard({ t, variant }: { t: Tourney; variant: "live" | "upco
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md",
-              isLive
-                ? "bg-rose-500 text-white shadow-lg shadow-rose-500/40"
-                : isHistory
-                  ? "bg-neutral-800/90 text-neutral-300 ring-1 ring-white/10"
-                  : "bg-amber-400 text-black shadow-md shadow-amber-500/25",
+              tag.tone,
             )}
           >
-            {isLive && (
+            {tag.pulse && (
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
               </span>
             )}
-            {isLive ? "LIVE" : isHistory ? "Completed" : String(t.status).replace(/_/g, " ")}
+            {tag.label}
           </span>
           {t.game && (
             <span className="rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-md">
