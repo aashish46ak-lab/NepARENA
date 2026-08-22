@@ -1,9 +1,12 @@
+/**
+ * Email OTP verify — native 6-digit inputs (no input-otp lib dependency).
+ * Supabase: verifyOtp / resend / signInWithOtp / resetPasswordForEmail unchanged.
+ */
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase, OWNER_EMAIL } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import { Loader2, MailCheck } from "lucide-react";
 
@@ -28,11 +31,9 @@ export const Route = createFileRoute("/auth/verify")({
 type OtpType = "signup" | "recovery" | "email";
 
 function readStoredType(searchType?: string): OtpType {
-  const fromSearch =
-    searchType === "signup" || searchType === "recovery" || searchType === "email"
-      ? searchType
-      : null;
-  if (fromSearch) return fromSearch;
+  if (searchType === "signup" || searchType === "recovery" || searchType === "email") {
+    return searchType;
+  }
   try {
     const t =
       sessionStorage.getItem("neparena-otp-type") ||
@@ -58,6 +59,82 @@ function readStoredEmail(searchEmail?: string): string {
   }
 }
 
+/** Six separate digit boxes — always visible, works without input-otp */
+function OtpBoxes({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const digits = Array.from({ length: 6 }, (_, i) => value[i] ?? "");
+
+  const setAt = (index: number, char: string) => {
+    const next = digits.map((d, i) => (i === index ? char : d));
+    onChange(next.join("").slice(0, 6));
+  };
+
+  const handleChange = (index: number, raw: string) => {
+    const cleaned = raw.replace(/\D/g, "");
+    if (!cleaned) {
+      setAt(index, "");
+      return;
+    }
+    if (cleaned.length > 1) {
+      const full = cleaned.slice(0, 6);
+      onChange(full);
+      const focusIdx = Math.min(full.length, 5);
+      refs.current[focusIdx]?.focus();
+      return;
+    }
+    setAt(index, cleaned);
+    if (index < 5) refs.current[index + 1]?.focus();
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      if (digits[index]) {
+        setAt(index, "");
+      } else if (index > 0) {
+        setAt(index - 1, "");
+        refs.current[index - 1]?.focus();
+      }
+      e.preventDefault();
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      refs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      refs.current[index + 1]?.focus();
+    }
+  };
+
+  return (
+    <div className="flex justify-center gap-2" role="group" aria-label="6-digit code">
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
+          type="text"
+          inputMode="numeric"
+          autoComplete={i === 0 ? "one-time-code" : "off"}
+          maxLength={6}
+          value={d}
+          disabled={disabled}
+          aria-label={`Digit ${i + 1}`}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onFocus={(e) => e.target.select()}
+          className="h-12 w-11 rounded-xl border border-white/20 bg-white/[0.08] text-center text-lg font-semibold text-white outline-none ring-offset-0 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-500/40 disabled:opacity-50"
+        />
+      ))}
+    </div>
+  );
+}
+
 function VerifyPage() {
   const router = useRouter();
   const search = Route.useSearch();
@@ -69,6 +146,16 @@ function VerifyPage() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (!initialEmail) return;
+    try {
+      sessionStorage.setItem("neparena-email", initialEmail);
+      if (search.type) sessionStorage.setItem("neparena-otp-type", search.type);
+    } catch {
+      /* ignore */
+    }
+  }, [initialEmail, search.type]);
 
   const redirectByRole = async () => {
     const { data: userData } = await supabase.auth.getUser();
@@ -179,7 +266,7 @@ function VerifyPage() {
 
   return (
     <div className="grid min-h-screen place-items-center bg-[#0a0a0a] px-4 py-10">
-      <div className="w-full max-w-md animate-enter">
+      <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex flex-col items-center gap-3">
           <img
             src="/neparena-logo.png"
@@ -232,25 +319,7 @@ function VerifyPage() {
               </div>
             )}
 
-            <div className="flex justify-center">
-              <InputOTP
-                maxLength={6}
-                value={code}
-                onChange={setCode}
-                autoFocus={!!email.trim()}
-                containerClassName="gap-2"
-              >
-                <InputOTPGroup className="gap-2">
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <InputOTPSlot
-                      key={i}
-                      index={i}
-                      className="h-12 w-11 rounded-xl border border-white/15 bg-white/[0.06] text-lg text-white first:rounded-xl last:rounded-xl"
-                    />
-                  ))}
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
+            <OtpBoxes value={code} onChange={setCode} disabled={loading} />
 
             <Button
               type="submit"
