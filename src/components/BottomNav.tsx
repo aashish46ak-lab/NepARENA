@@ -1,7 +1,6 @@
 /**
  * Liquid floating-circle bottom nav.
- * White indicator lifts above the bar; active icon rises into the circle.
- * Island mode on deep pages; hidden on auth / admin / mobile chat.
+ * Smooth spring motion; active icon centered in white circle; soft curved bar.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -40,10 +39,24 @@ const TABS = [
   },
 ] as const;
 
-/** Diameter of the floating white circle */
-const CIRCLE = 56;
-/** How far the circle sits above the top edge of the bar */
-const LIFT = 28;
+const BAR_H = 68;
+/** Floating white circle size */
+const CIRCLE = 58;
+/**
+ * Circle sits so its vertical center is on the bar's top edge.
+ * Active icon is lifted so its center lands exactly in the circle center.
+ */
+const LIFT = CIRCLE / 2; // 29
+/** Icon size */
+const ICON = 22;
+/**
+ * Resting icon center ≈ BAR_H - padding - label - half icon
+ * ≈ 68 - 10 - 12 - 11 = 35 from top of bar.
+ * Circle center at y = 0 → lift by ~35px.
+ */
+const ICON_LIFT = 35;
+
+const EASE = "cubic-bezier(0.34, 1.25, 0.64, 1)";
 
 function LiquidNavBar({
   pathname,
@@ -79,7 +92,10 @@ function LiquidNavBar({
 
   useLayoutEffect(() => {
     measure();
-    const id = requestAnimationFrame(measure);
+    const id = requestAnimationFrame(() => {
+      measure();
+      requestAnimationFrame(measure);
+    });
     return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, activeIndex]);
@@ -94,26 +110,28 @@ function LiquidNavBar({
   return (
     <div
       ref={trackRef}
-      className="navigation relative flex w-full items-stretch overflow-visible px-1"
-      style={{ height: 64 }}
+      className="navigation relative flex w-full items-stretch overflow-visible px-1.5"
+      style={{ height: BAR_H }}
     >
-      {/* Floating white circle — lifts above the bar (overflow visible) */}
+      {/* Floating white circle — centered on active tab */}
       <div
         aria-hidden
         className={cn(
           "indicator pointer-events-none absolute z-[2] rounded-full bg-white",
           "border-[5px] border-[#0a0a0c]",
-          "shadow-[0_6px_20px_rgba(0,0,0,0.35)]",
-          ready
-            ? "transition-transform duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)]"
-            : "opacity-0",
+          "shadow-[0_8px_24px_rgba(0,0,0,0.4)]",
+          "will-change-transform",
         )}
         style={{
           width: CIRCLE,
           height: CIRCLE,
           top: -LIFT,
-          transform: `translateX(${circleLeft}px)`,
+          left: 0,
+          transform: `translate3d(${circleLeft}px, 0, 0)`,
           opacity: ready ? 1 : 0,
+          transition: ready
+            ? `transform 0.55s ${EASE}, opacity 0.25s ease`
+            : "none",
         }}
       />
 
@@ -147,23 +165,32 @@ function LiquidNavBar({
             data-onboard={onboard}
             onClick={() => onNavigate?.()}
             className={cn(
-              "relative z-10 flex flex-1 flex-col items-center justify-end gap-0.5 pb-2 pt-1",
-              "transition-colors duration-300",
-              active ? "text-[#0a0a0c]" : "text-neutral-500 hover:text-neutral-300",
+              "relative z-10 flex flex-1 flex-col items-center justify-end",
+              "pb-2.5 transition-colors duration-300",
             )}
           >
+            {/* Icon — lifts into exact center of white circle when active */}
             <span
-              className={cn(
-                "relative flex h-7 w-7 items-center justify-center transition-transform duration-500",
-                "ease-[cubic-bezier(0.175,0.885,0.32,1.275)]",
-                active && "-translate-y-8",
-              )}
+              className="relative flex items-center justify-center will-change-transform"
+              style={{
+                width: 28,
+                height: 28,
+                transform: active
+                  ? `translate3d(0, -${ICON_LIFT}px, 0)`
+                  : "translate3d(0, 0, 0)",
+                transition: `transform 0.55s ${EASE}`,
+              }}
             >
               <Icon
                 className={cn(
-                  "icon h-[22px] w-[22px] transition-colors duration-300",
-                  active ? "stroke-[2.4px] text-[#0a0a0c]" : "text-neutral-500",
+                  "icon transition-colors duration-300",
+                  active ? "text-[#141724]" : "text-neutral-500",
                 )}
+                style={{
+                  width: ICON,
+                  height: ICON,
+                  strokeWidth: active ? 2.4 : 2,
+                }}
               />
               {"badge" in tab && tab.badge && msgUnread > 0 && (
                 <span className="absolute -right-1.5 -top-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-sky-500 px-0.5 text-[8px] font-bold text-white">
@@ -171,10 +198,12 @@ function LiquidNavBar({
                 </span>
               )}
             </span>
+
+            {/* Label stays on the bar */}
             <span
               className={cn(
-                "text-[10px] font-medium leading-tight transition-all duration-300",
-                active ? "text-white opacity-100" : "text-neutral-500 opacity-90",
+                "mt-0.5 text-[10px] font-medium leading-none transition-colors duration-300",
+                active ? "text-white" : "text-neutral-500",
               )}
             >
               {tab.label}
@@ -260,7 +289,7 @@ export function BottomNav() {
     pathname !== "/games"
   )
     return null;
-  if (pathname.startsWith("/vote/") ) return null;
+  if (pathname.startsWith("/vote/")) return null;
   if (pathname.startsWith("/admin/tournaments")) return null;
 
   const isOwnProfile = !!user?.id && pathname === `/members/${user.id}`;
@@ -277,8 +306,9 @@ export function BottomNav() {
   const bottomPad =
     "pb-[calc(0.85rem+12px+env(safe-area-inset-bottom,0px))]";
 
+  /* Soft pill edges — more curved */
   const shellClass =
-    "overflow-visible rounded-[14px] border border-white/10 " +
+    "overflow-visible rounded-[28px] border border-white/10 " +
     "bg-[#141724] shadow-[0_12px_36px_rgba(0,0,0,0.55)]";
 
   if (useIsland) {
@@ -297,7 +327,7 @@ export function BottomNav() {
             onClick={() => setIslandOpen(false)}
           />
         )}
-        <div className="pointer-events-auto relative z-50 pt-8">
+        <div className="pointer-events-auto relative z-50 pt-9">
           {!islandOpen ? (
             <button
               type="button"
@@ -343,7 +373,7 @@ export function BottomNav() {
       aria-label="Main"
       data-onboard="bottom-nav"
     >
-      <div className={cn("pointer-events-auto w-full max-w-[22rem] pt-8")}>
+      <div className={cn("pointer-events-auto w-full max-w-[22rem] pt-9")}>
         <div className={shellClass}>
           <LiquidNavBar
             pathname={pathname}
