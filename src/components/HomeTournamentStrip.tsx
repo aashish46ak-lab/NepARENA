@@ -196,7 +196,9 @@ export function HomeTournamentStrip() {
       <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-none">
         {rows.map((t) => {
           const org = t.organizers;
-          const banner = t.banner_url || t.logo_url || null;
+          // Prefer tournament banner; else organizer logo (not generic trophy/swords icon)
+          const cover = t.banner_url || org?.logo_url || t.logo_url || null;
+          const coverIsOrgLogo = !t.banner_url && !!(org?.logo_url || t.logo_url);
           return (
             <Link
               key={t.id}
@@ -205,16 +207,21 @@ export function HomeTournamentStrip() {
               className="group relative w-56 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-sky-400/40 hover:bg-white/[0.05]"
             >
               <div className="relative h-20 bg-gradient-to-br from-neutral-800 to-neutral-900">
-                {banner ? (
+                {cover ? (
                   <img
-                    src={banner}
+                    src={cover}
                     alt=""
-                    className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100"
+                    className={cn(
+                      "h-full w-full opacity-90 transition group-hover:opacity-100",
+                      coverIsOrgLogo ? "object-contain p-3" : "object-cover",
+                    )}
                     loading="lazy"
                   />
                 ) : (
                   <div className="grid h-full place-items-center">
-                    <Swords className="h-6 w-6 text-neutral-600" />
+                    <span className="text-lg font-bold text-neutral-500">
+                      {(org?.name || t.name || "?").slice(0, 1).toUpperCase()}
+                    </span>
                   </div>
                 )}
                 <span
