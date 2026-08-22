@@ -37,7 +37,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
     <>
       <header
         className={cn(
-          "sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur-xl",
+          "sticky top-0 z-40 border-b border-border/80 bg-background/90 text-foreground backdrop-blur-xl",
           className,
         )}
       >
@@ -47,7 +47,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
               <button
                 type="button"
                 onClick={openCreate}
-                className="grid h-9 w-9 place-items-center rounded-full text-neutral-200 transition hover:bg-white/10 active:scale-95"
+                className="grid h-9 w-9 place-items-center rounded-full text-foreground/80 transition hover:bg-muted active:scale-95"
                 aria-label="Create post" data-onboard="create-post"
                 data-tour="create-btn"
               >
@@ -65,17 +65,17 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
                   <img
                     src="/neparena-logo.png"
                     alt=""
-                    className="h-8 w-8 rounded-xl object-contain shadow-sm ring-1 ring-white/10"
+                    className="h-8 w-8 rounded-xl object-contain shadow-sm ring-1 ring-border"
                     onError={(e) => {
                       e.currentTarget.src = "/pwa-192x192.png";
                     }}
                   />
-                  <span className="text-[16px] font-bold tracking-tight text-white">{PLATFORM_NAME}</span>
+                  <span className="text-[16px] font-bold tracking-tight text-foreground">{PLATFORM_NAME}</span>
                 </Link>
                 <InstallTopButton />
               </>
             ) : pageTitle ? (
-              <h1 className="truncate text-[15px] font-semibold text-white">{pageTitle}</h1>
+              <h1 className="truncate text-[15px] font-semibold text-foreground">{pageTitle}</h1>
             ) : null}
           </div>
 
