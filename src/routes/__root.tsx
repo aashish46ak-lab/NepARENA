@@ -15,6 +15,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
+import { WelcomeFlow } from "@/components/WelcomeFlow";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { CookieConsent } from "@/components/CookieConsent";
 import { OnboardingTour } from "@/components/OnboardingTour";
@@ -250,12 +251,12 @@ function RootShell({ children }: { children: ReactNode }) {
             __html:
               "html,body{margin:0;min-height:100%;background:#0a0a0a;color:#f5f5f5}" +
               "html.neparena-splash-pending [data-neparena-app]{visibility:hidden!important}" +
-              "html.light,html.light body{background:#f3efe6;color:#14120f}",
+              "html.light,html.light body{background:#eef2ef;color:#15201c}",
           }}
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('neparena-theme');var r=document.documentElement;if(t==='light'){r.classList.add('light');r.classList.remove('dark');r.style.colorScheme='light';}else{r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';}var k='neparena_splash_seen_v3';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('neparena-theme');var r=document.documentElement;if(t==='light'){r.classList.add('light');r.classList.remove('dark');r.style.colorScheme='light';}else{r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';}var k='neparena_splash_seen_v4';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
           }}
         />
       </head>
@@ -314,6 +315,7 @@ function RootComponent() {
           <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
             <RoleRedirect />
             <Outlet />
+            {!showSplash && <WelcomeFlow enabled />}
             {!showSplash && <OnboardingTour />}
           </div>
           <Toaster richColors position="top-right" />
