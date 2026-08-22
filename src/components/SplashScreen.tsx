@@ -1,11 +1,11 @@
 /**
- * Session splash — red & blue ribbons fly in, form a loop, then reveal NepARENA logo.
+ * Splash — logo + loading bar with rolling ball → goal net → ball scores → done.
  */
 import { useEffect, useRef, useState } from "react";
 import { PLATFORM_NAME } from "@/lib/organizers";
 
-const SESSION_KEY = "neparena_splash_seen_v4";
-const TOTAL_MS = 3200;
+const SESSION_KEY = "neparena_splash_seen_v5";
+const TOTAL_MS = 3400;
 
 export function shouldShowSplash(): boolean {
   if (typeof window === "undefined") return false;
@@ -25,10 +25,10 @@ function markSplashSeen() {
   }
 }
 
-type Phase = "ribbons" | "loop" | "logo" | "out";
+type Phase = "in" | "roll" | "goal" | "out";
 
 export function SplashScreen({ onDone }: { onDone?: () => void }) {
-  const [phase, setPhase] = useState<Phase>("ribbons");
+  const [phase, setPhase] = useState<Phase>("in");
   const [visible, setVisible] = useState(true);
   const doneRef = useRef(false);
 
@@ -36,9 +36,9 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
     const img = new Image();
     img.src = "/neparena-logo.png";
 
-    const t1 = window.setTimeout(() => setPhase("loop"), 700);
-    const t2 = window.setTimeout(() => setPhase("logo"), 1500);
-    const t3 = window.setTimeout(() => setPhase("out"), 2700);
+    const t1 = window.setTimeout(() => setPhase("roll"), 280);
+    const t2 = window.setTimeout(() => setPhase("goal"), 2400);
+    const t3 = window.setTimeout(() => setPhase("out"), 3000);
     const t4 = window.setTimeout(() => {
       if (doneRef.current) return;
       doneRef.current = true;
@@ -57,15 +57,15 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
 
   if (!visible) return null;
 
-  const showRibbons = phase === "ribbons" || phase === "loop";
-  const showLogo = phase === "logo" || phase === "out";
+  const progress =
+    phase === "in" ? 0 : phase === "roll" ? 88 : phase === "goal" ? 100 : 100;
 
   return (
     <div
-      className="fixed inset-0 z-[9998] flex flex-col items-center justify-center overflow-hidden bg-[#06060a]"
+      className="fixed inset-0 z-[9998] flex flex-col items-center justify-center overflow-hidden bg-[#0a0a0a]"
       style={{
         opacity: phase === "out" ? 0 : 1,
-        transition: "opacity 0.5s cubic-bezier(0.22,1,0.36,1)",
+        transition: "opacity 0.45s cubic-bezier(0.22,1,0.36,1)",
         pointerEvents: phase === "out" ? "none" : "auto",
       }}
       aria-hidden
@@ -74,111 +74,139 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 42%, rgba(37,99,235,0.18), transparent 55%), radial-gradient(ellipse at 50% 55%, rgba(220,38,38,0.12), transparent 50%)",
+            "radial-gradient(ellipse at 50% 40%, rgba(56,189,248,0.12), transparent 55%)",
         }}
       />
-
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          width: 220,
-          height: 28,
-          borderRadius: 999,
-          background: "linear-gradient(90deg, #dc2626, #f87171, #dc2626)",
-          boxShadow: "0 0 28px rgba(220,38,38,0.55)",
-          top: "42%",
-          left: "50%",
-          transform:
-            phase === "ribbons"
-              ? "translate(-180%, -50%) rotate(-18deg)"
-              : phase === "loop"
-                ? "translate(-55%, -80%) rotate(-25deg) scale(0.85)"
-                : "translate(-50%, -50%) scale(0)",
-          opacity: showRibbons ? 1 : 0,
-          transition: "transform 0.75s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease",
-        }}
-      />
-
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          width: 220,
-          height: 28,
-          borderRadius: 999,
-          background: "linear-gradient(90deg, #1d4ed8, #60a5fa, #1d4ed8)",
-          boxShadow: "0 0 28px rgba(37,99,235,0.55)",
-          top: "48%",
-          left: "50%",
-          transform:
-            phase === "ribbons"
-              ? "translate(80%, -50%) rotate(18deg)"
-              : phase === "loop"
-                ? "translate(-45%, -20%) rotate(25deg) scale(0.85)"
-                : "translate(-50%, -50%) scale(0)",
-          opacity: showRibbons ? 1 : 0,
-          transition: "transform 0.75s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease",
-        }}
-      />
-
-      {phase === "loop" && (
-        <div
-          className="pointer-events-none absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2"
-          style={{
-            width: 120,
-            height: 64,
-            borderRadius: "50%",
-            border: "10px solid transparent",
-            borderTopColor: "#dc2626",
-            borderBottomColor: "#2563eb",
-            boxShadow: "0 0 40px rgba(99,102,241,0.35)",
-            animation: "na-loop-pulse 0.9s ease infinite alternate",
-          }}
-        />
-      )}
 
       <div
         className="relative z-10 flex flex-col items-center"
         style={{
-          opacity: showLogo ? 1 : 0,
-          transform: showLogo
-            ? phase === "out"
-              ? "scale(1.06) translateY(-6px)"
-              : "scale(1) translateY(0)"
-            : "scale(0.7) translateY(16px)",
+          opacity: phase === "in" ? 0 : 1,
+          transform:
+            phase === "in"
+              ? "scale(0.88) translateY(10px)"
+              : phase === "out"
+                ? "scale(1.04) translateY(-4px)"
+                : "scale(1)",
           transition:
-            "opacity 0.55s cubic-bezier(0.22,1,0.36,1), transform 0.6s cubic-bezier(0.22,1,0.36,1)",
+            "opacity 0.5s cubic-bezier(0.22,1,0.36,1), transform 0.55s cubic-bezier(0.22,1,0.36,1)",
         }}
       >
-        <div
-          className="rounded-[1.35rem] p-[3px]"
-          style={{
-            background: "linear-gradient(135deg, #dc2626, #2563eb, #dc2626)",
-            boxShadow: "0 0 48px rgba(37,99,235,0.35), 0 0 24px rgba(220,38,38,0.25)",
+        <img
+          src="/neparena-logo.png"
+          alt={PLATFORM_NAME}
+          width={96}
+          height={96}
+          className="h-20 w-20 rounded-[1.2rem] bg-black object-contain shadow-lg ring-1 ring-white/15 sm:h-24 sm:w-24"
+          onError={(e) => {
+            e.currentTarget.src = "/pwa-192x192.png";
           }}
-        >
-          <img
-            src="/neparena-logo.png"
-            alt={PLATFORM_NAME}
-            width={96}
-            height={96}
-            className="h-20 w-20 rounded-[1.2rem] bg-[#0a0a0a] object-contain sm:h-24 sm:w-24"
-            onError={(e) => {
-              e.currentTarget.src = "/pwa-192x192.png";
-            }}
-          />
-        </div>
+        />
         <h1 className="mt-5 text-lg font-semibold tracking-[0.28em] text-white sm:text-xl">
           {PLATFORM_NAME}
         </h1>
-        <p className="mt-1.5 text-[11px] font-medium tracking-wide text-neutral-400">
+        <p className="mt-1.5 text-[11px] font-medium tracking-wide text-neutral-500">
           Compete. Connect. Conquer.
         </p>
       </div>
 
+      <div className="relative z-10 mt-12 w-[min(280px,78vw)]">
+        <div className="relative h-3 overflow-visible rounded-full bg-white/10">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-700 via-emerald-500 to-emerald-400"
+            style={{
+              width: `${progress}%`,
+              transition:
+                phase === "roll"
+                  ? "width 2.1s cubic-bezier(0.22,1,0.36,1)"
+                  : "width 0.35s ease",
+            }}
+          />
+
+          <div
+            className="absolute top-1/2 z-20"
+            style={{
+              width: 22,
+              height: 22,
+              marginTop: -11,
+              left:
+                phase === "in"
+                  ? "0%"
+                  : phase === "roll"
+                    ? "calc(88% - 11px)"
+                    : "calc(100% - 6px)",
+              transition:
+                phase === "roll"
+                  ? "left 2.1s cubic-bezier(0.22,1,0.36,1)"
+                  : phase === "goal"
+                    ? "left 0.35s cubic-bezier(0.34,1.4,0.64,1)"
+                    : "left 0.2s ease",
+              opacity: phase === "goal" || phase === "out" ? 0.2 : 1,
+            }}
+          >
+            <div
+              className="h-full w-full rounded-full"
+              style={{
+                background:
+                  "radial-gradient(circle at 35% 30%, #fff 0%, #e5e5e5 45%, #a3a3a3 100%)",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.15)",
+                animation:
+                  phase === "roll"
+                    ? "na-ball-spin 0.55s linear infinite"
+                    : undefined,
+              }}
+            />
+          </div>
+
+          <div
+            className="absolute -right-1 top-1/2 z-10"
+            style={{
+              width: 28,
+              height: 36,
+              marginTop: -18,
+              opacity: phase === "in" ? 0 : 1,
+              transform: phase === "goal" || phase === "out" ? "scale(1.08)" : "scale(1)",
+              transition: "opacity 0.4s ease 0.3s, transform 0.3s ease",
+            }}
+          >
+            <div className="absolute inset-y-0 left-0 w-[2px] bg-white/90" />
+            <div className="absolute left-0 right-0 top-0 h-[2px] bg-white/90" />
+            <div className="absolute inset-y-0 right-0 w-[2px] bg-white/90" />
+            <div
+              className="absolute inset-[3px] opacity-70"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,0.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px)",
+                backgroundSize: "5px 5px",
+              }}
+            />
+            {(phase === "goal" || phase === "out") && (
+              <div
+                className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{
+                  background: "radial-gradient(circle at 35% 30%, #fff, #d4d4d4)",
+                  boxShadow: "0 0 12px rgba(255,255,255,0.5)",
+                  animation: "na-goal-pop 0.4s cubic-bezier(0.34,1.4,0.64,1) both",
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        <p className="mt-4 text-center text-[10px] font-medium uppercase tracking-[0.28em] text-neutral-500">
+          {phase === "goal" || phase === "out" ? "Goal!" : "Loading…"}
+        </p>
+      </div>
+
       <style>{`
-        @keyframes na-loop-pulse {
-          from { transform: translate(-50%, -50%) scale(0.92); opacity: 0.85; }
-          to { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+        @keyframes na-ball-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes na-goal-pop {
+          0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+          70% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
       `}</style>
     </div>
