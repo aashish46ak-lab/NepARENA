@@ -99,19 +99,29 @@ export function OrganizerPublicPage() {
     },
   });
 
+  // Platform default org (eFootball Nepal) owns the global tournament pool — same as homepage
   const isDefault = !!organizer && (organizer.slug === DEFAULT_ORGANIZER_SLUG || /efootball/i.test(organizer.name));
   const { data: tournaments = [] } = useQuery({
-    queryKey: ["org_tournaments_v2", organizer?.id, isDefault],
+    queryKey: ["org_tournaments_v3", organizer?.id, isDefault],
     enabled: !!organizer?.id,
     queryFn: async () => {
       const cols = "id, name, status, starts_at, ends_at, game, banner_url, is_published, organizer_id, registration_open";
-      const { data: linked } = await supabase.from("tournaments").select(cols).eq("organizer_id", organizer!.id).order("starts_at", { ascending: false }).limit(50);
-      let rows = (linked ?? []) as Tourney[];
-      if (!rows.length && isDefault) {
-        const { data: all } = await supabase.from("tournaments").select(cols).order("starts_at", { ascending: false }).limit(50);
-        rows = (all ?? []) as Tourney[];
+      // Default org: load ALL tournaments (homepage pool). Other orgs: only their own.
+      if (isDefault) {
+        const { data: all } = await supabase
+          .from("tournaments")
+          .select(cols)
+          .order("starts_at", { ascending: false, nullsFirst: false })
+          .limit(80);
+        return (all ?? []) as Tourney[];
       }
-      return rows;
+      const { data: linked } = await supabase
+        .from("tournaments")
+        .select(cols)
+        .eq("organizer_id", organizer!.id)
+        .order("starts_at", { ascending: false, nullsFirst: false })
+        .limit(50);
+      return (linked ?? []) as Tourney[];
     },
   });
 
