@@ -3,7 +3,6 @@ import { useRouterState } from "@tanstack/react-router";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { BottomNav } from "./BottomNav";
-import { ThemeChooser } from "./ThemeChooser";
 import { isPlatformPath } from "@/lib/shell-mode";
 import {
   applyOrganizerThemeVars,
@@ -72,7 +71,6 @@ export function PageShell({
       <main className={`flex-1 ${padBottom ? "pb-20" : ""}`}>{children}</main>
       {!hideChrome && <Footer mode={mode} />}
       {showBottomNav && <BottomNav />}
-      <ThemeChooser />
     </div>
   );
 }
