@@ -1,12 +1,11 @@
 /**
- * Classic liquid navigation.
- * Smooth tab→tab circle slide; active icon optically centered in the white disc.
+ * Liquid bottom nav — theme-aware (CSS vars), lag-free index-based slide.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const TABS = [
@@ -39,23 +38,16 @@ const TABS = [
   },
 ] as const;
 
+const N = TABS.length;
 const BAR_H = 70;
 const CIRCLE = 58;
-/** Lift icon so its visual center sits in the circle center (circle center ≈ bar top) */
 const ICON_LIFT = 37;
-const PAGE_BG = "#0a0a0c";
-const NAV_BG = "#1a1b24";
-/** Smooth, no-overshoot ease — avoids sticky feel */
 const EASE = "cubic-bezier(0.25, 0.1, 0.25, 1)";
-const DURATION_MS = 480;
-
-/** Survives remounts — prevents jump-to-Home */
-let cachedCircleLeft: number | null = null;
-let cachedActiveIndex = 0;
+const DURATION = "0.42s";
 
 function resolveActiveIndex(pathname: string): number {
   const idx = TABS.findIndex((t) => t.match(pathname));
-  return idx >= 0 ? idx : cachedActiveIndex;
+  return idx >= 0 ? idx : 0;
 }
 
 function LiquidNavBar({
@@ -69,56 +61,11 @@ function LiquidNavBar({
   msgUnread: number;
   onNavigate?: () => void;
 }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const [circleLeft, setCircleLeft] = useState(() => cachedCircleLeft ?? 0);
-  const [positioned, setPositioned] = useState(() => cachedCircleLeft != null);
-  const [animate, setAnimate] = useState(() => cachedCircleLeft != null);
   const activeIndex = resolveActiveIndex(pathname);
-  const lastLeft = useRef(cachedCircleLeft ?? 0);
-
-  const measure = () => {
-    const track = trackRef.current;
-    const el = itemRefs.current[activeIndex];
-    if (!track || !el) return false;
-    const t = track.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    if (r.width < 1) return false;
-    const next = r.left - t.left + r.width / 2 - CIRCLE / 2;
-    // Skip tiny updates that restart CSS transitions (jank source)
-    if (Math.abs(next - lastLeft.current) < 0.75 && positioned) {
-      return true;
-    }
-    lastLeft.current = next;
-    cachedCircleLeft = next;
-    cachedActiveIndex = activeIndex;
-    setCircleLeft(next);
-    setPositioned(true);
-    return true;
-  };
-
-  useLayoutEffect(() => {
-    const hadPrior = cachedCircleLeft != null;
-    // Enable animation BEFORE writing the new left so the browser interpolates
-    setAnimate(hadPrior);
-    measure();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, activeIndex]);
-
-  useEffect(() => {
-    const onResize = () => {
-      setAnimate(false);
-      measure();
-      window.setTimeout(() => setAnimate(true), 50);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex]);
+  const circleLeft = `calc(${activeIndex} * 100% / ${N} + 50% / ${N} - ${CIRCLE / 2}px)`;
 
   return (
     <div
-      ref={trackRef}
       className="relative flex w-full items-center justify-center overflow-visible"
       style={{ height: BAR_H }}
     >
@@ -129,20 +76,16 @@ function LiquidNavBar({
           width: CIRCLE,
           height: CIRCLE,
           top: -CIRCLE / 2,
-          left: 0,
-          transform: `translate3d(${circleLeft}px, 0, 0)`,
-          opacity: positioned ? 1 : 0,
-          transition: animate
-            ? `transform ${DURATION_MS}ms ${EASE}`
-            : "none",
-          willChange: animate ? "transform" : "auto",
+          left: circleLeft,
+          transition: `left ${DURATION} ${EASE}`,
         }}
       >
         <div
-          className="absolute inset-0 rounded-full bg-white"
+          className="absolute inset-0 rounded-full"
           style={{
-            border: `6px solid ${PAGE_BG}`,
-            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+            background: "var(--bnav-circle)",
+            border: `6px solid var(--bnav-circle-border)`,
+            boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
           }}
         />
         <span
@@ -154,7 +97,7 @@ function LiquidNavBar({
             height: 20,
             background: "transparent",
             borderTopRightRadius: 20,
-            boxShadow: `1px -10px 0 0 ${PAGE_BG}`,
+            boxShadow: `1px -10px 0 0 var(--bnav-circle-border)`,
           }}
         />
         <span
@@ -166,7 +109,7 @@ function LiquidNavBar({
             height: 20,
             background: "transparent",
             borderTopLeftRadius: 20,
-            boxShadow: `-1px -10px 0 0 ${PAGE_BG}`,
+            boxShadow: `-1px -10px 0 0 var(--bnav-circle-border)`,
           }}
         />
       </div>
@@ -194,9 +137,6 @@ function LiquidNavBar({
         return (
           <Link
             key={tab.label}
-            ref={(node) => {
-              itemRefs.current[i] = node;
-            }}
             {...(href as { to: string; params?: { id: string } })}
             data-onboard={onboard}
             onClick={() => onNavigate?.()}
@@ -214,8 +154,7 @@ function LiquidNavBar({
                 transform: active
                   ? `translate3d(0, -${ICON_LIFT}px, 0)`
                   : "translate3d(0, 0, 0)",
-                transition: `transform ${DURATION_MS}ms ${EASE}`,
-                willChange: "transform",
+                transition: `transform ${DURATION} ${EASE}`,
               }}
             >
               <Icon
@@ -223,8 +162,8 @@ function LiquidNavBar({
                   width: 22,
                   height: 22,
                   strokeWidth: active ? 2.35 : 2,
-                  color: active ? NAV_BG : "rgba(255,255,255,0.55)",
-                  transition: `color ${DURATION_MS}ms ${EASE}`,
+                  color: active ? "var(--bnav-icon-active)" : "var(--bnav-icon)",
+                  transition: `color ${DURATION} ${EASE}`,
                 }}
               />
               {"badge" in tab && tab.badge && msgUnread > 0 && (
@@ -238,10 +177,10 @@ function LiquidNavBar({
               className="absolute text-[10px] font-medium leading-none"
               style={{
                 bottom: 10,
-                color: active ? "#ffffff" : "transparent",
+                color: active ? "var(--bnav-label)" : "transparent",
                 opacity: active ? 1 : 0,
                 transform: active ? "translateY(0)" : "translateY(4px)",
-                transition: `opacity ${DURATION_MS}ms ${EASE}, transform ${DURATION_MS}ms ${EASE}`,
+                transition: `opacity ${DURATION} ${EASE}, transform ${DURATION} ${EASE}`,
               }}
             >
               {tab.label}
@@ -344,9 +283,10 @@ export function BottomNav() {
   const bottomPad =
     "pb-[calc(0.75rem+10px+env(safe-area-inset-bottom,0px))]";
 
-  const shellClass =
-    "overflow-visible rounded-[18px] " +
-    "shadow-[0_15px_25px_rgba(0,0,0,0.35)]";
+  const shellStyle = {
+    background: "var(--bnav-bg)",
+    boxShadow: "var(--bnav-shadow)",
+  } as const;
 
   if (useIsland) {
     return (
@@ -370,7 +310,7 @@ export function BottomNav() {
               type="button"
               onClick={() => setIslandOpen(true)}
               className="grid h-12 w-12 place-items-center rounded-full border border-white/10 transition hover:scale-105 active:scale-95"
-              style={{ background: NAV_BG }}
+              style={shellStyle}
               aria-label="Open navigation"
             >
               <span className="flex gap-1">
@@ -381,11 +321,8 @@ export function BottomNav() {
             </button>
           ) : (
             <div
-              className={cn(
-                "w-[min(100vw-1.5rem,22rem)] animate-in fade-in zoom-in-95 duration-200",
-                shellClass,
-              )}
-              style={{ background: NAV_BG }}
+              className="w-[min(100vw-1.5rem,22rem)] overflow-visible rounded-[18px] animate-in fade-in zoom-in-95 duration-200"
+              style={shellStyle}
             >
               <LiquidNavBar
                 pathname={pathname}
@@ -410,7 +347,7 @@ export function BottomNav() {
       data-onboard="bottom-nav"
     >
       <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
-        <div className={shellClass} style={{ background: NAV_BG }}>
+        <div className="overflow-visible rounded-[18px]" style={shellStyle}>
           <LiquidNavBar
             pathname={pathname}
             userId={user?.id}
