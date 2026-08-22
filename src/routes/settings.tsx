@@ -16,6 +16,7 @@ import {
 } from "@/lib/account-switcher";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { applyTheme, type ThemeMode } from "@/components/ThemeChooser";
 
 export const Route = createFileRoute("/settings")({
   ssr: false,
@@ -28,26 +29,6 @@ export const Route = createFileRoute("/settings")({
   }),
   component: SettingsPage,
 });
-
-type ThemeMode = "dark" | "light";
-
-function applyTheme(mode: ThemeMode) {
-  const root = document.documentElement;
-  if (mode === "light") {
-    root.classList.add("light");
-    root.classList.remove("dark");
-    root.style.colorScheme = "light";
-  } else {
-    root.classList.add("dark");
-    root.classList.remove("light");
-    root.style.colorScheme = "dark";
-  }
-  try {
-    localStorage.setItem("neparena-theme", mode);
-  } catch {
-    /* ignore */
-  }
-}
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -73,7 +54,7 @@ function SettingsPage() {
   const pickTheme = (mode: ThemeMode) => {
     setTheme(mode);
     applyTheme(mode);
-    toast.success(mode === "dark" ? "Black & Silver on" : "Creamy theme on");
+    toast.success(mode === "dark" ? "Dark theme on" : "Light theme on");
   };
 
   return (
@@ -102,7 +83,8 @@ function SettingsPage() {
               )}
             >
               <Moon className="h-5 w-5" />
-              <span className="text-xs font-semibold">Black & Silver</span>
+              <span className="text-xs font-semibold">Dark</span>
+              <span className="text-[10px] opacity-60">Black & silver</span>
             </button>
             <button
               type="button"
@@ -115,11 +97,12 @@ function SettingsPage() {
               )}
             >
               <Sun className="h-5 w-5" />
-              <span className="text-xs font-semibold">Creamy</span>
+              <span className="text-xs font-semibold">Light</span>
+              <span className="text-[10px] opacity-60">Cream & teal</span>
             </button>
           </div>
           <p className="mt-3 text-[11px] text-neutral-500">
-            Platform themes only. Organizer pages use their own brand theme and stay independent.
+            Platform appearance. Change anytime here. Organizer pages keep their own brand colors.
           </p>
         </section>
 
