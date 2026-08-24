@@ -24,6 +24,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { TournamentGridSkeleton } from "@/components/PageSkeletons";
 
 export const Route = createFileRoute("/tournaments")({
   head: () => ({
@@ -98,11 +99,7 @@ function TournamentsList() {
           ))}
         </div>
 
-        {isLoading && (
-          <div className="mt-10 flex justify-center">
-            <Loader2 className="h-7 w-7 animate-spin text-neutral-500" />
-          </div>
-        )}
+        {isLoading && <TournamentGridSkeleton count={4} />}
 
         {!isLoading && list.length === 0 && (
           <div className="mt-8 rounded-2xl border border-dashed border-white/12 bg-white/[0.03] p-8 text-center">
