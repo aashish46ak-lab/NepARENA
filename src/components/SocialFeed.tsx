@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heart, Loader2, Newspaper, BadgeCheck, MessageCircle, Trash2 } from "lucide-react";
+import { FeedSkeleton } from "@/components/PageSkeletons";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FeedEmptySuggestions } from "@/components/FeedEmptySuggestions";
@@ -274,11 +275,7 @@ export function SocialFeed({
           </article>
         );
       })}
-      {loading && (
-        <div className="flex justify-center py-6">
-          <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
-        </div>
-      )}
+      {loading && <FeedSkeleton count={3} />}
       {!loading && filteredPosts.length === 0 && (
         authorId || organizerId ? (
           <div className="space-y-3">
