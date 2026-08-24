@@ -15,11 +15,12 @@ function partOf(participants: Record<string, unknown>[], pid: unknown) {
 function labelOf(participants: Record<string, unknown>[], pid: unknown) {
   const p = partOf(participants, pid);
   if (!p) return "TBD";
+  // Prefer Display Name (profile_name / full_name merge) over stored player_name/username
   return (
     String(
-      p.player_name ||
+      (p as { profile_name?: string }).profile_name ||
+        p.player_name ||
         p.club ||
-        (p as { profile_name?: string }).profile_name ||
         "TBD",
     ).trim() || "TBD"
   );
@@ -82,10 +83,20 @@ export function MyMatchesPanel({
       }
       const { data: auth } = await supabase.auth.getUser();
       const email = auth.user?.email ?? "";
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+      const displayName =
+        (prof?.full_name && String(prof.full_name).trim()) ||
+        email.split("@")[0] ||
+        "Player";
       const { error } = await supabase.from("tournament_participants").insert({
         tournament_id: tournamentId,
         user_id: userId,
-        player_name: email.split("@")[0] || "Player",
+        player_name: displayName,
+        photo_url: (prof as { avatar_url?: string | null } | null)?.avatar_url ?? null,
         status: "pending",
       });
       if (error) {
@@ -316,9 +327,9 @@ export function StandingsTable({
     const p = participants.find((x) => String(x.id) === String(pid));
     if (!p) return "—";
     return String(
-      p.player_name ||
+      (p as { profile_name?: string }).profile_name ||
+        p.player_name ||
         p.club ||
-        (p as { profile_name?: string }).profile_name ||
         "Player",
     ).trim() || "—";
   };
@@ -429,7 +440,9 @@ export function PlayersList({ participants }: { participants: Record<string, unk
   return (
     <ul className="space-y-2">
       {participants.map((p) => {
-        const pname = String(p.player_name || p.club || (p as { profile_name?: string }).profile_name || "Player");
+        const pname = String(
+          (p as { profile_name?: string }).profile_name || p.player_name || p.club || "Player",
+        );
         const photo = (p.photo_url as string | null) || (p.avatar_url as string | null) || null;
         const uid = p.user_id ? String(p.user_id) : null;
         return (
