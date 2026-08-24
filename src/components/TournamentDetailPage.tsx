@@ -66,9 +66,47 @@ export function TournamentDetailPage() {
           .maybeSingle();
         if (def) organizer = def as typeof organizer;
       }
+
+      const participants = (pRes.data ?? []) as Record<string, unknown>[];
+      const userIds = [
+        ...new Set(
+          participants
+            .map((x) => (x.user_id ? String(x.user_id) : null))
+            .filter((x): x is string => !!x),
+        ),
+      ];
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name, username, avatar_url")
+          .in("id", userIds);
+        const pmap = new Map(
+          (profs ?? []).map((pr: { id: string; full_name?: string | null; username?: string | null; avatar_url?: string | null }) => [
+            pr.id,
+            pr,
+          ]),
+        );
+        for (const part of participants) {
+          const uid = part.user_id ? String(part.user_id) : null;
+          if (!uid) continue;
+          const pr = pmap.get(uid);
+          if (!pr) continue;
+          if (!part.photo_url && pr.avatar_url) part.photo_url = pr.avatar_url;
+          if (!part.avatar_url && pr.avatar_url) part.avatar_url = pr.avatar_url;
+          const pname =
+            (pr.full_name && String(pr.full_name).trim()) ||
+            (pr.username && String(pr.username).trim()) ||
+            null;
+          if (pname) {
+            part.profile_name = pname;
+            if (!part.player_name) part.player_name = pname;
+          }
+        }
+      }
+
       return {
         tournament: tour,
-        participants: (pRes.data ?? []) as Record<string, unknown>[],
+        participants,
         matches: (mRes.data ?? []) as Record<string, unknown>[],
         matchdays: (mdRes.data ?? []) as Record<string, unknown>[],
         standings: (sRes.data ?? []) as Record<string, unknown>[],
