@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PLATFORM_NAME } from "@/lib/organizers";
 
-const SESSION_KEY = "neparena_splash_seen_v7";
+const SESSION_KEY = "neparena_splash_seen_v8";
 const TOTAL_MS = 3800;
 
 export function shouldShowSplash(): boolean {
@@ -74,7 +74,7 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 35%, rgba(34,120,60,0.14), transparent 55%)",
+            "radial-gradient(ellipse at 50% 35%, rgba(34,120,60,0.12), transparent 55%)",
         }}
       />
 
@@ -107,92 +107,92 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
         </h1>
       </div>
 
-      {/* Compact pitch (~half previous size) */}
+      {/* Compact pitch — smaller field */}
       <div
-        className="relative z-10 mt-8 w-[min(168px,52vw)]"
+        className="relative z-10 mt-5 w-[min(100px,34vw)]"
         style={{
           opacity: phase === "in" ? 0 : 1,
           transition: "opacity 0.5s ease 0.15s",
         }}
       >
         <div
-          className="relative overflow-hidden rounded-xl"
+          className="relative overflow-hidden rounded-lg"
           style={{
-            height: 40,
+            height: 26,
             background:
-              "repeating-linear-gradient(90deg, #1a6b3a 0px, #1a6b3a 16px, #185f34 16px, #185f34 32px)",
+              "repeating-linear-gradient(90deg, #1a6b3a 0px, #1a6b3a 12px, #185f34 12px, #185f34 24px)",
             boxShadow:
-              "inset 0 0 0 1px rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.4)",
+              "inset 0 0 0 1px rgba(255,255,255,0.08), 0 6px 14px rgba(0,0,0,0.4)",
           }}
         >
           <div
-            className="absolute inset-x-1.5 top-1 bottom-1 rounded-sm"
+            className="absolute inset-x-1 top-[3px] bottom-[3px] rounded-sm"
             style={{ border: "1px solid rgba(255,255,255,0.32)" }}
           />
           <div
-            className="absolute top-1 bottom-1 left-1/2 w-px -translate-x-1/2"
+            className="absolute top-[3px] bottom-[3px] left-1/2 w-px -translate-x-1/2"
             style={{ background: "rgba(255,255,255,0.28)" }}
           />
           <div
-            className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{ border: "1px solid rgba(255,255,255,0.26)" }}
           />
 
           <div
-            className="absolute right-[3px] top-1/2 z-20"
+            className="absolute right-[2px] top-1/2 z-20"
             style={{
-              width: 14,
-              height: 24,
-              marginTop: -12,
+              width: 10,
+              height: 16,
+              marginTop: -8,
               transform:
                 phase === "goal" || phase === "out" ? "scale(1.06)" : "scale(1)",
               transition: "transform 0.25s ease",
             }}
           >
             <div
-              className="absolute inset-y-0 left-0 w-[2px] rounded-full"
+              className="absolute inset-y-0 left-0 w-[1.5px] rounded-full"
               style={{ background: "linear-gradient(#f5f5f5, #d4d4d4)" }}
             />
             <div
-              className="absolute left-0 right-0 top-0 h-[2px] rounded-full"
+              className="absolute left-0 right-0 top-0 h-[1.5px] rounded-full"
               style={{ background: "#eee" }}
             />
             <div
-              className="absolute inset-y-0 right-0 w-[2px] rounded-full"
+              className="absolute inset-y-0 right-0 w-[1.5px] rounded-full"
               style={{ background: "linear-gradient(#f5f5f5, #d4d4d4)" }}
             />
             <div
-              className="absolute inset-[2px] right-[1px]"
+              className="absolute inset-[1.5px] right-[1px]"
               style={{
                 backgroundImage:
                   "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px)",
-                backgroundSize: "3px 3px",
+                backgroundSize: "2.5px 2.5px",
               }}
             />
             {(phase === "goal" || phase === "out") && (
               <div
-                className="absolute left-[3px] top-1/2 z-30"
+                className="absolute left-[2px] top-1/2 z-30"
                 style={{
-                  width: 9,
-                  height: 9,
-                  marginTop: -4.5,
+                  width: 7,
+                  height: 7,
+                  marginTop: -3.5,
                   animation:
                     "na-goal-settle 0.45s cubic-bezier(0.34,1.3,0.64,1) both",
                 }}
               >
-                <FootballBall size={9} spinning={false} />
+                <FootballBall size={7} spinning={false} />
               </div>
             )}
           </div>
 
           <div
-            className="absolute bottom-[7px] z-10 h-[3px] rounded-full"
+            className="absolute bottom-[4px] z-10 h-[2px] rounded-full"
             style={{
-              width: 12,
+              width: 8,
               left: ballLeft,
               marginLeft: -1,
               background: "rgba(0,0,0,0.35)",
-              filter: "blur(1.5px)",
+              filter: "blur(1px)",
               transition:
                 phase === "roll"
                   ? "left 2.3s cubic-bezier(0.25,0.1,0.25,1)"
@@ -206,11 +206,11 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
           <div
             className="absolute z-30"
             style={{
-              width: 14,
-              height: 14,
-              bottom: 9,
+              width: 9,
+              height: 9,
+              bottom: 6,
               left: ballLeft,
-              marginLeft: -7,
+              marginLeft: -4.5,
               transition:
                 phase === "roll"
                   ? "left 2.3s cubic-bezier(0.25,0.1,0.25,1)"
@@ -220,11 +220,11 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
               opacity: phase === "goal" || phase === "out" ? 0 : 1,
             }}
           >
-            <FootballBall size={14} spinning={phase === "roll"} />
+            <FootballBall size={9} spinning={phase === "roll"} />
           </div>
         </div>
 
-        <p className="mt-2.5 text-center text-[9px] font-medium uppercase tracking-[0.28em] text-neutral-500">
+        <p className="mt-2 text-center text-[9px] font-medium uppercase tracking-[0.28em] text-neutral-500">
           {phase === "goal" || phase === "out" ? "Goal!" : "Loading…"}
         </p>
       </div>
