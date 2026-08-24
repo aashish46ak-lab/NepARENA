@@ -93,13 +93,12 @@ export function TournamentDetailPage() {
           if (!pr) continue;
           if (!part.photo_url && pr.avatar_url) part.photo_url = pr.avatar_url;
           if (!part.avatar_url && pr.avatar_url) part.avatar_url = pr.avatar_url;
-          const pname =
-            (pr.full_name && String(pr.full_name).trim()) ||
-            (pr.username && String(pr.username).trim()) ||
-            null;
-          if (pname) {
-            part.profile_name = pname;
-            if (!part.player_name) part.player_name = pname;
+          // Display Name only — never prefer username for the public label
+          const displayName =
+            (pr.full_name && String(pr.full_name).trim()) || null;
+          if (displayName) {
+            part.profile_name = displayName;
+            part.player_name = displayName;
           }
         }
       }
