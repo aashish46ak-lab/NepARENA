@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Download, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -21,14 +22,12 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
   const [loading, setLoading] = useState(false);
   const [orgBrand, setOrgBrand] = useState<OrgBrand | null>(null);
 
-  // Resolve organizer branding for this tournament (multi-tenant)
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       const t = tournament as any;
       const orgId = t?.organizer_id as string | null | undefined;
       if (!orgId) {
-        // Fallback: try default eFootball Nepal only if no organizer_id
         const { data: def } = await supabase
           .from("organizers")
           .select("name, logo_url")
@@ -61,18 +60,47 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
     };
   }, [tournament?.organizer_id, (tournament as any)?.id]);
 
-  const displayName = (club: string | null, playerName: string) =>
-    club?.trim() || playerName;
+  const participantOf = (participantId: string) =>
+    data.players.find((x) => String(x.id) === String(participantId)) ?? null;
 
-  const logoOf = (participantId: string) => {
-    const p = data.players.find((x) => x.id === participantId);
+  const profileOf = (participantId: string) => {
+    const p = participantOf(participantId);
+    const uid = p?.user_id ? String(p.user_id) : null;
+    if (!uid) return null;
+    return data.profiles.get(uid) ?? null;
+  };
+
+  /** Club logo → participant photo → profile avatar */
+  const photoOf = (participantId: string): string | null => {
+    const p = participantOf(participantId);
+    const prof = profileOf(participantId);
+    const url =
+      (p?.club_logo_url && String(p.club_logo_url).trim()) ||
+      (p?.photo_url && String(p.photo_url).trim()) ||
+      ((p as any)?.avatar_url && String((p as any).avatar_url).trim()) ||
+      (prof?.avatar_url && String(prof.avatar_url).trim()) ||
+      null;
+    return url || null;
+  };
+
+  /** Display name: club → profile full_name → player_name */
+  const labelOf = (participantId: string, fallbackName?: string | null, club?: string | null) => {
+    const clubTrim = (club ?? "").trim();
+    if (clubTrim) return clubTrim;
+    const prof = profileOf(participantId);
+    const full = (prof?.full_name && String(prof.full_name).trim()) || null;
+    if (full) return full;
+    const p = participantOf(participantId);
     return (
-      p?.club_logo_url ||
-      p?.photo_url ||
-      (p as any)?.logo ||
-      (p as any)?.avatar_url ||
-      null
+      (p?.player_name && String(p.player_name).trim()) ||
+      (fallbackName && String(fallbackName).trim()) ||
+      "Player"
     );
+  };
+
+  const userIdOf = (participantId: string): string | null => {
+    const p = participantOf(participantId);
+    return p?.user_id ? String(p.user_id) : null;
   };
 
   const getTournamentTitle = (): string => {
@@ -87,7 +115,6 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
     return "Tournament";
   };
 
-  /** Prefer organizer logo → tournament logo → never force platform logo as primary brand */
   const getBrandLogoUrl = (): string | null => {
     const t = tournament as any;
     return (
@@ -172,7 +199,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       if (!ctx) return;
 
       const width = 720;
-      const rowHeight = 38;
+      const rowHeight = 42;
       const headerHeight = 135;
       const tableHeaderHeight = 32;
       const height = headerHeight + tableHeaderHeight + rows.length * rowHeight + 20;
@@ -184,13 +211,11 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       ctx.fillStyle = "#0b1220";
       ctx.fillRect(0, 0, width, height);
 
-      // LEFT: Organizer logo + name (NOT platform logo)
       const brandLogoUrl = getBrandLogoUrl();
       let brandImg: HTMLImageElement | null = null;
       if (brandLogoUrl) {
         brandImg = await fetchImageSafe(brandLogoUrl);
       }
-      // Soft fallback only if organizer has no logo at all
       if (!brandImg) {
         brandImg =
           (await fetchImageSafe("/neparena-logo.png")) ||
@@ -215,7 +240,6 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
         brandName.length > 22 ? brandName.substring(0, 19) + "..." : brandName;
       ctx.fillText(truncatedBrand, 98, 63);
 
-      // Center divider
       ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -223,7 +247,6 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       ctx.lineTo(width / 2, 82);
       ctx.stroke();
 
-      // RIGHT: Tournament name
       const tournamentTitle = getTournamentTitle();
       const rightX = width - 24;
 
@@ -279,8 +302,8 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
       for (let i = 0; i < rows.length; i++) {
         const s = rows[i] as any;
         const y = startY + i * rowHeight;
-        const name = displayName(s.club, s.player_name);
-        const logoUrl = logoOf(s.participant_id);
+        const name = labelOf(s.participant_id, s.player_name, s.club);
+        const logoUrl = photoOf(s.participant_id);
 
         if (i === 0) {
           ctx.fillStyle = "rgba(234, 179, 8, 0.12)";
@@ -299,20 +322,20 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
         ctx.fillStyle =
           i === 0 ? "#facc15" : i === 1 ? "#cbd5e1" : i === 2 ? "#fb923c" : "#64748b";
         ctx.font = i < 3 ? "bold 13px sans-serif" : "12px sans-serif";
-        ctx.fillText(`${i + 1}`, 25, y + 23);
+        ctx.fillText(`${i + 1}`, 25, y + 26);
 
         const loadedClubImg = logoUrl ? await fetchImageSafe(logoUrl) : null;
 
         if (loadedClubImg) {
           ctx.save();
           ctx.beginPath();
-          ctx.arc(68, y + 19, 11, 0, Math.PI * 2);
+          ctx.arc(68, y + 21, 13, 0, Math.PI * 2);
           ctx.closePath();
           ctx.clip();
-          ctx.drawImage(loadedClubImg, 57, y + 8, 22, 22);
+          ctx.drawImage(loadedClubImg, 55, y + 8, 26, 26);
           ctx.restore();
         } else {
-          drawDefaultUserAvatar(ctx, 68, y + 19, 11);
+          drawDefaultUserAvatar(ctx, 68, y + 21, 13);
         }
 
         ctx.fillStyle =
@@ -320,22 +343,22 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
         ctx.font = i < 3 ? "bold 12px sans-serif" : "500 12px sans-serif";
         const truncatedName =
           name.length > 28 ? name.substring(0, 25) + "..." : name;
-        ctx.fillText(truncatedName, 95, y + 23);
+        ctx.fillText(truncatedName, 95, y + 26);
 
         ctx.font = "12px sans-serif";
         ctx.fillStyle = i < 3 ? "#ffffff" : "#f8fafc";
-        ctx.fillText(`${s.points}`, 410, y + 23);
+        ctx.fillText(`${s.points}`, 410, y + 26);
 
         ctx.fillStyle = "#94a3b8";
-        ctx.fillText(`${s.played}`, 455, y + 23);
-        ctx.fillText(`${s.won}`, 490, y + 23);
-        ctx.fillText(`${s.drawn}`, 525, y + 23);
-        ctx.fillText(`${s.lost}`, 560, y + 23);
-        ctx.fillText(`${s.goals_for ?? s.gf ?? 0}`, 595, y + 23);
-        ctx.fillText(`${s.goals_against ?? s.ga ?? 0}`, 630, y + 23);
+        ctx.fillText(`${s.played}`, 455, y + 26);
+        ctx.fillText(`${s.won}`, 490, y + 26);
+        ctx.fillText(`${s.drawn}`, 525, y + 26);
+        ctx.fillText(`${s.lost}`, 560, y + 26);
+        ctx.fillText(`${s.goals_for ?? s.gf ?? 0}`, 595, y + 26);
+        ctx.fillText(`${s.goals_against ?? s.ga ?? 0}`, 630, y + 26);
 
         const gdStr = s.goal_diff > 0 ? `+${s.goal_diff}` : `${s.goal_diff}`;
-        ctx.fillText(gdStr, 670, y + 23);
+        ctx.fillText(gdStr, 670, y + 26);
 
         ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
         ctx.beginPath();
@@ -406,7 +429,7 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
           <thead>
             <tr className="text-xs uppercase tracking-wider text-muted-foreground border-b border-border/60">
               <th className="p-2.5 text-left w-10">#</th>
-              <th className="p-2.5 text-left">Club</th>
+              <th className="p-2.5 text-left">Club / Player</th>
               <th className="p-2.5 text-center font-bold">Pts</th>
               <th className="p-2.5 text-center">P</th>
               <th className="p-2.5 text-center">W</th>
@@ -419,21 +442,35 @@ export function StandingsTab({ tournament, data }: StandingsProps) {
           </thead>
           <tbody>
             {rows.map((s: any, i) => {
-              const name = displayName(s.club, s.player_name);
-              const logo = logoOf(s.participant_id);
+              const name = labelOf(s.participant_id, s.player_name, s.club);
+              const photo = photoOf(s.participant_id);
+              const uid = userIdOf(s.participant_id);
+              const cell = (
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Avatar className="h-8 w-8 shrink-0 rounded-full ring-1 ring-border/60">
+                    <AvatarImage src={photo ?? undefined} className="object-cover" />
+                    <AvatarFallback className="bg-secondary text-[10px] font-bold">
+                      {name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate font-medium text-xs">{name}</span>
+                </div>
+              );
               return (
                 <tr key={s.participant_id} className="border-b border-border/40 last:border-0">
                   <td className="p-2.5 font-medium text-xs text-muted-foreground">{i + 1}</td>
                   <td className="p-2.5">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6 shrink-0">
-                        <AvatarImage src={logo ?? undefined} />
-                        <AvatarFallback className="bg-secondary text-[9px]">
-                          {name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="truncate font-medium text-xs">{name}</span>
-                    </div>
+                    {uid ? (
+                      <Link
+                        to="/members/$id"
+                        params={{ id: uid }}
+                        className="hover:text-sky-400 transition-colors"
+                      >
+                        {cell}
+                      </Link>
+                    ) : (
+                      cell
+                    )}
                   </td>
                   <td className="p-2.5 text-center font-bold text-xs">{s.points}</td>
                   <td className="p-2.5 text-center text-xs">{s.played}</td>
