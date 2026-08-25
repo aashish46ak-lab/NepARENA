@@ -15,7 +15,6 @@ function partOf(participants: Record<string, unknown>[], pid: unknown) {
 function labelOf(participants: Record<string, unknown>[], pid: unknown) {
   const p = partOf(participants, pid);
   if (!p) return "TBD";
-  // Prefer Display Name (profile_name / full_name merge) over stored player_name/username
   return (
     String(
       (p as { profile_name?: string }).profile_name ||
@@ -25,15 +24,17 @@ function labelOf(participants: Record<string, unknown>[], pid: unknown) {
     ).trim() || "TBD"
   );
 }
+function pickUrl(...candidates: unknown[]): string | null {
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim()) return c.trim();
+  }
+  return null;
+}
+/** Player photo first, then club logo */
 function photoOf(participants: Record<string, unknown>[], pid: unknown): string | null {
   const p = partOf(participants, pid);
   if (!p) return null;
-  return (
-    (p.photo_url as string | null) ||
-    (p.club_logo_url as string | null) ||
-    (p.avatar_url as string | null) ||
-    null
-  );
+  return pickUrl(p.photo_url, p.avatar_url, p.club_logo_url);
 }
 function userIdOf(participants: Record<string, unknown>[], pid: unknown): string | null {
   const p = partOf(participants, pid);
@@ -259,11 +260,17 @@ export function FixturesByMatchday({ matches, matchdays, participants }: { match
       <div key={String(m.id)} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm">
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           {homeUid ? <Link to="/members/$id" params={{ id: homeUid }} className="truncate font-semibold text-white hover:underline">{homeName}</Link> : <span className="truncate font-semibold text-white">{homeName}</span>}
-          <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={homePhoto ?? undefined} /><AvatarFallback className="text-[9px]">{homeName.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+          <Avatar className="h-8 w-8 shrink-0 rounded-full ring-1 ring-white/10">
+            <AvatarImage src={homePhoto ?? undefined} className="object-cover" />
+            <AvatarFallback className="text-[9px]">{homeName.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
         </div>
         <span className="w-12 shrink-0 text-center font-bold tabular-nums text-sky-300">{m.played ? `${m.home_score}-${m.away_score}` : "vs"}</span>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={awayPhoto ?? undefined} /><AvatarFallback className="text-[9px]">{awayName.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+          <Avatar className="h-8 w-8 shrink-0 rounded-full ring-1 ring-white/10">
+            <AvatarImage src={awayPhoto ?? undefined} className="object-cover" />
+            <AvatarFallback className="text-[9px]">{awayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
           {awayUid ? <Link to="/members/$id" params={{ id: awayUid }} className="truncate font-semibold text-white hover:underline">{awayName}</Link> : <span className="truncate font-semibold text-white">{awayName}</span>}
         </div>
       </div>
@@ -384,7 +391,7 @@ export function StandingsTable({
                     const photo = photoOf(participants, r.participant_id);
                     const inner = (
                       <span className="inline-flex min-w-0 items-center gap-2">
-                        <Avatar className="h-7 w-7 shrink-0 rounded-full ring-1 ring-white/10">
+                        <Avatar className="h-8 w-8 shrink-0 rounded-full ring-1 ring-white/10">
                           <AvatarImage src={photo ?? undefined} className="object-cover" />
                           <AvatarFallback className="bg-white/10 text-[9px] font-bold">
                             {label.slice(0, 2).toUpperCase()}
@@ -443,7 +450,7 @@ export function PlayersList({ participants }: { participants: Record<string, unk
         const pname = String(
           (p as { profile_name?: string }).profile_name || p.player_name || p.club || "Player",
         );
-        const photo = (p.photo_url as string | null) || (p.avatar_url as string | null) || null;
+        const photo = pickUrl(p.photo_url, p.avatar_url, p.club_logo_url);
         const uid = p.user_id ? String(p.user_id) : null;
         return (
           <li key={String(p.id)} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2.5 text-sm">
