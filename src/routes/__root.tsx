@@ -49,8 +49,11 @@ function BrandErrorBox({
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] px-4 text-white">
       <div className="w-full max-w-md rounded-3xl border border-white/12 bg-[#121214] p-8 text-center shadow-2xl">
         <img
-          src="/neparena-logo.png"
+          src="/icon-192.png"
           alt="NepARENA"
+          width={64}
+          height={64}
+          decoding="async"
           className="mx-auto h-16 w-16 rounded-2xl object-contain ring-1 ring-white/15"
           onError={(e) => {
             e.currentTarget.src = "/pwa-192x192.png";
@@ -164,15 +167,16 @@ function useDeferredAdSense() {
     const ric = (window as any).requestIdleCallback as
       | undefined
       | ((cb: () => void, opts?: { timeout: number }) => number);
+    // Defer AdSense until after LCP window
     if (typeof ric === "function") {
-      const id = ric(inject, { timeout: 4000 });
+      const id = ric(inject, { timeout: 8000 });
       return () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cic = (window as any).cancelIdleCallback as undefined | ((n: number) => void);
         cic?.(id);
       };
     }
-    const t = window.setTimeout(inject, 2500);
+    const t = window.setTimeout(inject, 5500);
     return () => window.clearTimeout(t);
   }, []);
 }
@@ -216,13 +220,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "canonical", href: SITE_URL },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "icon", href: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
-      { rel: "icon", href: "/pwa-192x192.png", type: "image/png", sizes: "192x192" },
+      { rel: "icon", href: "/icon-192.png", type: "image/png", sizes: "192x192" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "dns-prefetch", href: "https://pagead2.googlesyndication.com" },
       { rel: "dns-prefetch", href: "https://www.googletagmanager.com" },
       { rel: "preconnect", href: "https://jssexmnwpwjzkqxkevqf.supabase.co", crossOrigin: "anonymous" },
-      { rel: "preload", href: "/neparena-logo.png", as: "image", type: "image/png" },
+      // Never preload multi-MB brand PNG — kills mobile LCP
+      { rel: "preload", href: "/icon-192.png", as: "image", type: "image/png" },
     ],
     scripts: [
       {
@@ -255,7 +260,7 @@ function RootShell({ children }: { children: ReactNode }) {
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var r=document.documentElement;r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';try{localStorage.setItem('neparena-theme','dark');}catch(_){}var k='neparena_splash_seen_v5';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
+            __html: `(function(){try{var r=document.documentElement;r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';try{localStorage.setItem('neparena-theme','dark');}catch(_){}var k='neparena_splash_seen_v8';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
           }}
         />
       </head>
