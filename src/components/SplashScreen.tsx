@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { PLATFORM_NAME } from "@/lib/organizers";
 
 const SESSION_KEY = "neparena_splash_seen_v8";
-const TOTAL_MS = 3800;
+/** Keep short so LCP of real content is not blocked too long */
+const TOTAL_MS = 2200;
 
 export function shouldShowSplash(): boolean {
   if (typeof window === "undefined") return false;
@@ -34,11 +35,11 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
 
   useEffect(() => {
     const img = new Image();
-    img.src = "/neparena-logo.png";
+    img.src = "/icon-192.png";
 
-    const t1 = window.setTimeout(() => setPhase("roll"), 350);
-    const t2 = window.setTimeout(() => setPhase("goal"), 2700);
-    const t3 = window.setTimeout(() => setPhase("out"), 3400);
+    const t1 = window.setTimeout(() => setPhase("roll"), 280);
+    const t2 = window.setTimeout(() => setPhase("goal"), 1600);
+    const t3 = window.setTimeout(() => setPhase("out"), 1950);
     const t4 = window.setTimeout(() => {
       if (doneRef.current) return;
       doneRef.current = true;
@@ -93,11 +94,13 @@ export function SplashScreen({ onDone }: { onDone?: () => void }) {
         }}
       >
         <img
-          src="/neparena-logo.png"
+          src="/icon-192.png"
           alt={PLATFORM_NAME}
-          width={96}
-          height={96}
-          className="h-20 w-20 rounded-[1.2rem] bg-black object-contain shadow-lg ring-1 ring-white/15 sm:h-24 sm:w-24"
+          width={192}
+          height={192}
+          decoding="async"
+          fetchPriority="high"
+          className="h-16 w-16 rounded-[1.1rem] bg-black object-contain shadow-lg ring-1 ring-white/15 sm:h-20 sm:w-20"
           onError={(e) => {
             e.currentTarget.src = "/pwa-192x192.png";
           }}
