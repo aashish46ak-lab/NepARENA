@@ -11,7 +11,7 @@ export const SITE_DESCRIPTION =
   "NepARENA is a multi-organizer esports platform where players and organizers worldwide run tournaments, communities, and competitive events.";
 export const SITE_KEYWORDS =
   "NepARENA, esports, multi organizer, tournament platform, competitive gaming, eFootball, online tournaments, gaming community";
-export const SITE_OG_IMAGE = `${SITE_URL}/neparena-logo.png`;
+export const SITE_OG_IMAGE = `${SITE_URL}/pwa-512x512.png`;
 /** Square brand mark for favicons / JSON-LD (not the landscape banner). */
 export const SITE_LOGO = `${SITE_URL}/apple-touch-icon.png`;
 export const FOUNDER_NAME = "Ashish Khadka";
