@@ -39,29 +39,41 @@ let initialized = false;
 export function initGA(): void {
   if (typeof window === "undefined" || initialized) return;
   if (!GA_MEASUREMENT_ID || GA_MEASUREMENT_ID === "disabled") return;
-
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer!.push(args);
-  };
-  window.gtag("js", new Date());
-  window.gtag("config", GA_MEASUREMENT_ID, {
-    send_page_view: false, // we send manually on route changes
-    anonymize_ip: true,
-  });
-
-  const existing = document.querySelector(
-    `script[data-neparena-ga="${GA_MEASUREMENT_ID}"]`,
-  );
-  if (!existing) {
-    const s = document.createElement("script");
-    s.async = true;
-    s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-    s.dataset.neparenaGa = GA_MEASUREMENT_ID;
-    document.head.appendChild(s);
-  }
-
   initialized = true;
+
+  const boot = () => {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function gtag(...args: unknown[]) {
+      window.dataLayer!.push(args);
+    };
+    window.gtag("js", new Date());
+    window.gtag("config", GA_MEASUREMENT_ID, {
+      send_page_view: false, // we send manually on route changes
+      anonymize_ip: true,
+    });
+
+    const existing = document.querySelector(
+      `script[data-neparena-ga="${GA_MEASUREMENT_ID}"]`,
+    );
+    if (!existing) {
+      const s = document.createElement("script");
+      s.async = true;
+      s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+      s.dataset.neparenaGa = GA_MEASUREMENT_ID;
+      document.head.appendChild(s);
+    }
+  };
+
+  // Defer GA so it does not compete with mobile LCP
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ric = (window as any).requestIdleCallback as
+    | undefined
+    | ((cb: () => void, opts?: { timeout: number }) => number);
+  if (typeof ric === "function") {
+    ric(boot, { timeout: 6000 });
+  } else {
+    window.setTimeout(boot, 3500);
+  }
 }
 
 export function trackPageView(path: string, title?: string): void {
