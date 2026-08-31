@@ -1,77 +1,58 @@
-/** Editable About NepARENA copy — global esports platform. */
+/** About NepARENA — written for real people (and AdSense-friendly transparency). */
 export const ABOUT = {
   heroTitle: "About NepARENA",
   heroSubtitle:
-    "A multi-organizer esports platform for tournaments, communities, and fair competition — built for players and organizers worldwide.",
+    "We're building a simple home for esports players and organizers — tournaments, results, and community in one place, without the chaos of endless chat groups.",
   sections: [
     {
       id: "what",
       title: "What is NepARENA?",
-      body: `NepARENA is a digital home for esports players and tournament organizers. It brings competitions, fixtures, standings, results, profiles, and community tools into one place so everyone can focus on the game — not scattered chats and spreadsheets.`,
+      body: `NepARENA is an online platform for competitive gaming. Whether you play eFootball, Free Fire, or other esports titles, you can find tournaments, follow fixtures, check standings, and connect with organizers — all from one site.\n\nThink of it as a shared clubhouse: players join events, organizers run them properly, and everyone can see the same brackets, rules, and results instead of digging through screenshots and private messages.`,
     },
     {
-      id: "origin",
-      title: "Our Origin / Journey",
-      body: `NepARENA grew from the day-to-day reality of running and joining online tournaments. Organizers were juggling invites, score submissions, and announcements across many apps. Players struggled to find fixtures, deadlines, and trustworthy results.
-
-The idea was simple: build a platform where organizers can run tournaments properly, and players can follow the full journey — from registration to final standings — in one reliable space. The product continues to evolve with feedback from the global community that uses it.`,
+      id: "story",
+      title: "How we got here",
+      body: `Like a lot of gaming communities, we started with passion and a messy toolkit — group chats, spreadsheets, and "send me the score on Instagram." It worked until it didn't: missed match times, unclear rules, and arguments with no paper trail.\n\nNepARENA was built to fix that everyday frustration. We're based around the Nepal esports scene and open to players and organizers everywhere who want cleaner competition and clearer tools.`,
     },
     {
       id: "why",
-      title: "Why We Built NepARENA",
-      body: `We built NepARENA to make competitive gaming more organized, transparent, and enjoyable — wherever you play. Tournaments should feel professional without requiring a full tech team. Players should always know when they play, what the rules are, and how results are decided.`,
-    },
-    {
-      id: "problem",
-      title: "The Problem We Wanted to Solve",
-      body: `Common friction we wanted to reduce:
-
-• Fixtures and results scattered across group chats
-• Unclear rules and disputed match outcomes
-• Hard-to-follow brackets and standings
-• No single place to discover organizers and upcoming cups
-• Limited tools for fair evidence-based decisions
-
-NepARENA is designed to address these pain points step by step for competitive communities everywhere.`,
+      title: "Why it matters",
+      body: `Online tournaments are fun — until registration closes in a dead chat, or a result dispute has no evidence, or newcomers can't find the next cup.\n\nWe care about:\n• Clear schedules and published fixtures\n• Standings and brackets people can actually trust\n• Profiles that reflect real competitive activity\n• Space for organizers to run events without drowning in admin work\n\nNone of this is perfect yet. We're improving with feedback from real players and hosts.`,
     },
     {
       id: "mission",
-      title: "Our Mission",
-      body: `To give players and organizers worldwide a fair, clear, and modern platform for esports competition and community — where rules are visible, results are accountable, and tournaments are easier to run and follow.`,
-    },
-    {
-      id: "offers",
-      title: "What NepARENA Offers",
-      body: `• Public tournament pages with fixtures, standings, and brackets
-• Organizer tools for participants, matchdays, and results
-• Player profiles and community feed
-• Messaging and discovery across organizers
-• Rules, guides, and news so information stays accessible`,
+      title: "Our mission",
+      body: `Make fair, organized esports easier for everyone involved.\n\nPlayers should know when they play, what the rules are, and where to check results. Organizers should have tools that don't feel like a second full-time job. And the wider community should be able to follow along without insider access.`,
     },
     {
       id: "players",
-      title: "For Players",
-      body: `Discover tournaments, join when registration is open, track fixtures and deadlines, submit results with evidence when required, follow standings and brackets, and build a profile connected to real competitive activity — whether you compete locally or internationally.`,
+      title: "For players",
+      body: `Browse upcoming and live tournaments, request to join when registration is open, track your matches, submit results when needed, and keep a profile that grows with your games.\n\nYou don't need to be a pro. If you love competing — casually or seriously — you're welcome here.`,
     },
     {
       id: "organizers",
-      title: "For Tournament Organizers",
-      body: `Create and manage tournaments, control registration, publish matchdays, review results, communicate with players, and present a public face for your community — without relying only on informal chat groups.`,
+      title: "For organizers",
+      body: `Create tournaments, manage players, publish matchdays, record scores, and share a public page for your community.\n\nNepARENA is multi-organizer by design: eFootball Nepal was our first home, and other organizers can run their own events with their own branding and data — without stepping on each other's toes.`,
     },
     {
-      id: "community",
-      title: "For the Gaming & Esports Community",
-      body: `NepARENA aims to be a shared layer for competitive culture: a place to find events, follow organizers you trust, learn the rules, and celebrate fair play — open to esports enthusiasts everywhere.`,
+      id: "ads",
+      title: "Ads & supporting the platform",
+      body: `Running servers, storage, and ongoing development costs money. We may show advertisements (including Google AdSense) so the platform can stay free for most users.\n\nAds should never block core tournament features. We don't sell your private messages or tournament results as a product. See our Privacy Policy for how data and cookies work, including advertising partners.`,
     },
     {
-      id: "vision",
-      title: "Our Vision for the Future",
-      body: `We want NepARENA to keep improving with the community — better tournament tools, clearer fairness systems, richer profiles, and content that helps both newcomers and experienced competitors worldwide. Growth should come from usefulness and trust, not hype.`,
+      id: "safety",
+      title: "Fair play & safety",
+      body: `We expect respect: no harassment, no cheating, no impersonation, and no illegal content. Organizers set event rules; we help with tools and platform-wide standards when something crosses the line.\n\nIf something feels wrong, use the report tools on the site or contact us. We'll review reports as fairly and quickly as we can.`,
+    },
+    {
+      id: "contact",
+      title: "Talk to us",
+      body: `Questions, ideas, or partnership notes are welcome.\n\nEmail: aashish46ak@gmail.com\nWebsite: https://neparena.xyz\n\nWe're a small team listening to the community. Tell us what's broken, what's confusing, or what would make your next tournament smoother.`,
     },
     {
       id: "closing",
-      title: "Community first",
-      body: `NepARENA exists because of players and organizers who care about clean competition. If you are competing, organizing, or just following the scene — thank you for being part of it. Play fair. Respect everyone.`,
+      title: "Thanks for being here",
+      body: `NepARENA exists because players show up and organizers put in the work. If you're competing, hosting, or just following the scene — thank you.\n\nPlay fair. Respect each other. See you in the lobby.`,
     },
   ],
 } as const;
