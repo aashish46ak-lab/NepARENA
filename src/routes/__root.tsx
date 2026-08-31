@@ -19,6 +19,7 @@ import { WelcomeFlow } from "@/components/WelcomeFlow";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { CookieConsent } from "@/components/CookieConsent";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { LaunchGate } from "@/components/LaunchGate";
 import { registerPWA } from "@/lib/pwa-register";
 import {
   SITE_TITLE,
@@ -167,7 +168,6 @@ function useDeferredAdSense() {
     const ric = (window as any).requestIdleCallback as
       | undefined
       | ((cb: () => void, opts?: { timeout: number }) => number);
-    // Defer AdSense until after LCP window
     if (typeof ric === "function") {
       const id = ric(inject, { timeout: 8000 });
       return () => {
@@ -226,7 +226,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "dns-prefetch", href: "https://pagead2.googlesyndication.com" },
       { rel: "dns-prefetch", href: "https://www.googletagmanager.com" },
       { rel: "preconnect", href: "https://jssexmnwpwjzkqxkevqf.supabase.co", crossOrigin: "anonymous" },
-      // Never preload multi-MB brand PNG — kills mobile LCP
       { rel: "preload", href: "/icon-192.png", as: "image", type: "image/png" },
     ],
     scripts: [
@@ -317,10 +316,12 @@ function RootComponent() {
           <GoogleAnalytics />
           {showSplash && <SplashScreen onDone={finishSplash} />}
           <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
-            <RoleRedirect />
-            <Outlet />
-            {!showSplash && <WelcomeFlow enabled />}
-            {!showSplash && <OnboardingTour />}
+            <LaunchGate>
+              <RoleRedirect />
+              <Outlet />
+              {!showSplash && <WelcomeFlow enabled />}
+              {!showSplash && <OnboardingTour />}
+            </LaunchGate>
           </div>
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
