@@ -19,7 +19,6 @@ import { WelcomeFlow } from "@/components/WelcomeFlow";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { CookieConsent } from "@/components/CookieConsent";
 import { OnboardingTour } from "@/components/OnboardingTour";
-import { LaunchGate } from "@/components/LaunchGate";
 import { registerPWA } from "@/lib/pwa-register";
 import {
   SITE_TITLE,
@@ -316,12 +315,10 @@ function RootComponent() {
           <GoogleAnalytics />
           {showSplash && <SplashScreen onDone={finishSplash} />}
           <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
-            <LaunchGate>
-              <RoleRedirect />
-              <Outlet />
-              {!showSplash && <WelcomeFlow enabled />}
-              {!showSplash && <OnboardingTour />}
-            </LaunchGate>
+            <RoleRedirect />
+            <Outlet />
+            {!showSplash && <WelcomeFlow enabled />}
+            {!showSplash && <OnboardingTour />}
           </div>
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>
