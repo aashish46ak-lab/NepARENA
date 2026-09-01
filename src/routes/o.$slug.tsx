@@ -10,16 +10,14 @@ export const Route = createFileRoute("/o/$slug")({
       .select("name, slug, logo_url, bio, description, tagline")
       .eq("slug", params.slug)
       .maybeSingle();
-    return {
-      organizer: data as {
-        name?: string;
-        slug?: string;
-        logo_url?: string | null;
-        bio?: string | null;
-        description?: string | null;
-        tagline?: string | null;
-      } | null,
-    };
+    return { organizer: data as {
+      name?: string;
+      slug?: string;
+      logo_url?: string | null;
+      bio?: string | null;
+      description?: string | null;
+      tagline?: string | null;
+    } | null };
   },
   head: ({ params, loaderData }) => {
     const o = loaderData?.organizer;
@@ -32,7 +30,7 @@ export const Route = createFileRoute("/o/$slug")({
     const image = o?.logo_url || null;
     return {
       ...buildSeoHead({
-        title: `${name} — NepARENA`,
+        title: `${name}`,
         description: String(desc).slice(0, 200),
         path: `/o/${params.slug}`,
         image,
