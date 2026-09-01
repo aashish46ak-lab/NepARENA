@@ -25,13 +25,44 @@ import { isSuperAdminEmail } from "@/lib/organizers";
 import { countryFlag } from "@/lib/country-flag";
 
 export const Route = createFileRoute("/members/$id")({
-  head: ({ params }) => ({
-    ...buildSeoHead({
-      title: "Member profile — NepARENA",
-      description: "Player profile on NepARENA",
-      path: `/members/${params.id}`,
-    }),
-  }),
+  loader: async ({ params }) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, username, avatar_url, bio")
+      .eq("id", params.id)
+      .maybeSingle();
+    return {
+      profile: data as {
+        id?: string;
+        full_name?: string | null;
+        username?: string | null;
+        avatar_url?: string | null;
+        bio?: string | null;
+      } | null,
+    };
+  },
+  head: ({ params, loaderData }) => {
+    const pr = loaderData?.profile;
+    const name =
+      pr?.full_name?.trim() ||
+      pr?.username?.trim() ||
+      "Player";
+    const handle = pr?.username?.trim();
+    const desc =
+      pr?.bio?.trim() ||
+      (handle
+        ? `${name} (@${handle}) on NepARENA — player profile, matches, and community.`
+        : `${name} on NepARENA — player profile, matches, and community.`);
+    return {
+      ...buildSeoHead({
+        title: handle ? `${name} (@${handle})` : name,
+        description: String(desc).slice(0, 200),
+        path: `/members/${params.id}`,
+        image: pr?.avatar_url || null,
+        type: "profile",
+      }),
+    };
+  },
   component: MemberProfilePage,
 });
 
@@ -40,7 +71,7 @@ const SOCIAL_KEYS = ["facebook", "instagram", "whatsapp", "twitter", "tiktok", "
 function normalizeUrl(v: string) {
   if (!v) return v;
   const t = v.trim();
-  if (/^https?:\/\//i.test(t)) return t;
+  if (/^https?:\/\/i.test(t)) return t;
   if (t.startsWith("wa.me/") || t.startsWith("api.whatsapp.com")) return `https://${t}`;
   if (/^\+?\d{8,15}$/.test(t.replace(/\s/g, ""))) return `https://wa.me/${t.replace(/\D/g, "")}`;
   return `https://${t}`;
