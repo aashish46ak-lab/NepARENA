@@ -9,16 +9,42 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
+import { supabase } from "@/lib/supabase";
 import { SocialFeed } from "@/components/SocialFeed";
 
 export const Route = createFileRoute("/o/$slug/posts")({
-  head: ({ params }) => ({
-    ...buildSeoHead({
-      title: `Posts — ${params.slug}`,
-      description: "Organizer posts",
-      path: `/o/${params.slug}/posts`,
-    }),
-  }),
+  loader: async ({ params }) => {
+    const { data } = await supabase
+      .from("organizers")
+      .select("name, slug, logo_url, bio, description, tagline")
+      .eq("slug", params.slug)
+      .maybeSingle();
+    return { organizer: data };
+  },
+  head: ({ params, loaderData }) => {
+    const o = loaderData?.organizer as {
+      name?: string;
+      logo_url?: string | null;
+      bio?: string | null;
+      description?: string | null;
+      tagline?: string | null;
+    } | null | undefined;
+    const name = o?.name || params.slug;
+    const desc =
+      o?.tagline ||
+      o?.bio ||
+      o?.description ||
+      `Posts and updates — ${name} on NepARENA.`;
+    return {
+      ...buildSeoHead({
+        title: `${name} · Posts`,
+        description: String(desc).slice(0, 200),
+        path: `/o/${params.slug}/posts`,
+        image: o?.logo_url || null,
+        type: "profile",
+      }),
+    };
+  },
   component: OrgPostsPage,
 });
 
