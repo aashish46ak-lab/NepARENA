@@ -17,8 +17,9 @@ function mapRow(r: Record<string, unknown>): NewsArticle {
   };
 }
 
-/** Published articles for public listing. Falls back to seed if table missing/empty. */
+/** Published articles for public listing. Merges DB rows with seed so the site is never thin. */
 export async function listPublishedNews(): Promise<NewsArticle[]> {
+  const seed = NEWS_SEED.filter((n) => n.status === "published");
   try {
     const { data, error } = await supabase
       .from("platform_news")
@@ -27,11 +28,17 @@ export async function listPublishedNews(): Promise<NewsArticle[]> {
       .order("published_at", { ascending: false });
     if (error) throw error;
     const rows = (data ?? []).map((r) => mapRow(r as Record<string, unknown>));
-    if (rows.length) return rows;
+    if (!rows.length) return seed;
+    const slugs = new Set(rows.map((r) => r.slug));
+    const extras = seed.filter((n) => !slugs.has(n.slug));
+    return [...rows, ...extras].sort(
+      (a, b) =>
+        new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+    );
   } catch {
     /* table may not exist yet */
   }
-  return NEWS_SEED.filter((n) => n.status === "published");
+  return seed;
 }
 
 export async function getNewsBySlug(slug: string): Promise<NewsArticle | null> {
