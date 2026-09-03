@@ -1,6 +1,5 @@
-/** Seed / fallback news when platform_news table is empty. Admin can add real rows in Supabase. */
-import { NEWS_SEED_A } from "./news-seed-a";
-import { NEWS_SEED_B } from "./news-seed-b";
+/** Seed / fallback news when platform_news table is empty. */
+import { NEWS_SEED_ALL } from "./news-seed-all";
 
 export type NewsArticle = {
   id: string;
@@ -16,4 +15,4 @@ export type NewsArticle = {
   status: "published" | "draft";
 };
 
-export const NEWS_SEED: NewsArticle[] = [...NEWS_SEED_A, ...NEWS_SEED_B];
+export const NEWS_SEED: NewsArticle[] = NEWS_SEED_ALL;
