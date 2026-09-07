@@ -45,6 +45,8 @@ export function ReportForm({
     }[]
   >([]);
   const [loadingReports, setLoadingReports] = useState(false);
+  /** Honeypot — bots fill this; humans never see it */
+  const [websiteUrl, setWebsiteUrl] = useState("");
 
   const loadMyReports = useCallback(async () => {
     if (!user) return;
@@ -110,6 +112,10 @@ export function ReportForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (websiteUrl.trim()) {
+      toast.success("Report submitted — the admins will review it.");
+      return;
+    }
     const trimmedReason = reason.trim();
     if (trimmedReason.length < 4) {
       toast.error("Please describe the reason for the report.");
@@ -171,7 +177,19 @@ export function ReportForm({
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={submit} className="relative space-y-4">
+        <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+          <label htmlFor="report-website">Website</label>
+          <input
+            id="report-website"
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+          />
+        </div>
         <h2 className="text-xl font-bold">Report an issue</h2>
         <div className="space-y-1.5">
           <label className="text-sm text-muted-foreground">
@@ -229,7 +247,7 @@ export function ReportForm({
                 <div key={url} className="relative">
                   <img
                     src={url}
-                    alt=""
+                    alt="Screenshot preview"
                     className="h-16 w-16 rounded-lg border border-border/60 object-cover"
                   />
                   <button
