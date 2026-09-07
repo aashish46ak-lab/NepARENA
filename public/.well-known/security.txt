@@ -1,0 +1,5 @@
+Contact: mailto:aashish46ak@gmail.com
+Preferred-Languages: en, ne
+Canonical: https://neparena.xyz/.well-known/security.txt
+Policy: https://neparena.xyz/privacy
+Expires: 2027-12-31T23:59:59.000Z

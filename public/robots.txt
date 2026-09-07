@@ -15,5 +15,7 @@ Disallow: /profile
 Disallow: /auth
 Disallow: /reset-password
 Disallow: /admin
+Disallow: /messages
+Disallow: /settings
 
 Sitemap: https://neparena.xyz/sitemap.xml
