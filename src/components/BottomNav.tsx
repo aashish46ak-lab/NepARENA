@@ -441,36 +441,40 @@ export function BottomNav() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <nav
-      className={cn(
-        "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3",
-        bottomPad,
-      )}
-      aria-label="Main"
-      data-onboard="bottom-nav"
-    >
-      <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
-        <div
-          className="overflow-visible rounded-[22px] ring-1 ring-black/10"
-          style={{
-            ...shellStyle,
-            backgroundImage:
-              "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
-            backgroundColor: "var(--bnav-bg)",
-          }}
-        >
-          <LiquidNavBar
-            pathname={pathname}
-            userId={user?.id}
-            msgUnread={msgUnread}
-          />
+    <>
+      <SideNavBar pathname={pathname} userId={user?.id} msgUnread={msgUnread} />
+      <nav
+        className={cn(
+          "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 md:hidden",
+          bottomPad,
+        )}
+        aria-label="Main"
+        data-onboard="bottom-nav"
+      >
+        <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
+          <div
+            className="overflow-visible rounded-[22px] ring-1 ring-black/10"
+            style={{
+              ...shellStyle,
+              backgroundImage:
+                "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
+              backgroundColor: "var(--bnav-bg)",
+            }}
+          >
+            <LiquidNavBar
+              pathname={pathname}
+              userId={user?.id}
+              msgUnread={msgUnread}
+            />
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }
