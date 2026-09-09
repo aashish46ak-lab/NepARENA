@@ -192,6 +192,103 @@ function LiquidNavBar({
   );
 }
 
+/** Desktop / large screens: floating vertical left sidebar with the same tabs. */
+function SideNavBar({
+  pathname,
+  userId,
+  msgUnread,
+}: {
+  pathname: string;
+  userId?: string;
+  msgUnread: number;
+}) {
+  const activeIndex = resolveActiveIndex(pathname);
+
+  return (
+    <nav
+      aria-label="Main"
+      data-onboard="bottom-nav"
+      className="fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 md:block"
+    >
+      <div
+        className="flex flex-col items-center gap-1 rounded-[22px] p-1.5 ring-1 ring-black/10"
+        style={{
+          background: "var(--bnav-bg)",
+          boxShadow: "var(--bnav-shadow)",
+          backgroundImage:
+            "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
+          backgroundColor: "var(--bnav-bg)",
+        }}
+      >
+        {TABS.map((tab, i) => {
+          const active = i === activeIndex;
+          const Icon = tab.icon;
+          const href =
+            tab.to === "/profile" && userId
+              ? { to: "/members/$id" as const, params: { id: userId } }
+              : { to: tab.to };
+          const onboard =
+            tab.label === "Home"
+              ? "feed"
+              : tab.label === "Organizers"
+                ? "organizers"
+                : tab.label === "Messages"
+                  ? "messages"
+                  : tab.label === "Games"
+                    ? "games"
+                    : tab.label === "Profile"
+                      ? "profile"
+                      : undefined;
+
+          return (
+            <Link
+              key={tab.label}
+              {...(href as { to: string; params?: { id: string } })}
+              data-onboard={onboard}
+              className="relative flex w-16 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5"
+              style={{
+                WebkitTapHighlightColor: "transparent",
+                background: active ? "var(--bnav-circle)" : "transparent",
+                transition: `background ${DURATION} ${EASE}`,
+              }}
+            >
+              <span className="relative flex items-center justify-center">
+                <Icon
+                  style={{
+                    width: 22,
+                    height: 22,
+                    strokeWidth: active ? 2.35 : 2,
+                    color: active
+                      ? "var(--bnav-icon-active)"
+                      : "var(--bnav-icon)",
+                    transition: `color ${DURATION} ${EASE}`,
+                  }}
+                />
+                {"badge" in tab && tab.badge && msgUnread > 0 && (
+                  <span className="absolute -right-1.5 -top-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-sky-500 px-0.5 text-[8px] font-bold text-white">
+                    {msgUnread > 9 ? "9+" : msgUnread}
+                  </span>
+                )}
+              </span>
+              <span
+                className="text-[10px] font-medium leading-none"
+                style={{
+                  color: active
+                    ? "var(--bnav-icon-active)"
+                    : "var(--bnav-icon)",
+                  transition: `color ${DURATION} ${EASE}`,
+                }}
+              >
+                {tab.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user } = useAuth();
@@ -290,12 +387,18 @@ export function BottomNav() {
 
   if (useIsland) {
     return (
-      <div
-        className={cn(
-          "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3",
-          bottomPad,
-        )}
-      >
+      <>
+        <SideNavBar
+          pathname={pathname}
+          userId={user?.id}
+          msgUnread={msgUnread}
+        />
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 md:hidden",
+            bottomPad,
+          )}
+        >
         {islandOpen && (
           <button
             type="button"
@@ -338,36 +441,40 @@ export function BottomNav() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <nav
-      className={cn(
-        "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3",
-        bottomPad,
-      )}
-      aria-label="Main"
-      data-onboard="bottom-nav"
-    >
-      <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
-        <div
-          className="overflow-visible rounded-[22px] ring-1 ring-black/10"
-          style={{
-            ...shellStyle,
-            backgroundImage:
-              "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
-            backgroundColor: "var(--bnav-bg)",
-          }}
-        >
-          <LiquidNavBar
-            pathname={pathname}
-            userId={user?.id}
-            msgUnread={msgUnread}
-          />
+    <>
+      <SideNavBar pathname={pathname} userId={user?.id} msgUnread={msgUnread} />
+      <nav
+        className={cn(
+          "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 md:hidden",
+          bottomPad,
+        )}
+        aria-label="Main"
+        data-onboard="bottom-nav"
+      >
+        <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
+          <div
+            className="overflow-visible rounded-[22px] ring-1 ring-black/10"
+            style={{
+              ...shellStyle,
+              backgroundImage:
+                "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
+              backgroundColor: "var(--bnav-bg)",
+            }}
+          >
+            <LiquidNavBar
+              pathname={pathname}
+              userId={user?.id}
+              msgUnread={msgUnread}
+            />
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }

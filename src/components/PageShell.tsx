@@ -47,12 +47,20 @@ export function PageShell({
   }, [mode, pathname]);
 
   const showBottomNav = true;
-  const padBottom =
+  const navVisible =
     showBottomNav &&
     !pathname.startsWith("/auth") &&
     !pathname.startsWith("/reset-password") &&
     !pathname.startsWith("/dashboard") &&
-    !pathname.startsWith("/platform");
+    !pathname.startsWith("/platform") &&
+    !(
+      pathname.startsWith("/games/") &&
+      pathname !== "/games/" &&
+      pathname !== "/games"
+    ) &&
+    !pathname.startsWith("/vote/") &&
+    !pathname.startsWith("/admin/tournaments");
+  const padBottom = navVisible;
 
   return (
     <div
