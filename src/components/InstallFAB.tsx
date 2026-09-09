@@ -28,7 +28,10 @@ export function InstallTopButton({ className }: { className?: string }) {
     setStandalone(alone);
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
     if (localStorage.getItem(DISMISS_KEY) === "1") setHidden(true);
-    return onInstallPromptChange(setDeferred);
+    const off = onInstallPromptChange(setDeferred);
+    return () => {
+      off();
+    };
   }, []);
 
   if (standalone || hidden) return null;

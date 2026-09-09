@@ -24,7 +24,7 @@ import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>): { t: string } => ({
+  validateSearch: (search: { t?: string }): { t: string } => ({
     t: typeof search.t === "string" ? search.t : "dashboard",
   }),
   head: () => ({

@@ -51,11 +51,12 @@ export function TournamentDetailPage() {
       ]);
       if (tRes.error) throw tRes.error;
       const tour = tRes.data as Record<string, unknown> | null;
-      let organizer: { id: string; name: string; slug: string; logo_url: string | null } | null = null;
+      type OrganizerLite = { id: string; name: string; slug: string; logo_url: string | null };
+      let organizer: OrganizerLite | null = null;
       const orgId = tour?.organizer_id as string | null | undefined;
       if (orgId) {
         const { data: o } = await supabase.from("organizers").select("id, name, slug, logo_url").eq("id", orgId).maybeSingle();
-        if (o) organizer = o as typeof organizer;
+        if (o) organizer = o as unknown as OrganizerLite;
       }
       if (!organizer) {
         const { data: def } = await supabase
@@ -64,7 +65,7 @@ export function TournamentDetailPage() {
           .or("slug.eq.efootball-nepal,name.ilike.%efootball%")
           .limit(1)
           .maybeSingle();
-        if (def) organizer = def as typeof organizer;
+        if (def) organizer = def as unknown as OrganizerLite;
       }
 
       const participants = (pRes.data ?? []) as Record<string, unknown>[];

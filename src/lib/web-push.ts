@@ -9,7 +9,6 @@ import { supabase } from "./supabase";
 /** Optional public VAPID key (set via Vite env). Without it we still request Notification permission. */
 const VAPID_PUBLIC =
   (typeof import.meta !== "undefined" &&
-    // @ts-expect-error vite env
     (import.meta.env?.VITE_VAPID_PUBLIC_KEY as string | undefined)) ||
   "";
 

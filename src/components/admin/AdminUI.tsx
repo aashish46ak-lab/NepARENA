@@ -77,8 +77,12 @@ export function AdminSection({
 
 export function EmptyState({
   message,
+  title,
+  description,
 }:{
-  message:string;
+  message?:string;
+  title?:string;
+  description?:string;
 }){
 
 return (
@@ -96,7 +100,14 @@ text-muted-foreground
 "
 >
 
-{message}
+{title ? (
+  <div className="space-y-1">
+    <p className="font-medium text-foreground">{title}</p>
+    {description && <p>{description}</p>}
+  </div>
+) : (
+  message
+)}
 
 </div>
 

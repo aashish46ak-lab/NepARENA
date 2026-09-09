@@ -130,7 +130,6 @@ export function OrganizerRequestsPanel() {
           }
           const payload = {
             name: req.org_name,
-            slug,
             logo_url: req.logo_url,
             banner_url: req.banner_url,
             description: req.description,

@@ -49,6 +49,7 @@ export function SocialFeed({
   onPosted?: () => void;
   organizerId?: string | null;
   organizerMeta?: { name: string; logo_url?: string | null; slug?: string | null } | null;
+  focusPostId?: string;
   filterQuery?: string;
   emptyLabel?: string;
   onPostsChange?: (count: number) => void;

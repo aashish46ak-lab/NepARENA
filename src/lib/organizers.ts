@@ -36,6 +36,8 @@ export type Organizer = {
   created_at?: string;
 };
 
+export type OrganizerMemberRole = MemberRole;
+
 export type OrganizerMember = {
   organizer_id: string;
   user_id: string;
@@ -162,7 +164,12 @@ export async function getOrganizerBySlug(slug: string): Promise<Organizer | null
   return null;
 }
 
-export async function notifyPlatformAdmins(opts: { title: string; body?: string }) {
+export async function notifyPlatformAdmins(opts: {
+  title: string;
+  body?: string;
+  link?: string | null;
+  actorId?: string | null;
+}) {
   try {
     await supabase.from("platform_notifications").insert({
       title: opts.title,
@@ -296,8 +303,9 @@ export async function evaluateOrganizerVerification(organizerId: string) {
   return { ok: true as const };
 }
 
-export async function inviteOrganizer(params: { email: string; name: string; invitedBy: string }) {
+export async function inviteOrganizer(params: { email: string; name: string; invitedBy: string; slug?: string }) {
   const slug =
+    params.slug ||
     params.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || `org-${Date.now()}`;
   const token = crypto.randomUUID().replace(/-/g, "") + Date.now().toString(36);
   const { error } = await supabase.from("organizer_invitations").insert({
