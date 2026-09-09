@@ -387,12 +387,18 @@ export function BottomNav() {
 
   if (useIsland) {
     return (
-      <div
-        className={cn(
-          "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3",
-          bottomPad,
-        )}
-      >
+      <>
+        <SideNavBar
+          pathname={pathname}
+          userId={user?.id}
+          msgUnread={msgUnread}
+        />
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 md:hidden",
+            bottomPad,
+          )}
+        >
         {islandOpen && (
           <button
             type="button"
