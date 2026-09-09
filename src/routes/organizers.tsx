@@ -90,7 +90,10 @@ function OrganizersPage() {
               description:
                 "Tournaments, standings, fixtures and community — an organizer on NepARENA.",
               logo_url: null,
-              cover_url: null,
+              banner_url: null,
+              tagline: null,
+              primary_color: null,
+              secondary_color: null,
               is_verified: true,
               owner_user_id: null,
               website_url: null,
