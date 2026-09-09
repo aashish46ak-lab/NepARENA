@@ -204,3 +204,59 @@ html.light .hover\:bg-white\/\[0\.04\]:hover,
 html.light .hover\:bg-white\/\[0\.05\]:hover,
 html.light .hover\:bg-white\/\[0\.06\]:hover,
 html.light .hover\:bg-white\/10:hover { background-color: #e8e8ec !important; }
+
+/* ==========================================================================
+   Responsive scaling for tablet / laptop / desktop.
+   Mobile (<768px) is intentionally untouched — every rule below is gated
+   behind a min-width media query.
+   ========================================================================== */
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Tablet and up: let the mobile-width column breathe */
+@media (min-width: 768px) {
+  .max-w-md {
+    max-width: 40rem;
+  }
+  .max-w-sm {
+    max-width: 32rem;
+  }
+}
+
+/* Laptop / desktop: match the top bar width so everything lines up */
+@media (min-width: 1024px) {
+  .max-w-md {
+    max-width: 48rem;
+  }
+  /* pull the app shell to full viewport height so there is no dead area */
+  main {
+    min-height: calc(100vh - 3rem);
+  }
+}
+
+/* Large desktops: slightly wider still, plus comfortable side gutters */
+@media (min-width: 1536px) {
+  .max-w-md {
+    max-width: 56rem;
+  }
+  .max-w-3xl {
+    max-width: 56rem;
+  }
+}
+
+/* Media and cards should never stretch past their natural box */
+@media (min-width: 768px) {
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+  table {
+    width: 100%;
+  }
+}
