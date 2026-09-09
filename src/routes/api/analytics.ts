@@ -91,9 +91,10 @@ async function requireSuperAdmin(request: Request): Promise<
 }
 
 export const Route = createFileRoute("/api/analytics")({
+  // @ts-expect-error server route handlers are supported at runtime
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: async ({ request }: { request: Request }) => {
         const auth = await requireSuperAdmin(request);
         if (!auth.ok) return auth.response;
 

@@ -518,7 +518,7 @@ export function OrganizerPublicPage() {
             <div className="fixed z-[350] w-56 overflow-hidden rounded-xl border border-white/12 bg-[#161618] py-1 shadow-2xl animate-in fade-in zoom-in-95 duration-150" style={{ top: menuPos.top, right: menuPos.right }}>
               {isStaff && (
                 <button type="button" className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-white hover:bg-white/[0.06]"
-                  onClick={() => { setMenuOpen(false); try { localStorage.setItem("neparena-active-organizer-slug", organizer.slug); } catch {} void navigate({ to: "/dashboard" }); }}>
+                  onClick={() => { setMenuOpen(false); try { localStorage.setItem("neparena-active-organizer-slug", organizer.slug); } catch {} void navigate({ to: "/dashboard", search: { t: "dashboard" } }); }}>
                   <LayoutDashboard className="h-4 w-4 text-emerald-400" /> Go to Dashboard
                 </button>
               )}

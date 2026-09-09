@@ -224,7 +224,7 @@ export interface Moderator {
   [key: string]: unknown;
 }
 
-export type ReportStatus = "pending" | "reviewing" | "resolved" | "rejected";
+export type ReportStatus = "pending" | "in_review" | "resolved" | "dismissed";
 
 export interface Report {
   id: string;
@@ -234,9 +234,9 @@ export interface Report {
   type: string | null;
   reason: string | null;
   screenshot_url: string | null;
-  status: ReportStatus | string;
+  description: string | null;
+  status: ReportStatus;
   created_at: string;
-  [key: string]: unknown;
 }
 
 export interface MatchSubmission {

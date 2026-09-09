@@ -204,7 +204,7 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
                 )}
                 {isAdmin && (
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard">
+                    <Link to="/dashboard" search={{ t: "dashboard" }}>
                       <Shield className="mr-2 h-4 w-4" /> Organizer Dashboard
                     </Link>
                   </DropdownMenuItem>

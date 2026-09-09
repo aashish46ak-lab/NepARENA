@@ -49,7 +49,7 @@ function AuthPage() {
         .eq("user_id", user.id)
         .limit(1);
       if (memberships && memberships.length > 0) {
-        router.navigate({ to: "/dashboard", replace: true });
+        router.navigate({ to: "/dashboard", search: { t: "dashboard" }, replace: true });
       } else {
         router.navigate({ to: "/", replace: true });
       }

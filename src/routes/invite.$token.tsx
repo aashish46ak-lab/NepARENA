@@ -41,7 +41,7 @@ function InviteAcceptPage() {
     }
     setDone(true);
     toast.success("You are now the organizer owner");
-    setTimeout(() => router.navigate({ to: "/dashboard" }), 800);
+    setTimeout(() => router.navigate({ to: "/dashboard", search: { t: "dashboard" } }), 800);
   };
 
   return (

@@ -105,22 +105,22 @@ export function SiteSettingsPanel() {
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-4">
             <Field label="Site name">
-              <Input value={row.site_name} onChange={(e) => patch({ site_name: e.target.value })} />
+              <Input value={row.site_name ?? ""} onChange={(e) => patch({ site_name: e.target.value })} />
             </Field>
             <Field label="Tagline">
-              <Input value={row.tagline} onChange={(e) => patch({ tagline: e.target.value })} />
+              <Input value={row.tagline ?? ""} onChange={(e) => patch({ tagline: e.target.value })} />
             </Field>
             <Field label="Hero title">
-              <Input value={row.hero_title} onChange={(e) => patch({ hero_title: e.target.value })} />
+              <Input value={row.hero_title ?? ""} onChange={(e) => patch({ hero_title: e.target.value })} />
             </Field>
             <Field label="Hero subtitle">
-              <Textarea rows={3} value={row.hero_subtitle} onChange={(e) => patch({ hero_subtitle: e.target.value })} />
+              <Textarea rows={3} value={row.hero_subtitle ?? ""} onChange={(e) => patch({ hero_subtitle: e.target.value })} />
             </Field>
             <Field label="About (short)">
-              <Textarea rows={4} value={row.about_short} onChange={(e) => patch({ about_short: e.target.value })} />
+              <Textarea rows={4} value={row.about_short ?? ""} onChange={(e) => patch({ about_short: e.target.value })} />
             </Field>
             <Field label="Footer text">
-              <Input value={row.footer_text} onChange={(e) => patch({ footer_text: e.target.value })} />
+              <Input value={row.footer_text ?? ""} onChange={(e) => patch({ footer_text: e.target.value })} />
             </Field>
           </div>
           <div className="space-y-4">
