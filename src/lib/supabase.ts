@@ -173,6 +173,7 @@ export interface Match {
 export interface TournamentInvitation {
   id: string;
   tournament_id: string;
+  user_id?: string | null;
   email: string | null;
   token: string;
   status: string;

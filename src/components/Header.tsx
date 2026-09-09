@@ -111,7 +111,8 @@ export function Header({ mode = "organizer" }: { mode?: "platform" | "organizer"
     >
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
         <Link
-          to={mode === "platform" ? "/" : "/o/efootball-nepal"}
+          to="/o/$slug"
+          params={{ slug: "efootball-nepal" }}
           className="flex shrink-0 items-center gap-2.5"
         >
           <span className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-neutral-900 shadow-md ring-1 ring-white/25">
