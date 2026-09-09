@@ -71,7 +71,7 @@ const SOCIAL_KEYS = ["facebook", "instagram", "whatsapp", "twitter", "tiktok", "
 function normalizeUrl(v: string) {
   if (!v) return v;
   const t = v.trim();
-  if (/^https?:\/\/i.test(t)) return t;
+  if (/^https?:\/\//i.test(t)) return t;
   if (t.startsWith("wa.me/") || t.startsWith("api.whatsapp.com")) return `https://${t}`;
   if (/^\+?\d{8,15}$/.test(t.replace(/\s/g, ""))) return `https://wa.me/${t.replace(/\D/g, "")}`;
   return `https://${t}`;
