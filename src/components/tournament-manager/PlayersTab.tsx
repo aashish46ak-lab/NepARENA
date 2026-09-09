@@ -287,7 +287,7 @@ export function PlayersTab({ tournament, data }: Props) {
               <DialogTitle>Update logo — {logoEdit.player_name}</DialogTitle>
             </DialogHeader>
             <ImageUpload
-              value={logoEdit.photo_url}
+              value={logoEdit.photo_url ?? null}
               folder="players"
               aspect="square"
               onChange={(url) => updateLogo(logoEdit, url)}

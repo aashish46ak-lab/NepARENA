@@ -36,6 +36,8 @@ export type Organizer = {
   created_at?: string;
 };
 
+export type OrganizerMemberRole = MemberRole;
+
 export type OrganizerMember = {
   organizer_id: string;
   user_id: string;
@@ -162,7 +164,12 @@ export async function getOrganizerBySlug(slug: string): Promise<Organizer | null
   return null;
 }
 
-export async function notifyPlatformAdmins(opts: { title: string; body?: string }) {
+export async function notifyPlatformAdmins(opts: {
+  title: string;
+  body?: string;
+  link?: string | null;
+  actorId?: string | null;
+}) {
   try {
     await supabase.from("platform_notifications").insert({
       title: opts.title,

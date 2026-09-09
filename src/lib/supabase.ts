@@ -178,3 +178,91 @@ export interface TournamentInvitation {
   status: string;
   created_at: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Content / admin row types                                           */
+/* ------------------------------------------------------------------ */
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string | null;
+  image_url: string | null;
+  is_pinned: boolean;
+  created_at: string;
+}
+
+export interface SiteSettings {
+  id: string;
+  site_name: string | null;
+  tagline: string | null;
+  logo_url: string | null;
+  hero_title: string | null;
+  hero_subtitle: string | null;
+  hero_image_url: string | null;
+  about_short: string | null;
+  footer_text: string | null;
+  [key: string]: unknown;
+}
+
+export interface OwnerInfo {
+  id: string;
+  name: string | null;
+  role: string | null;
+  bio: string | null;
+  photo_url: string | null;
+  [key: string]: unknown;
+}
+
+export interface Moderator {
+  id: string;
+  name: string | null;
+  role: string | null;
+  photo_url: string | null;
+  user_id?: string | null;
+  [key: string]: unknown;
+}
+
+export type ReportStatus = "pending" | "reviewing" | "resolved" | "rejected";
+
+export interface Report {
+  id: string;
+  tournament_id: string | null;
+  reporter_id: string | null;
+  player_name: string | null;
+  type: string | null;
+  reason: string | null;
+  screenshot_url: string | null;
+  status: ReportStatus | string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+export interface MatchSubmission {
+  id: string;
+  match_id: string;
+  tournament_id?: string | null;
+  participant_id: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  note: string | null;
+  screenshot_url: string | null;
+  proof_url?: string | null;
+  status: string;
+  created_at: string;
+  reviewed_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string | null;
+  type: string | null;
+  link: string | null;
+  actor_id: string | null;
+  read_at: string | null;
+  created_at: string;
+  [key: string]: unknown;
+}
