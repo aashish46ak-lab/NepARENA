@@ -208,7 +208,7 @@ function SideNavBar({
     <nav
       aria-label="Main"
       data-onboard="bottom-nav"
-      className="fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 md:block"
+      className="fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 lg:block"
     >
       <div
         className="flex flex-col items-center gap-1 rounded-[22px] p-1.5 ring-1 ring-black/10"
@@ -395,7 +395,7 @@ export function BottomNav() {
         />
         <div
           className={cn(
-            "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 md:hidden",
+            "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 lg:hidden",
             bottomPad,
           )}
         >
@@ -451,7 +451,7 @@ export function BottomNav() {
       <SideNavBar pathname={pathname} userId={user?.id} msgUnread={msgUnread} />
       <nav
         className={cn(
-          "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 md:hidden",
+          "pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 lg:hidden",
           bottomPad,
         )}
         aria-label="Main"

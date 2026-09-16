@@ -65,7 +65,7 @@ export function PageShell({
   return (
     <div
       className={`min-h-screen flex flex-col bg-background text-foreground transition-[padding] duration-300 ${
-        navVisible ? "md:pl-24" : ""
+        navVisible ? "lg:pl-24" : ""
       } ${
         mode === "organizer" ? "bg-[image:var(--org-page-bg)]" : ""
       }`}
@@ -78,7 +78,7 @@ export function PageShell({
       }
     >
       {!hideChrome && <Header mode={mode} />}
-      <main className={`flex-1 ${padBottom ? "pb-20 md:pb-0" : ""}`}>{children}</main>
+      <main className={`flex-1 ${padBottom ? "pb-20 lg:pb-0" : ""}`}>{children}</main>
       {!hideChrome && <Footer mode={mode} />}
       {showBottomNav && <BottomNav />}
     </div>
