@@ -273,12 +273,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [splashDone, setSplashDone] = useState(() => {
-    if (typeof window === "undefined") return true;
-    if (!shouldShowSplash()) return true;
-    const p = window.location.pathname;
-    return p !== "/" && p !== "";
-  });
+  const [splashDone, setSplashDone] = useState(false);
 
   useDeferredAdSense();
 
@@ -287,6 +282,12 @@ function RootComponent() {
   }, []);
 
   const showSplash = !splashDone && (pathname === "/" || pathname === "");
+
+  useEffect(() => {
+    if ((pathname === "/" || pathname === "") && !shouldShowSplash()) {
+      setSplashDone(true);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (!showSplash) {
