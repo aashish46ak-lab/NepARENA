@@ -1,48 +1,43 @@
-/**
- * Cool first-open onboarding (dark only).
- */
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ChevronRight, MessageCircle, User } from "lucide-react";
 
-const WELCOME_KEY = "neparena_welcome_v3";
+export const WELCOME_KEY = "neparena_welcome_v4";
 
 const SLIDES = [
   {
-    kicker: "01 · Arena",
-    title: "Your esports HQ",
-    text: "Live cups, results, and organizers — one place for every match that matters.",
-    glow: "rgba(56,189,248,0.35)",
-    ring: "from-sky-400/40 via-violet-500/20 to-transparent",
-    emoji: "🏟️",
+    title: "Home of competitive cups",
+    text: "Discover live and upcoming events from organizers across the NepARENA community.",
+    glow: "bg-red-500/20",
+    accent: "from-red-500/30 via-red-500/5 to-transparent",
   },
   {
-    kicker: "02 · Compete",
-    title: "Register. Play. Climb.",
-    text: "Join upcoming tournaments in a tap. Track fixtures the second they go live.",
-    glow: "rgba(248,113,113,0.3)",
-    ring: "from-red-400/35 via-orange-400/15 to-transparent",
-    emoji: "⚡",
+    title: "Register. Play. Standings.",
+    text: "Join cups, follow every fixture, and see standings update without the chaos of group chats.",
+    glow: "bg-sky-500/20",
+    accent: "from-sky-500/30 via-sky-500/5 to-transparent",
   },
   {
-    kicker: "03 · Connect",
-    title: "Orgs, DMs & feed",
-    text: "Follow organizers, chat with players, and never miss the next drop.",
-    glow: "rgba(52,211,153,0.28)",
-    ring: "from-emerald-400/30 via-sky-400/15 to-transparent",
-    emoji: "💬",
+    title: "Follow orgs & players",
+    text: "Keep up with organizer pages, player results, direct messages, and the community feed.",
+    glow: "bg-violet-500/20",
+    accent: "from-violet-500/30 via-violet-500/5 to-transparent",
+  },
+  {
+    title: "Ready when you are",
+    text: "Your next cup, rivalry, and result all have a home here.",
+    glow: "bg-red-500/20",
+    accent: "from-red-500/30 via-violet-500/10 to-transparent",
   },
 ] as const;
 
 export function isWelcomeDone(): boolean {
+  if (typeof window === "undefined") return false;
   try {
-    return (
-      localStorage.getItem(WELCOME_KEY) === "1" ||
-      localStorage.getItem("neparena_welcome_v2") === "1" ||
-      localStorage.getItem("neparena_welcome_v1") === "1"
-    );
+    return localStorage.getItem(WELCOME_KEY) === "1";
   } catch {
     return true;
   }
@@ -51,185 +46,107 @@ export function isWelcomeDone(): boolean {
 export function markWelcomeDone() {
   try {
     localStorage.setItem(WELCOME_KEY, "1");
-    localStorage.setItem("neparena_welcome_v2", "1");
-    localStorage.setItem("neparena_welcome_v1", "1");
   } catch {
-    /* ignore */
+    /* private mode */
   }
 }
 
-type Step = "slides" | "login" | "profile";
-
-export function WelcomeFlow({ enabled }: { enabled: boolean }) {
+export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: () => void }) {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>("slides");
   const [slide, setSlide] = useState(0);
 
   useEffect(() => {
     if (!enabled) return;
-    if (isWelcomeDone()) return;
-    const t = window.setTimeout(() => setOpen(true), 100);
-    return () => clearTimeout(t);
-  }, [enabled]);
+    if (isWelcomeDone()) {
+      onDone?.();
+      return;
+    }
+    setOpen(true);
+  }, [enabled, onDone]);
 
-  if (!open || !enabled) return null;
+  if (!enabled || !open) return null;
 
   const finish = () => {
     markWelcomeDone();
     setOpen(false);
+    onDone?.();
   };
-
-  const afterSlides = () => {
-    if (!user) setStep("login");
-    else setStep("profile");
-  };
-
-  const s = SLIDES[slide];
+  const current = SLIDES[slide];
+  const isLast = slide === SLIDES.length - 1;
 
   return (
-    <div className="fixed inset-0 z-[9990] flex flex-col overflow-hidden bg-[#07070a] text-white">
-      <div
-        className="pointer-events-none absolute -left-24 top-16 h-64 w-64 rounded-full blur-3xl"
-        style={{ background: s?.glow ?? "rgba(56,189,248,0.25)" }}
-      />
-      <div className="pointer-events-none absolute -right-20 bottom-32 h-56 w-56 rounded-full bg-violet-600/20 blur-3xl" />
+    <div
+      className="fixed inset-0 z-[9990] flex min-h-[100dvh] flex-col overflow-hidden bg-black text-white"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="welcome-title"
+    >
+      <div className={cn("pointer-events-none absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl transition-colors duration-500", current.glow)} />
 
-      <div className="relative flex flex-1 flex-col items-center justify-center px-6 pt-10">
-        {step === "slides" && (
-          <div key={slide} className="relative z-10 w-full max-w-sm">
-            <div
-              className={cn(
-                "relative mx-auto mb-8 flex h-44 w-full items-center justify-center overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-b",
-                s.ring,
-              )}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.03)",
-                boxShadow: `0 0 60px ${s.glow}`,
-              }}
-            >
-              <div
-                className="absolute inset-0 opacity-40"
-                style={{
-                  backgroundImage:
-                    "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.12), transparent 50%)",
-                }}
-              />
-              <span className="relative text-6xl drop-shadow-lg" aria-hidden>
-                {s.emoji}
-              </span>
-              <span className="absolute bottom-3 left-4 rounded-full border border-white/15 bg-black/40 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-neutral-300 backdrop-blur">
-                {s.kicker}
-              </span>
-            </div>
+      <header className="relative z-10 flex items-center justify-between px-5 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
+        <img src="/neparena-logo-ui.png" alt="NepARENA" width={80} height={80} className="h-14 w-14 object-contain" />
+        {slide > 0 && !isLast ? (
+          <button type="button" onClick={finish} className="text-sm font-medium text-neutral-400 transition hover:text-white">
+            Skip
+          </button>
+        ) : <span className="w-10" />}
+      </header>
 
-            <h2 className="text-center text-[1.65rem] font-bold leading-tight tracking-tight">
-              {s.title}
-            </h2>
-            <p className="mx-auto mt-3 max-w-[18rem] text-center text-[14px] leading-relaxed text-neutral-400">
-              {s.text}
-            </p>
-
-            <div className="mt-8 flex justify-center gap-2">
-              {SLIDES.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`Slide ${i + 1}`}
-                  onClick={() => setSlide(i)}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-300",
-                    i === slide ? "w-7 bg-white" : "w-1.5 bg-white/25",
-                  )}
-                />
-              ))}
-            </div>
+      <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-4 text-center">
+        <div key={slide} className="w-full max-w-md animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className={cn("mx-auto grid h-64 w-full max-w-xs place-items-center rounded-2xl border border-white/10 bg-gradient-to-b", current.accent)}>
+            <img src="/neparena-logo-ui.png" alt="" width={256} height={256} className="h-48 w-48 object-contain" />
           </div>
-        )}
-
-        {step === "login" && (
-          <div className="relative z-10 w-full max-w-sm text-center">
-            <div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-2xl border border-white/12 bg-white/[0.04] shadow-[0_0_40px_rgba(56,189,248,0.15)]">
-              <MessageCircle className="h-9 w-9 text-sky-300" strokeWidth={1.5} />
-            </div>
-            <h2 className="text-2xl font-bold">You’re almost in</h2>
-            <p className="mt-2 text-sm text-neutral-400">
-              Sign in to join cups, message orgs, and save your progress.
-            </p>
-            <Link
-              to="/auth"
-              onClick={finish}
-              className="mt-8 flex h-12 w-full items-center justify-center rounded-full bg-white text-sm font-semibold text-black transition active:scale-[0.98]"
-            >
-              Continue to login
-            </Link>
-            <button
-              type="button"
-              onClick={finish}
-              className="mt-3 text-sm text-neutral-500 underline-offset-2 hover:underline"
-            >
-              Skip for now
-            </button>
-          </div>
-        )}
-
-        {step === "profile" && (
-          <div className="relative z-10 w-full max-w-sm text-center">
-            <div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-2xl border border-white/12 bg-white/[0.04]">
-              <User className="h-9 w-9 text-emerald-300" strokeWidth={1.5} />
-            </div>
-            <h2 className="text-2xl font-bold">Setup your profile</h2>
-            <p className="mt-2 text-sm text-neutral-400">
-              Photo, name, country — so the arena knows who you are.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                finish();
-                if (user?.id) {
-                  void navigate({ to: "/members/$id", params: { id: user.id } });
-                }
-              }}
-              className="mt-8 flex h-12 w-full items-center justify-center rounded-full bg-white text-sm font-semibold text-black transition active:scale-[0.98]"
-            >
-              Open profile
-            </button>
-            <button
-              type="button"
-              onClick={finish}
-              className="mt-3 text-sm text-neutral-500 underline-offset-2 hover:underline"
-            >
-              Later
-            </button>
-          </div>
-        )}
-      </div>
-
-      {step === "slides" && (
-        <div className="relative z-10 px-6 pb-9 pt-2">
-          <div className="mx-auto flex max-w-sm gap-2">
-            <button
-              type="button"
-              onClick={finish}
-              className="h-12 flex-1 rounded-full border border-white/12 text-sm font-medium text-neutral-400 transition active:scale-[0.98]"
-            >
-              Skip
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (slide < SLIDES.length - 1) setSlide((x) => x + 1);
-                else afterSlides();
-              }}
-              className="flex h-12 flex-[1.5] items-center justify-center gap-1 rounded-full bg-white text-sm font-semibold text-black transition active:scale-[0.98]"
-            >
-              {slide < SLIDES.length - 1 ? "Next" : "Let’s go"}
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">{slide + 1} of 4</p>
+          <h2 id="welcome-title" className="mt-2 text-2xl font-bold sm:text-3xl">{current.title}</h2>
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-neutral-400 sm:text-base">{current.text}</p>
         </div>
-      )}
+      </main>
+
+      <footer className="relative z-10 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-8">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-5 flex justify-center gap-2" aria-label={`Slide ${slide + 1} of 4`}>
+            {SLIDES.map((item, index) => (
+              <button
+                key={item.title}
+                type="button"
+                aria-label={`Go to slide ${index + 1}`}
+                onClick={() => setSlide(index)}
+                className={cn("h-1.5 rounded-full transition-all duration-300", index === slide ? "w-8 bg-red-500" : "w-2 bg-white/20")}
+              />
+            ))}
+          </div>
+
+          {isLast ? (
+            <div className="space-y-2">
+              {user ? (
+                <Button className="h-12 w-full rounded-full" onClick={finish}>Go to home</Button>
+              ) : (
+                <>
+                  <Button asChild className="h-12 w-full rounded-full bg-red-600 text-white hover:bg-red-500">
+                    <Link to="/auth" onClick={finish}>Create free account</Link>
+                  </Button>
+                  <Button type="button" variant="ghost" className="h-11 w-full rounded-full text-neutral-300" onClick={finish}>
+                    Explore as guest
+                  </Button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              {slide > 0 && (
+                <Button type="button" variant="outline" className="h-12 w-12 rounded-full border-white/15" onClick={() => setSlide((value) => value - 1)} aria-label="Previous slide">
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <Button type="button" className="h-12 flex-1 rounded-full bg-white text-black hover:bg-neutral-200" onClick={() => setSlide((value) => value + 1)}>
+                Continue <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }
