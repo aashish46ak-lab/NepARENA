@@ -217,7 +217,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "canonical", href: SITE_URL },
-      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "64x64" },
       { rel: "icon", href: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
       { rel: "icon", href: "/icon-192.png", type: "image/png", sizes: "192x192" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
@@ -273,12 +273,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [splashDone, setSplashDone] = useState(() => {
-    if (typeof window === "undefined") return true;
-    if (!shouldShowSplash()) return true;
-    const p = window.location.pathname;
-    return p !== "/" && p !== "";
-  });
+  const [splashDone, setSplashDone] = useState(false);
 
   useDeferredAdSense();
 
@@ -287,6 +282,12 @@ function RootComponent() {
   }, []);
 
   const showSplash = !splashDone && (pathname === "/" || pathname === "");
+
+  useEffect(() => {
+    if ((pathname === "/" || pathname === "") && !shouldShowSplash()) {
+      setSplashDone(true);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (!showSplash) {
