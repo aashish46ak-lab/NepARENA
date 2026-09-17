@@ -36,12 +36,15 @@ export function GlobalSearchBar({ className }: { className?: string }) {
   const [q, setQ] = useState("");
 
   return (
-    <div className={cn("relative min-w-0 flex-1", className)}>
+    <div className={cn("relative min-w-0 flex-1", className)} data-search-root>
       <div
-        className="flex h-10 items-center gap-2 rounded-full border border-border bg-muted px-3 transition focus-within:border-ring focus-within:bg-card"
+        className={cn(
+          "flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 transition sm:h-11",
+          "focus-within:border-sky-500/50 focus-within:bg-white/[0.07] focus-within:ring-2 focus-within:ring-sky-500/20",
+        )}
         onClick={() => setOpen(true)}
       >
-        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <Search className="h-4 w-4 shrink-0 text-neutral-500" />
         <Input
           value={q}
           onChange={(e) => {
@@ -49,17 +52,18 @@ export function GlobalSearchBar({ className }: { className?: string }) {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Search players, organizers or tournaments..."
-          className="h-9 border-0 bg-transparent px-0 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+          placeholder="Search players, orgs, cups…"
+          className="h-9 border-0 bg-transparent px-0 text-sm text-white shadow-none placeholder:text-neutral-500 focus-visible:ring-0"
         />
         {q && (
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground"
+            className="rounded-full p-0.5 text-neutral-500 hover:bg-white/10 hover:text-white"
             onClick={(e) => {
               e.stopPropagation();
               setQ("");
             }}
+            aria-label="Clear"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -107,18 +111,18 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 px-3 pt-16 backdrop-blur-sm sm:pt-24">
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/60 px-3 pt-16 backdrop-blur-sm sm:pt-24">
+      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/12 bg-[#121214] text-white shadow-2xl">
+        <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
+          <Search className="h-4 w-4 text-neutral-500" />
           <Input
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search players, organizers or tournaments..."
-            className="border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+            placeholder="Search players, orgs, cups…"
+            className="border-0 bg-transparent text-white placeholder:text-neutral-500 focus-visible:ring-0"
           />
-          <button type="button" onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onClose} className="p-1 text-neutral-500 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -147,7 +151,7 @@ function SearchResults({
     };
     const onClick = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest?.("[data-search-panel]")) onClose();
+      if (!t.closest?.("[data-search-panel]") && !t.closest?.("[data-search-root]")) onClose();
     };
     window.addEventListener("keydown", onKey);
     const t = window.setTimeout(() => window.addEventListener("click", onClick), 0);
@@ -244,13 +248,13 @@ function SearchResults({
       data-search-panel
       className={cn(
         embedded
-          ? "absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-80 overflow-y-auto rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-2xl"
+          ? "absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-80 overflow-y-auto rounded-2xl border border-white/12 bg-[#121214] p-2 text-white shadow-2xl shadow-black/50"
           : "max-h-80 overflow-y-auto p-2",
       )}
     >
-      {loading && <p className="p-3 text-xs text-muted-foreground">Searching…</p>}
+      {loading && <p className="p-3 text-xs text-neutral-500">Searching…</p>}
       {!loading && q.trim() && hits.length === 0 && (
-        <p className="p-3 text-xs text-muted-foreground">No results</p>
+        <p className="p-3 text-xs text-neutral-500">No results for “{q.trim()}”</p>
       )}
       {hits.map((h) =>
         h.kind === "user" ? (
@@ -259,20 +263,20 @@ function SearchResults({
             to="/members/$id"
             params={{ id: h.id }}
             onClick={onClose}
-            className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted"
+            className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-white/5 active:bg-white/10"
           >
-            <Avatar className="h-9 w-9">
+            <Avatar className="h-9 w-9 ring-1 ring-white/10">
               <AvatarImage src={h.avatar ?? undefined} />
               <AvatarFallback>{h.title.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
+              <p className="flex items-center gap-1.5 truncate text-sm font-medium text-white">
                 {h.title}
                 <InlineStreak streak={h.streak} />
               </p>
-              <p className="truncate text-[11px] text-muted-foreground">{h.subtitle}</p>
+              <p className="truncate text-[11px] text-neutral-500">{h.subtitle}</p>
             </div>
-            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <User className="h-3.5 w-3.5 text-neutral-600" />
           </Link>
         ) : h.kind === "organizer" ? (
           <Link
@@ -280,17 +284,17 @@ function SearchResults({
             to="/o/$slug"
             params={{ slug: h.slug }}
             onClick={onClose}
-            className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted"
+            className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-white/5 active:bg-white/10"
           >
-            <Avatar className="h-9 w-9">
+            <Avatar className="h-9 w-9 ring-1 ring-white/10">
               <AvatarImage src={h.avatar ?? undefined} />
               <AvatarFallback>{h.title.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{h.title}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{h.subtitle || "Organizer"}</p>
+              <p className="truncate text-sm font-medium text-white">{h.title}</p>
+              <p className="truncate text-[11px] text-neutral-500">{h.subtitle || "Organizer"}</p>
             </div>
-            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <Building2 className="h-3.5 w-3.5 text-neutral-600" />
           </Link>
         ) : (
           <Link
@@ -298,16 +302,16 @@ function SearchResults({
             to="/tournaments/$id"
             params={{ id: h.id }}
             onClick={onClose}
-            className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted"
+            className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-white/5 active:bg-white/10"
           >
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-amber-500/15 text-amber-700">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-amber-500/15 text-amber-400">
               <Trophy className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{h.title}</p>
-              <p className="truncate text-[11px] capitalize text-muted-foreground">{h.subtitle}</p>
+              <p className="truncate text-sm font-medium text-white">{h.title}</p>
+              <p className="truncate text-[11px] capitalize text-neutral-500">{h.subtitle}</p>
             </div>
-            <Trophy className="h-3.5 w-3.5 text-muted-foreground" />
+            <Trophy className="h-3.5 w-3.5 text-neutral-600" />
           </Link>
         ),
       )}
