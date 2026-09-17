@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, Component, type ErrorInfo, type ReactNode } from "react";
+import { useCallback, useEffect, useState, Component, type ErrorInfo, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -16,9 +16,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
 import { WelcomeFlow } from "@/components/WelcomeFlow";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { CookieConsent } from "@/components/CookieConsent";
-import { OnboardingTour } from "@/components/OnboardingTour";
 import { registerPWA } from "@/lib/pwa-register";
 import {
   SITE_TITLE,
@@ -258,7 +258,7 @@ function RootShell({ children }: { children: ReactNode }) {
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var r=document.documentElement;r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';try{localStorage.setItem('neparena-theme','dark');}catch(_){}var k='neparena_splash_seen_v8';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
+            __html: `(function(){try{var r=document.documentElement;r.classList.add('dark');r.classList.remove('light');r.style.colorScheme='dark';try{localStorage.setItem('neparena-theme','dark');}catch(_){}var k='neparena_splash_seen_v9';if(!sessionStorage.getItem(k)&&location.pathname==='/'){r.classList.add('neparena-splash-pending');}}catch(e){}})();`,
           }}
         />
       </head>
@@ -274,6 +274,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [splashDone, setSplashDone] = useState(false);
+  const [welcomeDone, setWelcomeDone] = useState(false);
 
   useDeferredAdSense();
 
@@ -299,14 +300,17 @@ function RootComponent() {
     }
   }, [showSplash]);
 
-  const finishSplash = () => {
+  const finishSplash = useCallback(() => {
     setSplashDone(true);
     try {
       document.documentElement.classList.remove("neparena-splash-pending");
     } catch {
       /* ignore */
     }
-  };
+  }, []);
+
+  const finishWelcome = useCallback(() => setWelcomeDone(true), []);
+  const onHome = pathname === "/" || pathname === "";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -318,8 +322,8 @@ function RootComponent() {
           <div data-neparena-app style={{ visibility: showSplash ? "hidden" : "visible" }}>
             <RoleRedirect />
             <Outlet />
-            {!showSplash && <WelcomeFlow enabled />}
-            {!showSplash && <OnboardingTour />}
+            <WelcomeFlow enabled={!showSplash && onHome} onDone={finishWelcome} />
+            <InstallPrompt enabled={!showSplash && welcomeDone && onHome} />
           </div>
           <Toaster richColors position="top-right" />
         </ClientErrorBoundary>

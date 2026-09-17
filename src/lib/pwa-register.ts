@@ -17,7 +17,9 @@ export function onInstallPromptChange(
 ) {
   listeners.add(cb);
   cb(deferredPrompt);
-  return () => listeners.delete(cb);
+  return () => {
+    listeners.delete(cb);
+  };
 }
 
 function setDeferred(e: BeforeInstallPromptEvent | null) {

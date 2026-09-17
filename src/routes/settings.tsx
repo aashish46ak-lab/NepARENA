@@ -8,7 +8,7 @@ import { PlatformTopBar } from "@/components/PlatformTopBar";
 import { useAuth } from "@/hooks/useAuth";
 import { buildSeoHead } from "@/lib/seo";
 import { ArrowLeft, User, LogOut, Sparkles } from "lucide-react";
-import { requestOnboardingReplay, resetOnboarding } from "@/components/OnboardingTour";
+import { WELCOME_KEY } from "@/components/WelcomeFlow";
 import {
   listSavedAccounts,
   removeSavedAccount,
@@ -145,20 +145,19 @@ function SettingsPage() {
         <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <h2 className="text-sm font-semibold text-white">Help</h2>
           <p className="mt-1 text-xs text-neutral-500">
-            Replay Arena Quest — tap glowing spots to collect stamps and rediscover Feed, Organizers, Cups, and Messages.
+            Replay the NepARENA welcome to revisit the platform overview.
           </p>
           <button
             type="button"
             className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-neutral-200 transition hover:border-sky-400/40 hover:bg-sky-500/10"
             onClick={() => {
-              resetOnboarding(user?.id);
-              requestOnboardingReplay();
-              toast.success("Starting Arena Quest…");
+              localStorage.removeItem(WELCOME_KEY);
+              toast.success("Starting the welcome…");
               window.location.href = "/";
             }}
           >
             <Sparkles className="h-3.5 w-3.5 text-sky-400" />
-            Replay Arena Quest
+            Replay welcome
           </button>
         </section>
       </div>

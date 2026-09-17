@@ -72,7 +72,7 @@ export function InstallTopButton({ className }: { className?: string }) {
             <div className="flex items-start justify-between gap-3 p-5">
               <div className="flex gap-3">
                 <img
-                  src="/neparena-logo.png"
+                  src="/neparena-logo-ui.png"
                   alt=""
                   className="h-14 w-14 rounded-2xl object-contain bg-black p-1.5 ring-1 ring-white/20"
                   onError={(e) => {
