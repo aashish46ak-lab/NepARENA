@@ -86,11 +86,13 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
 
       <header className="relative z-10 flex items-center justify-between px-5 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
         <img src="/neparena-logo-ui.png" alt="NepARENA" width={80} height={80} className="h-14 w-14 object-contain" />
-        {slide > 0 && !isLast ? (
-          <button type="button" onClick={finish} className="text-sm font-medium text-neutral-400 transition hover:text-white">
-            Skip
-          </button>
-        ) : <span className="w-10" />}
+        <button
+          type="button"
+          onClick={finish}
+          className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 active:scale-95"
+        >
+          Skip
+        </button>
       </header>
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-4 text-center">
@@ -104,9 +106,9 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
         </div>
       </main>
 
-      <footer className="relative z-10 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-8">
+      <footer className="relative z-10 shrink-0 border-t border-white/10 bg-black/95 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 sm:px-8">
         <div className="mx-auto w-full max-w-md">
-          <div className="mb-5 flex justify-center gap-2" aria-label={`Slide ${slide + 1} of 4`}>
+          <div className="mb-4 flex justify-center gap-2" aria-label={`Slide ${slide + 1} of 4`}>
             {SLIDES.map((item, index) => (
               <button
                 key={item.title}
