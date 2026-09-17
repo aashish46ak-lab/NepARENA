@@ -78,7 +78,11 @@ export function PageShell({
       }
     >
       {!hideChrome && <Header mode={mode} />}
-      <main className={`flex-1 ${padBottom ? "pb-20 lg:pb-0" : ""}`}>{children}</main>
+      <main
+        className={`flex-1 ${padBottom ? "pb-20 sm:pb-24 lg:pb-6" : ""}`}
+      >
+        {children}
+      </main>
       {!hideChrome && <Footer mode={mode} />}
       {showBottomNav && <BottomNav />}
     </div>
