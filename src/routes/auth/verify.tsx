@@ -269,9 +269,9 @@ function VerifyPage() {
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 flex flex-col items-center gap-3">
           <img
-            src="/neparena-logo.png"
+            src="/neparena-logo-ui.png"
             alt="NepARENA logo"
-            className="h-20 w-20 rounded-2xl object-cover shadow-lg ring-1 ring-white/15"
+            className="h-28 w-28 object-contain"
             onError={(e) => {
               e.currentTarget.src = "/pwa-192x192.png";
             }}

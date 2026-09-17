@@ -63,7 +63,7 @@ export function PlatformTopBar({ onCreatePost, className, showLogo, pageTitle }:
               <>
                 <Link to="/" className="flex items-center gap-2">
                   <img
-                    src="/neparena-logo.png"
+                    src="/neparena-logo-ui.png"
                     alt=""
                     className="h-8 w-8 rounded-xl object-contain shadow-sm ring-1 ring-border"
                     onError={(e) => {
