@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const WELCOME_KEY = "neparena_welcome_v4";
@@ -11,26 +10,22 @@ const SLIDES = [
   {
     title: "Home of competitive cups",
     text: "Discover live and upcoming events from organizers across the NepARENA community.",
-    glow: "bg-red-500/20",
-    accent: "from-red-500/30 via-red-500/5 to-transparent",
+    glow: "bg-red-500/25",
   },
   {
     title: "Register. Play. Standings.",
-    text: "Join cups, follow every fixture, and see standings update without the chaos of group chats.",
-    glow: "bg-sky-500/20",
-    accent: "from-sky-500/30 via-sky-500/5 to-transparent",
+    text: "Join cups, follow every fixture, and see standings update without group-chat chaos.",
+    glow: "bg-sky-500/25",
   },
   {
     title: "Follow orgs & players",
-    text: "Keep up with organizer pages, player results, direct messages, and the community feed.",
-    glow: "bg-violet-500/20",
-    accent: "from-violet-500/30 via-violet-500/5 to-transparent",
+    text: "Organizer pages, player results, direct messages, and the community feed.",
+    glow: "bg-violet-500/25",
   },
   {
     title: "Ready when you are",
-    text: "Your next cup, rivalry, and result all have a home here.",
-    glow: "bg-red-500/20",
-    accent: "from-red-500/30 via-violet-500/10 to-transparent",
+    text: "Create a free account to join events, or explore as a guest anytime.",
+    glow: "bg-emerald-500/20",
   },
 ] as const;
 
@@ -72,83 +67,149 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
     setOpen(false);
     onDone?.();
   };
-  const current = SLIDES[slide];
+
+  const current = SLIDES[slide]!;
   const isLast = slide === SLIDES.length - 1;
+  const isFirst = slide === 0;
 
   return (
     <div
-      className="fixed inset-0 z-[9990] flex min-h-[100dvh] flex-col overflow-hidden bg-black text-white"
+      className="fixed inset-0 z-[9990] bg-black text-white"
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-title"
     >
-      <div className={cn("pointer-events-none absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl transition-colors duration-500", current.glow)} />
+      <div
+        className={cn(
+          "pointer-events-none absolute left-1/2 top-[30%] h-64 w-64 -translate-x-1/2 rounded-full blur-3xl",
+          current.glow,
+        )}
+      />
 
-      <header className="relative z-10 flex items-center justify-between px-5 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
-        <img src="/neparena-logo-ui.png" alt="NepARENA" width={80} height={80} className="h-14 w-14 object-contain" />
+      {/* Skip always top-right */}
+      <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <img
+          src="/neparena-logo-ui.png"
+          alt="NepARENA"
+          width={44}
+          height={44}
+          className="h-11 w-11 object-contain"
+          onError={(e) => {
+            e.currentTarget.src = "/icon-192.png";
+          }}
+        />
         <button
           type="button"
           onClick={finish}
-          className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 active:scale-95"
+          className="rounded-full border border-white/25 bg-black/60 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm hover:bg-white/10"
         >
           Skip
         </button>
-      </header>
+      </div>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-4 text-center">
-        <div key={slide} className="w-full max-w-md animate-in fade-in slide-in-from-right-4 duration-300">
-          <div className={cn("mx-auto grid h-64 w-full max-w-xs place-items-center rounded-2xl border border-white/10 bg-gradient-to-b", current.accent)}>
-            <img src="/neparena-logo-ui.png" alt="" width={256} height={256} className="h-48 w-48 object-contain" />
+      {/* Center content — smaller logo so footer never clips */}
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 pb-28 pt-16 text-center">
+        <div key={slide} className="w-full max-w-sm">
+          <div className="mx-auto grid h-36 w-36 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] sm:h-44 sm:w-44">
+            <img
+              src="/neparena-logo-ui.png"
+              alt=""
+              width={160}
+              height={160}
+              className="h-28 w-28 object-contain sm:h-36 sm:w-36"
+              onError={(e) => {
+                e.currentTarget.src = "/icon-192.png";
+              }}
+            />
           </div>
-          <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">{slide + 1} of 4</p>
-          <h2 id="welcome-title" className="mt-2 text-2xl font-bold sm:text-3xl">{current.title}</h2>
-          <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-neutral-400 sm:text-base">{current.text}</p>
+          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-500">
+            {slide + 1} of {SLIDES.length}
+          </p>
+          <h2 id="welcome-title" className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
+            {current.title}
+          </h2>
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-neutral-400">
+            {current.text}
+          </p>
         </div>
-      </main>
+      </div>
 
-      <footer className="relative z-10 shrink-0 border-t border-white/10 bg-black/95 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 sm:px-8">
-        <div className="mx-auto w-full max-w-md">
-          <div className="mb-4 flex justify-center gap-2" aria-label={`Slide ${slide + 1} of 4`}>
-            {SLIDES.map((item, index) => (
+      {/* Continue always pinned to bottom */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-black/95 px-4 pt-3 backdrop-blur-md"
+        style={{
+          paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+        }}
+      >
+        <div className="mx-auto w-full max-w-md space-y-3">
+          <div className="flex justify-center gap-2">
+            {SLIDES.map((_, i) => (
               <button
-                key={item.title}
+                key={i}
                 type="button"
-                aria-label={`Go to slide ${index + 1}`}
-                onClick={() => setSlide(index)}
-                className={cn("h-1.5 rounded-full transition-all duration-300", index === slide ? "w-8 bg-red-500" : "w-2 bg-white/20")}
+                aria-label={`Slide ${i + 1}`}
+                onClick={() => setSlide(i)}
+                className={cn(
+                  "h-2 rounded-full transition-all",
+                  i === slide ? "w-8 bg-red-500" : "w-2 bg-white/25",
+                )}
               />
             ))}
           </div>
 
           {isLast ? (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               {user ? (
-                <Button className="h-12 w-full rounded-full" onClick={finish}>Go to home</Button>
+                <button
+                  type="button"
+                  onClick={finish}
+                  className="flex h-14 w-full items-center justify-center rounded-full bg-white text-base font-bold text-black"
+                >
+                  Go to home
+                </button>
               ) : (
                 <>
-                  <Button asChild className="h-12 w-full rounded-full bg-red-600 text-white hover:bg-red-500">
-                    <Link to="/auth" onClick={finish}>Create free account</Link>
-                  </Button>
-                  <Button type="button" variant="ghost" className="h-11 w-full rounded-full text-neutral-300" onClick={finish}>
+                  <Link
+                    to="/auth"
+                    onClick={finish}
+                    className="flex h-14 w-full items-center justify-center rounded-full bg-red-600 text-base font-bold text-white"
+                  >
+                    Create free account
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={finish}
+                    className="flex h-12 w-full items-center justify-center rounded-full border border-white/20 text-sm font-semibold text-neutral-200"
+                  >
                     Explore as guest
-                  </Button>
+                  </button>
                 </>
               )}
             </div>
           ) : (
             <div className="flex gap-2">
-              {slide > 0 && (
-                <Button type="button" variant="outline" className="h-12 w-12 rounded-full border-white/15" onClick={() => setSlide((value) => value - 1)} aria-label="Previous slide">
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
+              {!isFirst && (
+                <button
+                  type="button"
+                  onClick={() => setSlide((s) => Math.max(0, s - 1))}
+                  aria-label="Back"
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
               )}
-              <Button type="button" className="h-12 flex-1 rounded-full bg-white text-black hover:bg-neutral-200" onClick={() => setSlide((value) => value + 1)}>
-                Continue <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
+              <button
+                type="button"
+                onClick={() => setSlide((s) => Math.min(SLIDES.length - 1, s + 1))}
+                className="flex h-14 flex-1 items-center justify-center gap-1 rounded-full bg-white text-base font-bold text-black"
+              >
+                Continue
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
           )}
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
