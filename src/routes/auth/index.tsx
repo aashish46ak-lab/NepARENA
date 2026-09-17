@@ -112,6 +112,13 @@ function AuthPage() {
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-12">
       <div className="mb-8 text-center">
+        <img
+          src="/neparena-logo-ui.png"
+          alt="NepARENA"
+          width={256}
+          height={256}
+          className="mx-auto mb-5 h-36 w-36 object-contain"
+        />
         <h1 className="text-2xl font-bold text-white">{mode === "login" ? "Welcome back" : "Create account"}</h1>
         <p className="mt-1 text-sm text-neutral-400">NepARENA — multi-organizer esports</p>
       </div>

@@ -11,7 +11,10 @@ export function InstallPrompt({ enabled }: { enabled: boolean }) {
   const [isIOS, setIsIOS] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => onInstallPromptChange(setDeferred), []);
+  useEffect(() => {
+    const unsubscribe = onInstallPromptChange(setDeferred);
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
