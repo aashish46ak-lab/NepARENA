@@ -15,7 +15,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 import { RoleRedirect } from "@/components/RoleRedirect";
 import { SplashScreen, shouldShowSplash } from "@/components/SplashScreen";
-import { WelcomeFlow } from "@/components/WelcomeFlow";
+import { WelcomeFlow, isWelcomeDone } from "@/components/WelcomeFlow";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { CookieConsent } from "@/components/CookieConsent";
@@ -274,12 +274,23 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [splashDone, setSplashDone] = useState(false);
-  const [welcomeDone, setWelcomeDone] = useState(false);
+  const [welcomeDone, setWelcomeDone] = useState(() => {
+    try {
+      return isWelcomeDone();
+    } catch {
+      return false;
+    }
+  });
 
   useDeferredAdSense();
 
   useEffect(() => {
     void registerPWA();
+  }, []);
+
+  // Keep welcomeDone in sync if already completed in a previous session
+  useEffect(() => {
+    if (isWelcomeDone()) setWelcomeDone(true);
   }, []);
 
   const showSplash = !splashDone && (pathname === "/" || pathname === "");
