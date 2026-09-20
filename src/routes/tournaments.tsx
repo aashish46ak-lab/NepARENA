@@ -3,7 +3,6 @@ import {
   Link,
   Outlet,
   useMatchRoute,
-  useNavigate,
 } from "@tanstack/react-router";
 import { buildSeoHead } from "@/lib/seo";
 import { useEffect, useState } from "react";
@@ -29,10 +28,12 @@ import { TournamentGridSkeleton } from "@/components/PageSkeletons";
 export const Route = createFileRoute("/tournaments")({
   head: () => ({
     ...buildSeoHead({
-      title: "Tournaments",
+      title: "Live & Upcoming Esports Tournaments",
       description:
-        "Browse upcoming, ongoing, and completed esports tournaments on NepARENA.",
+        "Browse live, upcoming, and completed eFootball and esports tournaments on NepARENA. Register online, follow brackets, and track standings.",
       path: "/tournaments",
+      keywords:
+        "efootball tournament, online tournament registration, live brackets, tournament standings, NepARENA tournaments, host tournament",
     }),
   }),
   component: TournamentsLayout,
@@ -73,7 +74,7 @@ function TournamentsList() {
       <OrganizerSubnav title="Tournaments" />
       <div className="mx-auto max-w-3xl px-4 pb-24 pt-2">
         <h1 className="text-2xl font-bold text-white">Tournaments</h1>
-        <p className="mt-1 text-sm text-neutral-400">Live, upcoming, and completed events.</p>
+        <p className="mt-1 text-sm text-neutral-400">Live, upcoming, and completed events on NepARENA.</p>
 
         <div className="mt-4 flex gap-1.5 overflow-x-auto scrollbar-none">
           {(
