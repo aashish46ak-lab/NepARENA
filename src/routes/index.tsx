@@ -3,16 +3,16 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { PlatformHomePage } from "@/components/PlatformHomePage";
-import { buildSeoHead } from "@/lib/seo";
-import { PLATFORM_NAME } from "@/lib/organizers";
+import { buildSeoHead, SITE_DESCRIPTION, SITE_KEYWORDS } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     ...buildSeoHead({
-      title: `${PLATFORM_NAME} — Esports Platform`,
-      description:
-        "NepARENA — multi-organizer esports platform. Feed, tournaments, games, and community.",
+      title:
+        "NepARENA – Online Tournament Hosting for eFootball & Esports",
+      description: SITE_DESCRIPTION,
       path: "/",
+      keywords: SITE_KEYWORDS,
     }),
   }),
   component: PlatformHomePage,

@@ -1,7 +1,5 @@
 /**
  * Organizers directory
- * Search | Become (or View Status if applied) — premium styling
- * Sort: followed first, then highest followers
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -21,15 +19,16 @@ import { supabase } from "@/lib/supabase";
 import { Building2, Search, Star, FileText } from "lucide-react";
 import { buildSeoHead } from "@/lib/seo";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/organizers")({
   head: () => ({
     ...buildSeoHead({
-      title: "Organizers",
+      title: "Esports Organizers & Tournament Hosts",
       description:
-        "Browse verified tournament organizers on NepARENA — a multi-organizer esports platform for competitors worldwide.",
+        "Browse tournament organizers on NepARENA. Find eFootball and esports hosts, follow communities, and join cups with live brackets and standings.",
       path: "/organizers",
+      keywords:
+        "esports organizers, tournament hosts, efootball organizers, NepARENA organizers, host tournament online",
     }),
   }),
   component: OrganizersPage,

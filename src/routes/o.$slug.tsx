@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { buildSeoHead } from "@/lib/seo";
+import {
+  absUrl,
+  buildSeoHead,
+  entityKeywords,
+  organizerJsonLd,
+} from "@/lib/seo";
 import { OrganizerPublicPage } from "@/components/OrganizerPublicPage";
 import { supabase } from "@/lib/supabase";
 
@@ -10,32 +15,58 @@ export const Route = createFileRoute("/o/$slug")({
       .select("name, slug, logo_url, bio, description, tagline")
       .eq("slug", params.slug)
       .maybeSingle();
-    return { organizer: data as {
-      name?: string;
-      slug?: string;
-      logo_url?: string | null;
-      bio?: string | null;
-      description?: string | null;
-      tagline?: string | null;
-    } | null };
+    return {
+      organizer: data as {
+        name?: string;
+        slug?: string;
+        logo_url?: string | null;
+        bio?: string | null;
+        description?: string | null;
+        tagline?: string | null;
+      } | null,
+    };
   },
   head: ({ params, loaderData }) => {
     const o = loaderData?.organizer;
-    const name = o?.name || params.slug;
-    const desc =
+    const name = (o?.name || params.slug || "Organizer").trim();
+    const slug = o?.slug || params.slug;
+    const path = `/o/${params.slug}`;
+    const desc = String(
       o?.tagline ||
-      o?.bio ||
-      o?.description ||
-      `${name} — esports organizer on NepARENA. Follow for tournaments, results, and community.`;
+        o?.bio ||
+        o?.description ||
+        `${name} — esports tournament organizer on NepARENA. Follow for live cups, results, standings, and community updates.`,
+    ).slice(0, 200);
     const image = o?.logo_url || null;
+    const seo = buildSeoHead({
+      // brandTitle → "1234 · NepARENA"
+      title: `${name} | Esports Organizer`,
+      description: desc,
+      path,
+      image,
+      type: "profile",
+      keywords: entityKeywords(name, [
+        slug,
+        "organizer",
+        "tournament host",
+        "efootball organizer",
+        `${name} NepARENA`,
+      ]),
+    });
     return {
-      ...buildSeoHead({
-        title: `${name}`,
-        description: String(desc).slice(0, 200),
-        path: `/o/${params.slug}`,
-        image,
-        type: "profile",
-      }),
+      ...seo,
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: organizerJsonLd({
+            name,
+            url: absUrl(path),
+            description: desc,
+            logo: image,
+            slug,
+          }),
+        },
+      ],
     };
   },
   component: OrganizerPublicPage,
