@@ -1,6 +1,5 @@
 /**
- * Top-sheet create-post modal — levitates to top, blurred backdrop, click outside closes.
- * Supports photos + video with sound.
+ * Create post — resilient insert (works even if optional columns missing).
  */
 import { useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,32 +46,82 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
 
   const createPost = async () => {
     if (!user || posting || (!body.trim() && !images.length && !video)) return;
-    const clean = assertCleanText(body);
-    if (!clean.ok) {
-      toast.error(clean.error);
-      return;
+    if (body.trim()) {
+      const clean = assertCleanText(body);
+      if (!clean.ok) {
+        toast.error(clean.error);
+        return;
+      }
     }
     setPosting(true);
     try {
       const urls: string[] = [];
-      for (const f of images) urls.push(await uploadPublicImage(f, "posts"));
+      for (const f of images) {
+        try {
+          urls.push(await uploadPublicImage(f, "posts"));
+        } catch (upErr) {
+          throw new Error(
+            upErr instanceof Error
+              ? `Image upload failed: ${upErr.message}`
+              : "Image upload failed",
+          );
+        }
+      }
       let videoUrl: string | null = null;
       if (video) {
-        videoUrl = await uploadPublicImage(video, "posts");
+        try {
+          videoUrl = await uploadPublicImage(video, "posts");
+        } catch (upErr) {
+          throw new Error(
+            upErr instanceof Error
+              ? `Video upload failed: ${upErr.message}`
+              : "Video upload failed",
+          );
+        }
       }
-      const { error } = await supabase.from("posts").insert({
-        author_id: user.id,
-        body: body.trim() || null,
-        image_url: urls[0] ?? null,
-        image_urls: urls,
-        video_url: videoUrl,
-      });
-      if (error) throw error;
-      toast.success("Posted");
-      onPosted?.();
-      close();
+
+      // Prefer full payload; fall back if columns missing in DB
+      const attempts: Record<string, unknown>[] = [
+        {
+          author_id: user.id,
+          body: body.trim() || null,
+          image_url: urls[0] ?? null,
+          image_urls: urls.length ? urls : [],
+          ...(videoUrl ? { video_url: videoUrl } : {}),
+        },
+        {
+          author_id: user.id,
+          body: body.trim() || null,
+          image_url: urls[0] ?? videoUrl ?? null,
+          image_urls: urls.length ? urls : [],
+        },
+        {
+          author_id: user.id,
+          body: body.trim() || (videoUrl ? "🎥 Video" : null),
+          image_url: urls[0] ?? videoUrl ?? null,
+        },
+      ];
+
+      let lastError: Error | null = null;
+      for (const row of attempts) {
+        const { error } = await supabase.from("posts").insert(row);
+        if (!error) {
+          toast.success("Posted");
+          onPosted?.();
+          close();
+          return;
+        }
+        lastError = new Error(error.message);
+        // Column missing → try next leaner payload
+        if (!/column|schema|video_url|image_urls/i.test(error.message)) {
+          break;
+        }
+      }
+      throw lastError ?? new Error("Could not create post");
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      const msg = e instanceof Error ? e.message : "Failed to post";
+      toast.error(msg);
+      console.warn("createPost", e);
     } finally {
       setPosting(false);
     }
@@ -99,7 +148,12 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
       >
         <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
           <DialogTitle className="text-base font-semibold text-white">Create post</DialogTitle>
-          <button type="button" onClick={close} className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-90" aria-label="Close">
+          <button
+            type="button"
+            onClick={close}
+            className="grid h-8 w-8 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-90"
+            aria-label="Close"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -183,14 +237,27 @@ export function CreatePostModal({ open, onOpenChange, onPosted }: Props) {
                   setVideoPreview(URL.createObjectURL(f));
                 }}
               />
-              <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8"
+              >
                 <ImagePlus className="h-4 w-4 text-sky-400" /> Photo
               </button>
-              <button type="button" onClick={() => videoRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8">
+              <button
+                type="button"
+                onClick={() => videoRef.current?.click()}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-white/8"
+              >
                 <Video className="h-4 w-4 text-violet-400" /> Video
               </button>
             </div>
-            <Button size="sm" disabled={posting || (!body.trim() && !images.length && !video)} onClick={() => void createPost()} className="rounded-full bg-sky-500 px-5 text-white hover:bg-sky-400">
+            <Button
+              size="sm"
+              disabled={posting || (!body.trim() && !images.length && !video)}
+              onClick={() => void createPost()}
+              className="rounded-full bg-sky-500 px-5 text-white hover:bg-sky-400"
+            >
               {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
               Post
             </Button>

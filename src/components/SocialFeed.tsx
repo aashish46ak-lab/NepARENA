@@ -34,7 +34,6 @@ const PAGE = 15;
 export function SocialFeed({
   authorId,
   mode = "for_you",
-  hideComposer = false,
   organizerId,
   organizerMeta,
   filterQuery,
@@ -61,6 +60,7 @@ export function SocialFeed({
   const [more, setMore] = useState(false);
   const [cursor, setCursor] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     onPostsChange?.(posts.length);
@@ -80,23 +80,41 @@ export function SocialFeed({
           return;
         }
       }
-      let q = supabase
-        .from("posts")
-        .select("id, author_id, body, image_url, image_urls, pinned, created_at, organizer_id")
-        .order("pinned", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(PAGE);
-      if (authorId) q = q.eq("author_id", authorId);
-      if (organizerId) q = q.eq("organizer_id", organizerId);
-      if (mode === "following" && followingIds.length) q = q.in("author_id", followingIds);
-      if (!reset && cursor) q = q.lt("created_at", cursor);
-      const { data, error } = await q;
-      if (error) {
-        console.warn(error.message);
-        setLoading(false);
-        return;
+      // Prefer richer select; fall back if columns missing
+      let rows: any[] = [];
+      {
+        let q = supabase
+          .from("posts")
+          .select("id, author_id, body, image_url, image_urls, pinned, created_at, organizer_id")
+          .order("pinned", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(PAGE);
+        if (authorId) q = q.eq("author_id", authorId);
+        if (organizerId) q = q.eq("organizer_id", organizerId);
+        if (mode === "following" && followingIds.length) q = q.in("author_id", followingIds);
+        if (!reset && cursor) q = q.lt("created_at", cursor);
+        const { data, error } = await q;
+        if (error && /image_urls|column/i.test(error.message)) {
+          let q2 = supabase
+            .from("posts")
+            .select("id, author_id, body, image_url, pinned, created_at, organizer_id")
+            .order("created_at", { ascending: false })
+            .limit(PAGE);
+          if (authorId) q2 = q2.eq("author_id", authorId);
+          if (organizerId) q2 = q2.eq("organizer_id", organizerId);
+          if (mode === "following" && followingIds.length) q2 = q2.in("author_id", followingIds);
+          if (!reset && cursor) q2 = q2.lt("created_at", cursor);
+          const r2 = await q2;
+          rows = (r2.data ?? []) as any[];
+        } else if (error) {
+          console.warn(error.message);
+          setLoading(false);
+          return;
+        } else {
+          rows = (data ?? []) as any[];
+        }
       }
-      let rows = ((data ?? []) as any[]).filter(
+      rows = rows.filter(
         (r) => !String(r.body ?? "").trim().toLowerCase().startsWith("[gallery]"),
       );
       const authorIds = [...new Set(rows.map((r) => r.author_id as string))];
@@ -176,19 +194,42 @@ export function SocialFeed({
       toast.error("Not allowed");
       return;
     }
-    const msg = isPlatformAdmin && !isPostOwner
-      ? "Delete this post as platform admin?"
-      : "Delete your post?";
+    const msg =
+      isPlatformAdmin && !isPostOwner
+        ? "Delete this post as platform admin?"
+        : "Delete your post?";
     if (!confirm(msg)) return;
-    await supabase.from("post_likes").delete().eq("post_id", p.id);
-    await supabase.from("post_comments").delete().eq("post_id", p.id);
-    const { error } = await supabase.from("posts").delete().eq("id", p.id);
-    if (error) {
-      toast.error(error.message || "Could not delete (check RLS policy for admins)");
-      return;
+    setDeletingId(p.id);
+    try {
+      // FK CASCADE removes likes/comments — do not delete them first (RLS blocks others' rows)
+      let { error } = await supabase.from("posts").delete().eq("id", p.id);
+      if (error && isPlatformAdmin) {
+        // Try RPC if present
+        const rpc = await supabase.rpc("admin_delete_post", { p_post_id: p.id });
+        error = rpc.error;
+      }
+      if (error) {
+        // Soft-hide fallback for owner
+        if (isPostOwner) {
+          const { error: upErr } = await supabase
+            .from("posts")
+            .update({ body: "[deleted]", image_url: null, image_urls: [] } as never)
+            .eq("id", p.id)
+            .eq("author_id", user.id);
+          if (!upErr) {
+            setPosts((prev) => prev.filter((x) => x.id !== p.id));
+            toast.success("Post removed");
+            return;
+          }
+        }
+        toast.error(error.message || "Could not delete — run posts RLS SQL in Supabase");
+        return;
+      }
+      setPosts((prev) => prev.filter((x) => x.id !== p.id));
+      toast.success(isPlatformAdmin && !isPostOwner ? "Post removed by admin" : "Post deleted");
+    } finally {
+      setDeletingId(null);
     }
-    setPosts((prev) => prev.filter((x) => x.id !== p.id));
-    toast.success(isPlatformAdmin && !isPostOwner ? "Post removed by admin" : "Post deleted");
   };
 
   const q = (filterQuery ?? "").trim().toLowerCase();
@@ -221,7 +262,7 @@ export function SocialFeed({
                   {p.author_verified && <BadgeCheck className="h-3.5 w-3.5 text-sky-400" />}
                   <span className="text-[11px] text-neutral-500">{new Date(p.created_at).toLocaleString()}</span>
                 </div>
-                {p.body && (
+                {p.body && p.body !== "[deleted]" && (
                   <Link to="/posts/$id" params={{ id: p.id }} className="mt-1 block whitespace-pre-wrap break-words text-sm text-neutral-200 hover:opacity-90">
                     {p.body}
                   </Link>
@@ -266,11 +307,12 @@ export function SocialFeed({
                   {canDelete && (
                     <button
                       type="button"
+                      disabled={deletingId === p.id}
                       onClick={(e) => {
                         e.stopPropagation();
                         void deletePost(p);
                       }}
-                      className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-neutral-500 hover:bg-rose-500/10 hover:text-rose-300"
+                      className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-neutral-500 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-50"
                       title={isPlatformAdmin && p.author_id !== user?.id ? "Admin delete" : "Delete post"}
                     >
                       {isPlatformAdmin && p.author_id !== user?.id ? (
@@ -278,7 +320,7 @@ export function SocialFeed({
                       ) : (
                         <Trash2 className="h-3.5 w-3.5" />
                       )}
-                      {isPlatformAdmin && p.author_id !== user?.id ? "Remove" : "Delete"}
+                      {deletingId === p.id ? "…" : isPlatformAdmin && p.author_id !== user?.id ? "Remove" : "Delete"}
                     </button>
                   )}
                 </div>
