@@ -1,5 +1,5 @@
 /**
- * Liquid bottom nav — theme-aware (CSS vars), lag-free index-based slide.
+ * Liquid bottom nav — GPU-friendly transforms, reduced-motion safe.
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Building2, MessageCircle, Gamepad2, User } from "lucide-react";
@@ -43,7 +43,7 @@ const BAR_H = 72;
 const CIRCLE = 62;
 const ICON_LIFT = 38;
 const EASE = "cubic-bezier(0.34, 1.2, 0.64, 1)";
-const DURATION = "0.48s";
+const DURATION = "0.42s";
 
 function resolveActiveIndex(pathname: string): number {
   const idx = TABS.findIndex((t) => t.match(pathname));
@@ -71,7 +71,7 @@ function LiquidNavBar({
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute z-[1]"
+        className="pointer-events-none absolute z-[1] will-change-[left]"
         style={{
           width: CIRCLE,
           height: CIRCLE,
@@ -144,7 +144,7 @@ function LiquidNavBar({
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
             <span
-              className="absolute left-1/2 flex items-center justify-center"
+              className="absolute left-1/2 flex items-center justify-center will-change-transform"
               style={{
                 width: 28,
                 height: 28,
@@ -192,7 +192,6 @@ function LiquidNavBar({
   );
 }
 
-/** Desktop / large screens: floating vertical left sidebar with the same tabs. */
 function SideNavBar({
   pathname,
   userId,
@@ -208,7 +207,7 @@ function SideNavBar({
     <nav
       aria-label="Main"
       data-onboard="bottom-nav"
-      className="fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 lg:block"
+      className="fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 lg:block na-fade-in"
     >
       <div
         className="flex flex-col items-center gap-1 rounded-[22px] p-1.5 ring-1 ring-black/10"
@@ -245,7 +244,7 @@ function SideNavBar({
               key={tab.label}
               {...(href as { to: string; params?: { id: string } })}
               data-onboard={onboard}
-              className="relative flex w-16 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5"
+              className="relative flex w-16 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 transition-transform active:scale-95"
               style={{
                 WebkitTapHighlightColor: "transparent",
                 background: active ? "var(--bnav-circle)" : "transparent",
@@ -399,48 +398,48 @@ export function BottomNav() {
             bottomPad,
           )}
         >
-        {islandOpen && (
-          <button
-            type="button"
-            className="pointer-events-auto fixed inset-0 z-40 bg-black/35 backdrop-blur-[3px] animate-in fade-in duration-200"
-            aria-label="Close navigation"
-            onClick={() => setIslandOpen(false)}
-          />
-        )}
-        <div className="pointer-events-auto relative z-50 pt-10">
-          {!islandOpen ? (
+          {islandOpen && (
             <button
               type="button"
-              onClick={() => setIslandOpen(true)}
-              className="grid h-12 w-12 place-items-center rounded-full border border-white/10 transition hover:scale-105 active:scale-95"
-              style={shellStyle}
-              aria-label="Open navigation"
-            >
-              <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-white/85 animate-pulse" />
-                <span className="h-1.5 w-1.5 rounded-full bg-white/55" />
-                <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
-              </span>
-            </button>
-          ) : (
-            <div
-              className="w-[min(100vw-1.5rem,22rem)] overflow-visible rounded-[22px] ring-1 ring-black/10 animate-in fade-in zoom-in-95 duration-200"
-              style={{
-                ...shellStyle,
-                backgroundImage:
-                  "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
-                backgroundColor: "var(--bnav-bg)",
-              }}
-            >
-              <LiquidNavBar
-                pathname={pathname}
-                userId={user?.id}
-                msgUnread={msgUnread}
-                onNavigate={() => setIslandOpen(false)}
-              />
-            </div>
+              className="pointer-events-auto fixed inset-0 z-40 bg-black/35 backdrop-blur-[3px] animate-in fade-in duration-200"
+              aria-label="Close navigation"
+              onClick={() => setIslandOpen(false)}
+            />
           )}
-        </div>
+          <div className="pointer-events-auto relative z-50 pt-10">
+            {!islandOpen ? (
+              <button
+                type="button"
+                onClick={() => setIslandOpen(true)}
+                className="grid h-12 w-12 place-items-center rounded-full border border-white/10 transition hover:scale-105 active:scale-95"
+                style={shellStyle}
+                aria-label="Open navigation"
+              >
+                <span className="flex gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white/85 animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-white/55" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
+                </span>
+              </button>
+            ) : (
+              <div
+                className="w-[min(100vw-1.5rem,22rem)] overflow-visible rounded-[22px] ring-1 ring-black/10 animate-in fade-in zoom-in-95 duration-200"
+                style={{
+                  ...shellStyle,
+                  backgroundImage:
+                    "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 40%)",
+                  backgroundColor: "var(--bnav-bg)",
+                }}
+              >
+                <LiquidNavBar
+                  pathname={pathname}
+                  userId={user?.id}
+                  msgUnread={msgUnread}
+                  onNavigate={() => setIslandOpen(false)}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </>
     );
@@ -457,7 +456,7 @@ export function BottomNav() {
         aria-label="Main"
         data-onboard="bottom-nav"
       >
-        <div className="pointer-events-auto w-full max-w-[22rem] pt-10">
+        <div className="pointer-events-auto w-full max-w-[22rem] pt-10 sm:max-w-[24rem]">
           <div
             className="overflow-visible rounded-[22px] ring-1 ring-black/10"
             style={{

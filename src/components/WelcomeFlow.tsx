@@ -74,26 +74,25 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
 
   return (
     <div
-      className="fixed inset-0 z-[9990] bg-black text-white"
+      className="fixed inset-0 z-[9990] bg-black text-white na-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-title"
     >
       <div
         className={cn(
-          "pointer-events-none absolute left-1/2 top-[30%] h-64 w-64 -translate-x-1/2 rounded-full blur-3xl",
+          "pointer-events-none absolute left-1/2 top-[30%] h-64 w-64 -translate-x-1/2 rounded-full blur-3xl transition-colors duration-500",
           current.glow,
         )}
       />
 
-      {/* Skip always top-right */}
-      <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
         <img
           src="/neparena-logo-ui.png"
           alt="NepARENA"
           width={44}
           height={44}
-          className="h-11 w-11 object-contain"
+          className="h-11 w-11 object-contain sm:h-12 sm:w-12"
           onError={(e) => {
             e.currentTarget.src = "/icon-192.png";
           }}
@@ -101,16 +100,15 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
         <button
           type="button"
           onClick={finish}
-          className="rounded-full border border-white/25 bg-black/60 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm hover:bg-white/10"
+          className="rounded-full border border-white/25 bg-black/60 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/10 active:scale-95"
         >
           Skip
         </button>
       </div>
 
-      {/* Center content — smaller logo so footer never clips */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 pb-28 pt-16 text-center">
-        <div key={slide} className="w-full max-w-sm">
-          <div className="mx-auto grid h-36 w-36 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] sm:h-44 sm:w-44">
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 pb-32 pt-16 text-center sm:pb-36">
+        <div key={slide} className="w-full max-w-sm na-slide-right sm:max-w-md">
+          <div className="mx-auto grid h-36 w-36 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] transition sm:h-44 sm:w-44 md:h-52 md:w-52">
             <img
               src="/neparena-logo-ui.png"
               alt=""
@@ -125,23 +123,25 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
           <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-500">
             {slide + 1} of {SLIDES.length}
           </p>
-          <h2 id="welcome-title" className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
+          <h2
+            id="welcome-title"
+            className="mt-2 text-2xl font-bold leading-tight sm:text-3xl md:text-4xl"
+          >
             {current.title}
           </h2>
-          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-neutral-400">
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-neutral-400 sm:text-base">
             {current.text}
           </p>
         </div>
       </div>
 
-      {/* Continue always pinned to bottom */}
       <div
-        className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-black/95 px-4 pt-3 backdrop-blur-md"
+        className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-black/95 px-4 pt-3 backdrop-blur-md sm:px-6"
         style={{
           paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
         }}
       >
-        <div className="mx-auto w-full max-w-md space-y-3">
+        <div className="mx-auto w-full max-w-md space-y-3 sm:max-w-lg">
           <div className="flex justify-center gap-2">
             {SLIDES.map((_, i) => (
               <button
@@ -150,8 +150,8 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
                 aria-label={`Slide ${i + 1}`}
                 onClick={() => setSlide(i)}
                 className={cn(
-                  "h-2 rounded-full transition-all",
-                  i === slide ? "w-8 bg-red-500" : "w-2 bg-white/25",
+                  "h-2 rounded-full transition-all duration-300",
+                  i === slide ? "w-8 bg-red-500" : "w-2 bg-white/25 hover:bg-white/40",
                 )}
               />
             ))}
@@ -163,7 +163,7 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
                 <button
                   type="button"
                   onClick={finish}
-                  className="flex h-14 w-full items-center justify-center rounded-full bg-white text-base font-bold text-black"
+                  className="flex h-14 w-full items-center justify-center rounded-full bg-white text-base font-bold text-black transition active:scale-[0.98] hover:bg-neutral-100"
                 >
                   Go to home
                 </button>
@@ -172,14 +172,14 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
                   <Link
                     to="/auth"
                     onClick={finish}
-                    className="flex h-14 w-full items-center justify-center rounded-full bg-red-600 text-base font-bold text-white"
+                    className="flex h-14 w-full items-center justify-center rounded-full bg-red-600 text-base font-bold text-white transition hover:bg-red-500 active:scale-[0.98]"
                   >
                     Create free account
                   </Link>
                   <button
                     type="button"
                     onClick={finish}
-                    className="flex h-12 w-full items-center justify-center rounded-full border border-white/20 text-sm font-semibold text-neutral-200"
+                    className="flex h-12 w-full items-center justify-center rounded-full border border-white/20 text-sm font-semibold text-neutral-200 transition hover:bg-white/5 active:scale-[0.98]"
                   >
                     Explore as guest
                   </button>
@@ -193,7 +193,7 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
                   type="button"
                   onClick={() => setSlide((s) => Math.max(0, s - 1))}
                   aria-label="Back"
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5"
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 transition hover:bg-white/10 active:scale-95"
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
@@ -201,7 +201,7 @@ export function WelcomeFlow({ enabled, onDone }: { enabled: boolean; onDone?: ()
               <button
                 type="button"
                 onClick={() => setSlide((s) => Math.min(SLIDES.length - 1, s + 1))}
-                className="flex h-14 flex-1 items-center justify-center gap-1 rounded-full bg-white text-base font-bold text-black"
+                className="flex h-14 flex-1 items-center justify-center gap-1 rounded-full bg-white text-base font-bold text-black transition hover:bg-neutral-100 active:scale-[0.98]"
               >
                 Continue
                 <ChevronRight className="h-5 w-5" />
