@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Loader2, Newspaper, BadgeCheck, MessageCircle, Trash2 } from "lucide-react";
+import { Heart, Newspaper, BadgeCheck, MessageCircle, Trash2, Shield } from "lucide-react";
 import { FeedSkeleton } from "@/components/PageSkeletons";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,8 @@ export function SocialFeed({
   emptyLabel?: string;
   onPostsChange?: (count: number) => void;
 }) {
-  const { user } = useAuth();
+  const { user, isOwner } = useAuth();
+  const isPlatformAdmin = isSuperAdminEmail(user?.email) || !!isOwner;
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
@@ -170,22 +171,24 @@ export function SocialFeed({
 
   const deletePost = async (p: FeedPost) => {
     if (!user) return;
-    const isOwner = p.author_id === user.id;
-    const isAdmin = isSuperAdminEmail(user.email);
-    if (!isOwner && !isAdmin) {
+    const isPostOwner = p.author_id === user.id;
+    if (!isPostOwner && !isPlatformAdmin) {
       toast.error("Not allowed");
       return;
     }
-    if (!confirm(isAdmin && !isOwner ? "Delete this post (policy)?" : "Delete your post?")) return;
+    const msg = isPlatformAdmin && !isPostOwner
+      ? "Delete this post as platform admin?"
+      : "Delete your post?";
+    if (!confirm(msg)) return;
     await supabase.from("post_likes").delete().eq("post_id", p.id);
     await supabase.from("post_comments").delete().eq("post_id", p.id);
     const { error } = await supabase.from("posts").delete().eq("id", p.id);
     if (error) {
-      toast.error(error.message || "Could not delete post");
+      toast.error(error.message || "Could not delete (check RLS policy for admins)");
       return;
     }
     setPosts((prev) => prev.filter((x) => x.id !== p.id));
-    toast.success("Post deleted");
+    toast.success(isPlatformAdmin && !isPostOwner ? "Post removed by admin" : "Post deleted");
   };
 
   const q = (filterQuery ?? "").trim().toLowerCase();
@@ -199,15 +202,19 @@ export function SocialFeed({
     <div className="space-y-4">
       {filteredPosts.map((p) => {
         const urls = (p.image_urls?.length ? p.image_urls : p.image_url ? [p.image_url] : []) as string[];
+        const canDelete = !!user && (p.author_id === user.id || isPlatformAdmin);
         return (
-          <article key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <article
+            key={p.id}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15 sm:p-4"
+          >
             <div className="flex gap-3">
-              <Avatar className="h-9 w-9">
+              <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
                 <AvatarImage src={p.author_avatar ?? undefined} />
                 <AvatarFallback>{(p.author_name ?? "?").slice(0, 1)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Link to="/members/$id" params={{ id: p.author_id }} className="text-sm font-semibold text-white hover:underline">
                     {p.author_name}
                   </Link>
@@ -221,7 +228,7 @@ export function SocialFeed({
                 )}
                 {urls.length === 1 && (
                   <button type="button" className="mt-2 block w-full" onClick={() => setLightbox(urls[0]!)}>
-                    <img src={urls[0]} alt="" className="max-h-80 w-full rounded-xl object-cover" />
+                    <img src={urls[0]} alt="" className="max-h-80 w-full rounded-xl object-cover sm:max-h-96" />
                   </button>
                 )}
                 {urls.length > 1 && (
@@ -233,7 +240,7 @@ export function SocialFeed({
                     ))}
                   </div>
                 )}
-                <div className="mt-3 flex items-center gap-1">
+                <div className="mt-3 flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -256,7 +263,7 @@ export function SocialFeed({
                     <MessageCircle className="h-3.5 w-3.5" />
                     {p.comment_count || ""}
                   </Link>
-                  {user && (p.author_id === user.id || isSuperAdminEmail(user.email)) && (
+                  {canDelete && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -264,10 +271,14 @@ export function SocialFeed({
                         void deletePost(p);
                       }}
                       className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-neutral-500 hover:bg-rose-500/10 hover:text-rose-300"
-                      title="Delete post"
+                      title={isPlatformAdmin && p.author_id !== user?.id ? "Admin delete" : "Delete post"}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete
+                      {isPlatformAdmin && p.author_id !== user?.id ? (
+                        <Shield className="h-3.5 w-3.5" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                      {isPlatformAdmin && p.author_id !== user?.id ? "Remove" : "Delete"}
                     </button>
                   )}
                 </div>
